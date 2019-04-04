@@ -24,6 +24,9 @@ void COptRecsDlg::DoDataExchange(CDataExchange* pDX) {
 	DDX_Check(pDX, IDC_CASENAME, m_bPrintFilename);
 	DDX_Control(pDX, IDC_OUTPUT_FILE, m_ctrlOutputFile);
 	DDX_Check(pDX, IDC_LONGITUDINAL, m_bLong);
+	DDX_Check(pDX, IDC_SKIP_BLANK, m_bSkipBlank);
+	DDX_Check(pDX, IDC_PRINT_MEAN, m_bPrintMean);
+	DDX_Check(pDX, IDC_PRINT_CLOSEST, m_bPrintClosest);
 	DDX_Text(pDX, IDC_OUTPUT_FILE, m_strOutputFile);
 	DDX_Control(pDX, IDC_HEADER, m_ctrlHeader);
 	DDX_Control(pDX, IDC_CASENAME, m_ctrlPrintFilename);

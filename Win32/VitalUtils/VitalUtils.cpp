@@ -32,16 +32,6 @@ void CreateDir(CString path) {
 	}
 }
 
-bool FileExists(CString path) {
-	CFile fil;
-	if (fil.Open(path, CFile::modeRead | CFile::shareDenyNone)) { // Open succeeded, file exists 
-		fil.Close();
-		return true;
-	} 
-	if (ERROR_FILE_NOT_FOUND == ::GetLastError()) return false;
-	return false;
-}
-
 CString GetModulePath() {
 	TCHAR temp_path[MAX_PATH];
 	GetModuleFileName(AfxGetInstanceHandle(), temp_path, sizeof(temp_path));
@@ -278,10 +268,9 @@ UINT WINAPI WorkThread(void* p) {
 
 			auto path = dstr.second;
 			auto mtime = dstr.first;
-			auto cmd = GetModuleDir() + _T("utilities\\") + "vital_trks.exe -s \"" + path + "\"";
+			auto cmd = GetModuleDir() + "utilities\\vital_trks.exe -s \"" + path + "\"";
 			auto res = execCmd(cmd);
 			theApp.m_path_trklist[path] = make_pair(mtime, res);
-
 			theApp.m_nrunning.Dec();
 		} else if (!theApp.m_bparsing && theApp.m_jobs.Pop(cmd)) { // 추출해야할 파일이 있다면
 			theApp.m_nrunning.Inc();
@@ -294,43 +283,30 @@ UINT WINAPI WorkThread(void* p) {
 
 			// 실제 프로그램을 실행
 			time_t ts = time(nullptr);
-			if (cmd.Left(4) == "copy") {
-				auto tabs = Explode(cmd.Mid(5), '|');
-				if (tabs.size() < 2) {
-					theApp.Log("Copy failed! File name error");
-				} else {
-					auto ipath = tabs[0];
-					auto opath = tabs[1];
-					if (!CopyFile(ipath, opath, FALSE)) {
-						theApp.Log("Copy failed! " + GetLastErrorString());
-					}
-				}
-			} else {
-				cmd = GetModuleDir() + _T("utilities\\") + cmd;
-				int dred = cmd.Find(">>");
-				int red = cmd.Find('>');
-				if (dred >= 1) { // Longitudinal file
-					CString ofile = cmd.Mid(dred + 2);
-					ofile = ofile.Trim(_T("\t \""));
-					cmd = cmd.Left(dred);
-					auto s = execCmd(cmd);
+			cmd = GetModuleDir() + cmd;
+			int dred = cmd.Find(">>");
+			int red = cmd.Find('>');
+			if (dred >= 1) { // Longitudinal file
+				CString ofile = cmd.Mid(dred + 2);
+				ofile = ofile.Trim(_T("\t \""));
+				cmd = cmd.Left(dred);
+				auto s = execCmd(cmd);
 					
-					// lock and save the result
-					EnterCriticalSection(&theApp.m_csLong);
-					FILE* fa = fopen(ofile, "ab"); // append file
-					s.TrimRight("\r\n");
-					fwrite(s, 1, s.GetLength(), fa);
-					fprintf(fa, "\r\n");
-					fclose(fa);
-					LeaveCriticalSection(&theApp.m_csLong);
-				} else if (red >= 1) { // 파이프 실행
-					CString ofile = cmd.Mid(red + 1);
-					ofile = ofile.Trim(_T("\t \""));
-					cmd = cmd.Left(red);
-					executeCommandLine(cmd, ofile);
-				} else { // 단순 실행
-					executeCommandLine(cmd);
-				}
+				// lock and save the result
+				EnterCriticalSection(&theApp.m_csLong);
+				FILE* fa = fopen(ofile, "ab"); // append file
+				s.TrimRight("\r\n");
+				fwrite(s, 1, s.GetLength(), fa);
+				if(!s.IsEmpty()) fprintf(fa, "\r\n");
+				fclose(fa);
+				LeaveCriticalSection(&theApp.m_csLong);
+			} else if (red >= 1) { // 파이프 실행
+				CString ofile = cmd.Mid(red + 1);
+				ofile = ofile.Trim(_T("\t \""));
+				cmd = cmd.Left(red);
+				executeCommandLine(cmd, ofile);
+			} else { // 단순 실행
+				execCmd(cmd);
 			}
 
 			time_t te = time(nullptr);
@@ -410,6 +386,11 @@ BOOL CVitalUtilsApp::InitInstance() {
 		return FALSE;
 	}
 
+	// initialize winsock
+	WSADATA wd;
+	if (WSAStartup(MAKEWORD(2, 2), &wd) != 0) return FALSE;
+
+	AfxOleInit();
 	AfxEnableControlContainer();
 	AfxInitRichEdit();
 

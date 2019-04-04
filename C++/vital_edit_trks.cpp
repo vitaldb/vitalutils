@@ -47,24 +47,33 @@ int main(int argc, char* argv[]) {
 	////////////////////////////////////////////////////////////
 	// parse dname/tname/newname
 	////////////////////////////////////////////////////////////
-	vector<string>& tnames = explode(argv[2], ',');
-	unsigned ncols = tnames.size(); // 데이터가 있든 없든 무조건 이 컬럼을 출력한다.
-	vector<string> dnames(ncols);
-	vector<string> newnames(ncols);
-	for (int i = 0; i < ncols; i++) {
+	vector<string> tnames = explode(argv[2], ',');
+	unsigned ncmds = tnames.size(); // 데이터가 있든 없든 무조건 이 컬럼을 출력한다.
+	vector<string> dnames(ncmds);
+	vector<string> newnames(ncmds);
+	vector<string> newtis(ncmds);
+	for (int i = 0; i < ncmds; i++) {
 		auto tname = tnames[i];
-		
-		int newpos = tname.find('=');
-		if (newpos != -1) {
-			newnames[i] = tname.substr(newpos + 1);
-			tnames[i] = tname = tname.substr(0, newpos);
+
+		int pos = tname.find('@');
+		if (pos != -1) {// 트랙 정보 변경. 실제 ti 는 | 로 구분되어 넘어오는데 이는 아래에서 사용할 때 파싱한다
+			newtis[i] = tname.substr(pos + 1);
+			tname = tname.substr(0, pos);
 		}
 
-		int pos = tname.find('/');
+		pos = tname.find('=');
+		if (pos != -1) {// 트랙명 변경
+			newnames[i] = tname.substr(pos + 1);
+			tname = tname.substr(0, pos);
+		}
+
+		pos = tname.find('/');
 		if (pos != -1) {// devname 을 지정
 			dnames[i] = tname.substr(0, pos);
-			tnames[i] = tname = tname.substr(pos + 1, newpos - pos - 1);
+			tname = tname.substr(pos + 1);
 		}
+
+		tnames[i] = tname;
 	}
 	
 	GZWriter fw(argv[1]); // 쓰기 파일을 연다.
@@ -96,7 +105,7 @@ int main(int argc, char* argv[]) {
 	if (!fw.write(&header[0], headerlen)) return -1;
 
 	// 한 번 훑음. 한번에 읽으면서 쓴다.
-	map<unsigned short, bool> tid_use; // 각 tid 별 저장 여부
+	map<unsigned short, bool> tid_need_to_delete; // 각 tid 별 저장 여부
 	map<unsigned long, string> did_dnames;
 	while (!fr.eof()) { // body는 패킷의 연속이다.
 		unsigned char packet_type; if (!fr.read(&packet_type, 1)) break;
@@ -108,55 +117,132 @@ int main(int argc, char* argv[]) {
 		if (!fr.read(&buf[0], packet_len)) break;
 
 		// tname, tid, dname, did, type (NUM, STR, WAV), srate
-		bool need_to_write = true;
+		bool need_to_save = true;
 		if (packet_type == 0) { // trkinfo
 			unsigned short tid; if (!buf.fetch(tid)) goto next_packet;
 			buf.skip(2);
 			string tname; if (!buf.fetch(tname)) goto next_packet;
 			
-			// 트랙명 이후는 없을 수 도 있음
-			string unit, dname;
-			unsigned long did = 0;
-			if (!buf.fetch(unit)) goto save_and_next_packet;
-			buf.skip(4 + 4 + 4 + 4 + 8 + 8 + 1);
-			if (!buf.fetch(did)) goto save_and_next_packet;
-			dname = did_dnames[did];
+			// 기존의 트랙 정보를 받아옴. 없으면 못받아온다
+			string unit; float mindisp = 0.0f, maxdisp = 100.0f, srate = 100.0f;
+			unsigned char color_a = 255, color_r = 255, color_g = 255, color_b = 255, montype = 0;
+			double gain = 1.0, offset = 0.0;
 
-save_and_next_packet:
-			bool use = true; // 삭제 또는 변경
-			for (int i = 0; i < ncols; i++) {
+			buf.fetch(unit);
+			buf.fetch(mindisp);
+			buf.fetch(maxdisp);
+			buf.fetch(color_b);
+			buf.fetch(color_g);
+			buf.fetch(color_r);
+			buf.fetch(color_a);
+			buf.fetch(srate);
+			buf.fetch(gain);
+			buf.fetch(offset);
+			buf.fetch(montype);
+
+			unsigned long did = 0; 
+			buf.fetch(did);
+			auto dname = did_dnames[did];
+
+			bool need_to_delete = false; // 해당 트랙에 대한 삭제가 될 것이므로 
+			for (int i = 0; i < ncmds; i++) {
 				if (tnames[i] == "*" || tnames[i] == tname) {
 					if (dnames[i].empty() || dnames[i] == dname || dnames[i] == "*") { // 트랙명 매칭 됨
-						need_to_write = false; // 삭제하든 이름 변경하든 아래에서 쓰지 않음
+						need_to_save = false; // 삭제하거나 변경하면 여기서 쓸거기 때문에 아래에서 쓰지 말라는 뜻
 
 						auto newname = newnames[i];
-						if (!newname.empty()) { // 트랙 이름 변경
-							unsigned long new_packet_len = packet_len - tname.size() + newname.size();
+						auto newti = newtis[i];
+						auto newunit = unit;
+						if (!newname.empty() || !newti.empty()) { // 트랙명 혹은 트랙 정보 변경
+							if (!newti.empty()) {
+								// newti 파징하고 덮어씀
+								auto ti = explode(newti, "|");
+								// unit, mindisp, maxdisp, r, g, b, gain, offset, montype 순서
+								// 숫자값들은 빈값이면 교체 안함
+								if (ti.size() > 0) {
+									newunit = ti[0];
+								}
+								if (ti.size() > 1) {
+									auto& s = ti[1];
+									if (!s.empty()) mindisp = atof(s.c_str());
+								}
+								if (ti.size() > 2) {
+									auto& s = ti[2];
+									if (!s.empty()) maxdisp = atof(s.c_str());
+								}
+								if (ti.size() > 5) {
+									auto s = ti[3];
+									if (!s.empty()) color_r = atoi(s.c_str());
+									s = ti[4];
+									if (!s.empty()) color_g = atoi(s.c_str());
+									s = ti[5];
+									if (!s.empty()) color_b = atoi(s.c_str());
+								}
+								if (ti.size() > 6) {
+									auto& s = ti[6];
+									if (!s.empty()) gain = atof(s.c_str());
+								}
+								if (ti.size() > 7) {
+									auto& s = ti[7];
+									if (!s.empty()) offset = atof(s.c_str());
+								}
+								if (ti.size() > 8) {
+									auto& s = ti[8];
+									if (!s.empty()) montype = atof(s.c_str());
+								}
+							}
+
+							unsigned long new_packet_len = packet_len - tname.size() + newname.size() - unit.size() + newunit.size();
 
 							fw.write(&packet_type, 1);
 							fw.write(&new_packet_len, 4);
 
 							// 트랙명 이전 정보를 씀
+							unsigned long old_packet_written = 4;
 							fw.write(&buf[0], 4);
 
 							// 새 트랙명을 씀
-							unsigned long newname_len = newname.size();
-							fw.write(&newname_len, 4);
-							fw.write(&newname[0], newname_len);
+							old_packet_written += 4 + tname.size();
+							if (newname.empty()) newname = tname; // 트랙 정보만 변경할 경우
+							fw.write(newname);
 
-							// 나머지를 씀
-							unsigned long remain_pos = 4 + 4 + tname.size();
-							fw.write(&buf[remain_pos], packet_len - remain_pos);
-							
-							use = true;
-						} else {
-							use = false;
+							old_packet_written += 4 + unit.size();
+							fw.write(newunit);
+
+							old_packet_written += 4;
+							fw.write(mindisp);
+
+							old_packet_written += 4;
+							fw.write(maxdisp);
+
+							old_packet_written += 4;
+							fw.write(color_b);
+							fw.write(color_g);
+							fw.write(color_r);
+							fw.write(color_a);
+
+							old_packet_written += 12;
+							fw.write(srate);
+							fw.write(gain);
+
+							old_packet_written += 8;
+							fw.write(offset);
+
+							old_packet_written += 1;
+							fw.write(montype);
+
+							// 나머지를 씀 (현재는 did만)
+							fw.write(&buf[old_packet_written], packet_len - old_packet_written);
+
+							need_to_delete = false;
+						} else { // 이름이 매칭되는데 newname도 없고 newti도 없으면 이는 삭제임
+							need_to_delete = true;
 						}
-						break; // 매칭되면 뒤의 트랙은 검사하지 않음
+						break; // 한번 매칭되면 뒤의 트랙은 검사하지 않음
 					}
 				}
 			}
-			tid_use[tid] = use;
+			tid_need_to_delete[tid] = need_to_delete;
 		} else if (packet_type == 9) { // devinfo
 			unsigned long did; if (!buf.fetch(did)) goto next_packet;
 			string dtype; if (!buf.fetch(dtype)) goto next_packet;
@@ -166,11 +252,11 @@ save_and_next_packet:
 		} else if (packet_type == 1) { // rec
 			buf.skip(2 + 8); // infolen, dt_rec_start
 			unsigned short tid; if (!buf.fetch(tid)) goto next_packet;
-			need_to_write = tid_use[tid];
+			need_to_save = !tid_need_to_delete[tid];
 		}
 
 next_packet:
-		if (need_to_write) { // 현재 패킷을 저장함
+		if (need_to_save) { // 현재 패킷을 저장함
 			fw.write(&packet_type, 1);
 			fw.write(&packet_len, 4);
 			fw.write(&buf[0], packet_len);

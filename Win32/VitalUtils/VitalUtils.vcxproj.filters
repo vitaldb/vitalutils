@@ -54,6 +54,15 @@
     <ClInclude Include="OptCopyFilesDlg.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="OptRunScript.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="DlgDownload.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Https.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VitalUtils.cpp">
@@ -81,6 +90,15 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="OptCopyFilesDlg.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="OptRunScript.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgDownload.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Https.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

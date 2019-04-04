@@ -116,8 +116,10 @@ save_and_next_packet:
 			tid_tnames[tid] = tname;
 			tid_dnames[tid] = did_dnames[did];
 			tid_dids[tid] = did;
-			tid_rectypes[tid] = rectype;
-			tid_srates[tid] = srate;
+			if (!is_short) {
+				tid_rectypes[tid] = rectype;
+				tid_srates[tid] = srate;
+			}
 		} else if (type == 9) { // devinfo
 			unsigned long did; if (!gz.fetch(did, datalen)) goto next_packet;
 			string dtype; if (!gz.fetch(dtype, datalen)) goto next_packet;
@@ -128,14 +130,17 @@ save_and_next_packet:
 			unsigned short infolen; if (!gz.fetch(infolen, datalen)) goto next_packet;
 			double dt; if (!gz.fetch(dt, datalen)) goto next_packet;
 			unsigned short tid; if (!gz.fetch(tid, datalen)) goto next_packet;
+
+			// 전체 파일의 dtstart, dtend만 구함
+			if (!dtstart || dtstart > dt) dtstart = dt;
+			if (dtend < dt) dtend = dt;
+
 			if (is_short) {
 				used_tids.insert(tid);
 				goto next_packet;
 			}
 
-			if (!dtstart || dtstart > dt) dtstart = dt;
-			if (dtend < dt) dtend = dt;
-
+			// 트랙별 dtstart, dtend 구함
 			if (!tid_dtstart[tid] || tid_dtstart[tid] > dt) tid_dtstart[tid] = dt;
 			if (tid_dtend[tid] < dt) tid_dtend[tid] = dt;
 
@@ -178,56 +183,55 @@ next_packet:
 	// finish
 	////////////////////////////////////////////////////////////
 	if (is_short) {
-		bool is_first = true;
+		printf("#dtstart=%u,#dtend=%u", (unsigned long)dtstart, (unsigned long)dtend);
 		for (unsigned int i = 0; i < tids.size(); i++) {
 			unsigned short& tid = tids[i];
 			string tname = escape_csv(tid_tnames[tid]);
 			string dname = escape_csv(tid_dnames[tid]);
 			auto it_cnts = used_tids.find(tid);
 			if (it_cnts != used_tids.end()) {
-				if (is_first) is_first = false;
-				else printf(",");
-				printf("%s/%s", dname.c_str(), tname.c_str());
+				printf(",%s/%s", dname.c_str(), tname.c_str());
 			}
 		}
-	} else {
-		printf("#dgmt,%f\n", dgmt / 60.0);
-		printf("#dtstart,%lf\n", dtstart);
-		printf("#dtend,%lf\n", dtend);
-		printf("tname,tid,dname,did,rectype,dtstart,dtend,srate,minval,maxval,cnt,avgval,firstval\n");
-		for (unsigned int i = 0; i < tids.size(); i++) {
-			unsigned short& tid = tids[i];
-			string stype;
-			switch (tid_rectypes[tid]) {
-			case 1: stype = "WAV"; break;
-			case 2: stype = "NUM"; break;
-			case 5: stype = "STR"; break;
-			}
-			string tname = escape_csv(tid_tnames[tid]);
-			string dname = escape_csv(tid_dnames[tid]);
-			string smin, smax, scnt, savg, sfirst;
-			auto it_mins = tid_mins.find(tid);
-			auto it_maxs = tid_maxs.find(tid);
-			auto it_firstvals = tid_firstvals.find(tid);
-			auto it_cnts = tid_cnts.find(tid);
-			auto it_sums = tid_sums.find(tid);
-			if (it_mins != tid_mins.end()) smin = string_format("%f", it_mins->second);
-			if (it_maxs != tid_maxs.end()) smax = string_format("%f", it_maxs->second);
-			if (it_firstvals != tid_firstvals.end()) sfirst = escape_csv(it_firstvals->second);
-			if (it_cnts != tid_cnts.end()) {
-				scnt = escape_csv(string_format("%d", it_cnts->second));
-				if (it_cnts->second > 0) {
-					if (it_sums != tid_sums.end()) {
-						savg = escape_csv(string_format("%f", it_sums->second / it_cnts->second));
-					}
+		return 0;
+	}
+
+	printf("#dgmt,%f\n", dgmt / 60.0);
+	printf("#dtstart,%lf\n", dtstart);
+	printf("#dtend,%lf\n", dtend);
+	printf("tname,tid,dname,did,rectype,dtstart,dtend,srate,minval,maxval,cnt,avgval,firstval\n");
+	for (unsigned int i = 0; i < tids.size(); i++) {
+		unsigned short& tid = tids[i];
+		string stype;
+		switch (tid_rectypes[tid]) {
+		case 1: stype = "WAV"; break;
+		case 2: stype = "NUM"; break;
+		case 5: stype = "STR"; break;
+		}
+		string tname = escape_csv(tid_tnames[tid]);
+		string dname = escape_csv(tid_dnames[tid]);
+		string smin, smax, scnt, savg, sfirst;
+		auto it_mins = tid_mins.find(tid);
+		auto it_maxs = tid_maxs.find(tid);
+		auto it_firstvals = tid_firstvals.find(tid);
+		auto it_cnts = tid_cnts.find(tid);
+		auto it_sums = tid_sums.find(tid);
+		if (it_mins != tid_mins.end()) smin = string_format("%f", it_mins->second);
+		if (it_maxs != tid_maxs.end()) smax = string_format("%f", it_maxs->second);
+		if (it_firstvals != tid_firstvals.end()) sfirst = escape_csv(it_firstvals->second);
+		if (it_cnts != tid_cnts.end()) {
+			scnt = escape_csv(string_format("%d", it_cnts->second));
+			if (it_cnts->second > 0) {
+				if (it_sums != tid_sums.end()) {
+					savg = escape_csv(string_format("%f", it_sums->second / it_cnts->second));
 				}
 			}
-
-			string ssrate;
-			if (tid_srates[tid]) ssrate = string_format("%f", tid_srates[tid]);
-
-			printf("%s,%u,%s,%u,%s,%lf,%lf,%s,%s,%s,%s,%s,%s\n", tname.c_str(), tid, dname.c_str(), tid_dids[tid], stype.c_str(), tid_dtstart[tid], tid_dtend[tid], ssrate.c_str(), smin.c_str(), smax.c_str(), scnt.c_str(), savg.c_str(), sfirst.c_str());
 		}
+
+		string ssrate;
+		if (tid_srates[tid]) ssrate = string_format("%f", tid_srates[tid]);
+
+		printf("%s,%u,%s,%u,%s,%lf,%lf,%s,%s,%s,%s,%s,%s\n", tname.c_str(), tid, dname.c_str(), tid_dids[tid], stype.c_str(), tid_dtstart[tid], tid_dtend[tid], ssrate.c_str(), smin.c_str(), smax.c_str(), scnt.c_str(), savg.c_str(), sfirst.c_str());
 	}
 	return 0;
 }

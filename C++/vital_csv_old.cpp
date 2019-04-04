@@ -1,18 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>  // exit()
 #include <assert.h>
-#include "zlib128/zlib.h"
+#include <zlib.h>
 #include <string>
 #include <vector>
 #include <map>
 #include <stdarg.h>  // For va_start, etc.
 #include <memory>    // For std::unique_ptr
-#include <time.h>
+#include <time.h> 
 #include <set> 
-#include <iostream>
 #include "GZReader.h"
 #include "Util.h"
-
 using namespace std;
 
 static const uint64_t crc64_tab[256] = {
@@ -146,9 +144,7 @@ static const uint64_t crc64_tab[256] = {
 	UINT64_C(0x536fa08fdfd90e51), UINT64_C(0x29b7d047efec8728),
 };
 
-
-//uint64_t crc64(string& s) {
-uint64_t crc64(const string& s) {
+uint64_t crc64(string& s) {
 	uint64_t crc = 0;
 	for (char c : s) {
 		crc = crc64_tab[(uint8_t)crc ^ (uint8_t)c] ^ (crc >> 8);
@@ -166,7 +162,7 @@ trkid, trkname
 
 nums
 - 숫자값
-- caseid, trkid, val   ///// ( tid dt val)
+- caseid, trkid, val
 
 wavs
 - wave 1초 단위로 자름
@@ -191,7 +187,7 @@ int main(int argc, char* argv[]) {
 	string caseid = basename(filename);
 	auto dotpos = caseid.rfind('.');
 	if (dotpos != -1) caseid = caseid.substr(0, dotpos);
-
+	
 	string odir = ".";
 	if (argc > 1) odir = argv[1];
 	GZReader gz(argv[0]); // 파일을 열어
@@ -208,7 +204,7 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 	if (!gz.skip(4)) return -1; // version
-
+	
 	unsigned short headerlen; // header length
 	if (!gz.read(&headerlen, 2)) return -1;
 
@@ -221,7 +217,7 @@ int main(int argc, char* argv[]) {
 	if (!gz.skip(headerlen)) return -1;
 	headerlen += 2; // 아래에서 재사용 하기 위해
 
-					// 한 번 훑으면서 트랙 이름, 시작 시간, 종료 시각 구함
+	// 한 번 훑으면서 트랙 이름, 시작 시간, 종료 시각 구함
 	map<unsigned short, double> tid_dtstart; // 트랙의 시작 시간
 	map<unsigned short, double> tid_dtend; // 트랙의 종료 시간
 	map<unsigned long, string> did_dnames;
@@ -237,44 +233,22 @@ int main(int argc, char* argv[]) {
 	double dtstart = DBL_MAX;
 	double dtend = 0;
 
-	unsigned char rectype = 0;
-	float srate;
-	unsigned long nsamp;
-	unsigned char recfmt;
-	unsigned int fmtsize;
-	double gain;
-	double offset;
-
-	unsigned short infolen = 0;
-	double dt_rec_start = 0;
-	unsigned short tid = 0;
-
 	while (!gz.eof()) { // body는 패킷의 연속이다.
-		unsigned char type = 0;// SSH initialization
-							   //cout << type << endl;
-		if (!gz.read(&type, 1)) break;
-		unsigned long datalen = 0;// SSH initialization
-								  //cout << datalen << endl;
-		if (!gz.read(&datalen, 4)) break;
-		//cout << datalen << endl;
-		if (datalen > 1000000) break;
-
-		//cout << "type: " << (int)type << endl;
+		unsigned char type; if (!gz.read(&type, 1)) break;
+		unsigned long datalen; if (!gz.read(&datalen, 4)) break;
+		if(datalen > 1000000) break;
 
 		// tname, tid, dname, did, type (NUM, STR, WAV), srate
 		if (type == 0) { // trkinfo
-			tid = 0; if (!gz.fetch(tid, datalen)) goto next_packet;
-			rectype = 0; if (!gz.fetch(rectype, datalen)) goto next_packet;
-			//cout << (int)rectype << endl;
+			unsigned short tid; if (!gz.fetch(tid, datalen)) goto next_packet;
+			unsigned char rectype; if (!gz.fetch(rectype, datalen)) goto next_packet;
 			unsigned char recfmt; if (!gz.fetch(recfmt, datalen)) goto next_packet;
 			string tname, unit;
-			//float minval, maxval, srate;
-			float minval, maxval, srate = 0;
-			//cout << maxval << endl;
-			unsigned long col, did = 0;
+			float minval, maxval, srate;
+			unsigned long col, did;
 			double adc_gain, adc_offset;
 			unsigned char montype;
-			if (!gz.fetch(tname, datalen)) goto save_and_next_packet; // !SSH Changed from next_packet
+			if (!gz.fetch(tname, datalen)) goto next_packet;
 			if (!gz.fetch(unit, datalen)) goto save_and_next_packet;
 			if (!gz.fetch(minval, datalen)) goto save_and_next_packet;
 			if (!gz.fetch(maxval, datalen)) goto save_and_next_packet;
@@ -287,12 +261,9 @@ int main(int argc, char* argv[]) {
 
 		save_and_next_packet:
 			string dname = did_dnames[did];
-			cout << did << endl;
 			tid_tnames[tid] = tname;
 			tid_dnames[tid] = dname;
 			rectypes[tid] = rectype;
-			//cout << dname << endl;
-			//cout << (int)rectype << endl;
 			recfmts[tid] = recfmt;
 			gains[tid] = adc_gain;
 			offsets[tid] = adc_offset;
@@ -307,24 +278,22 @@ int main(int argc, char* argv[]) {
 			string dname; if (!gz.fetch(dname, datalen)) goto next_packet;
 			if (dname.empty()) dname = dtype;
 			did_dnames[did] = dname;
-			//cout << dname << endl;
 		} else if (type == 1) { // rec
-			unsigned short infolen = 0; if (!gz.fetch(infolen, datalen)) goto next_packet;
-			double dt_rec_start = 0; if (!gz.fetch(dt_rec_start, datalen)) goto next_packet;
+			unsigned short infolen; if (!gz.fetch(infolen, datalen)) goto next_packet;
+			double dt_rec_start; if (!gz.fetch(dt_rec_start, datalen)) goto next_packet;
 			if (!dt_rec_start) goto next_packet;
-			unsigned short tid = 0; if (!gz.fetch(tid, datalen)) goto next_packet;
+			unsigned short tid; if (!gz.fetch(tid, datalen)) goto next_packet;
 
 			tids.insert(tid);
 
 			// 트랙 속성을 가져옴
-			rectype = rectypes[tid]; // 1:wav,2:num,3:str
-									 //cout << (int)rectypes[9] << endl;
+			unsigned char rectype = rectypes[tid]; // 1:wav,2:num,3:str
 			float srate = srates[tid];
 			unsigned long nsamp = 0;
 			double dt_rec_end = dt_rec_start; // 해당 레코드 종료 시간
 			if (rectype == 1) { // wav
 				if (!gz.fetch(nsamp, datalen)) goto next_packet;
-				if (srate > 0) dt_rec_end += nsamp / srate;
+				if(srate > 0) dt_rec_end += nsamp / srate;
 			}
 
 			// 시작 시간, 종료 시간을 업데이트
@@ -332,17 +301,17 @@ int main(int argc, char* argv[]) {
 			if (tid_dtend[tid] < dt_rec_end) tid_dtend[tid] = dt_rec_end;
 			if (dtstart > dt_rec_start) dtstart = dt_rec_start;
 			if (dtend < dt_rec_end) dtend = dt_rec_end;
-		}
+		} 
 
-	next_packet:
+next_packet:
 		if (!gz.skip(datalen)) break;
 	}
 
 	gz.rewind(); // 되 감음
 
 	if (!gz.skip(10 + headerlen)) return -1; // 헤더를 건너뜀
-
-											 // 메모리로 다 올리자
+	
+	// 메모리로 다 올리자
 	map<unsigned short, vector<pair<double, float>>> nums;
 	map<unsigned short, vector<pair<double, string>>> strs;
 	map<unsigned short, vector<float>> wavs; // 전체 트랙별로 하나씩 생성
@@ -354,121 +323,119 @@ int main(int argc, char* argv[]) {
 		//int trk_end_int = floor(tid_dtstart[tid]);
 		//wavs[tid]->resize();
 	}
+
 	while (!gz.eof()) {// body를 다시 parsing
-		unsigned char type = 0; if (!gz.read(&type, 1)) break;
-		unsigned long datalen = 0; if (!gz.read(&datalen, 4)) break;
-		if (datalen > 1000000) break;
+		unsigned char type; if (!gz.read(&type, 1)) break;
+		unsigned long datalen; if (!gz.read(&datalen, 4)) break;
+		if(datalen > 1000000) break;
 		if (type != 1) { goto next_packet2; } // 이번에는 레코드만 읽음
 
-		infolen = 0; if (!gz.fetch(infolen, datalen)) goto next_packet2;
-		dt_rec_start = 0; if (!gz.fetch(dt_rec_start, datalen)) goto next_packet2;
-		tid = 0; if (!gz.fetch(tid, datalen)) goto next_packet2;
+		unsigned short infolen; if (!gz.fetch(infolen, datalen)) goto next_packet2;
+		double dt_rec_start; if (!gz.fetch(dt_rec_start, datalen)) goto next_packet2;
+		unsigned short tid; if (!gz.fetch(tid, datalen)) goto next_packet2; 
 		if (!tid) goto next_packet2; // tid가 없으면 출력하지 않음
 		if (dt_rec_start < tid_dtstart[tid]) goto next_packet2;
 
 		// 트랙 속성을 가져옴
-		rectype = rectypes[tid]; // 1:wav,2:num,3:str
-								 //cout << "rectype :" << (int)rectype << ", tid :" << tid << endl;
-		srate = srates[tid];
-		nsamp = 0;
+		unsigned char rectype = rectypes[tid]; // 1:wav,2:num,3:str
+		float srate = srates[tid];
+		unsigned long nsamp = 0;
 		if (rectype == 1) if (!gz.fetch(nsamp, datalen)) { goto next_packet2; }
-		recfmt = recfmts[tid]; // 1:flt,2:dbl,3:ch,4:byte,5:short,6:word,7:long,8:dword
-		fmtsize = 4;
+		unsigned char recfmt = recfmts[tid]; // 1:flt,2:dbl,3:ch,4:byte,5:short,6:word,7:long,8:dword
+		unsigned int fmtsize = 4;
 		switch (recfmt) {
 		case 2: fmtsize = 8; break;
 		case 3: case 4: fmtsize = 1; break;
 		case 5: case 6: fmtsize = 2; break;
 		}
-		gain = gains[tid];
-		offset = offsets[tid];
+		double gain = gains[tid];
+		double offset = offsets[tid];
 
-		if (rectype == 1) { //wav  // 1: wav, 2: num, 5: string
-							/*			int idxlast = -1;
-							for (int i = 0; i < nsamp; i++) {
-							int idxrow = (dt_rec_start + (double)i / srate - dtstart) / epoch; // 현 sample의 인덱스
-							if (idxrow < 0) { goto next_packet2; }
-							if (idxrow >= nrows) { goto next_packet2; }
+		if (rectype == 1) { // wav
+/*			int idxlast = -1;
+			for (int i = 0; i < nsamp; i++) {
+				int idxrow = (dt_rec_start + (double)i / srate - dtstart) / epoch; // 현 sample의 인덱스
+				if (idxrow < 0) { goto next_packet2; }
+				if (idxrow >= nrows) { goto next_packet2; }
 
-							if (idxrow == idxlast) { // 같은 행을 다시 채크하지 않기 위해
-							if (!gz.skip(fmtsize, datalen)) break;
-							continue;
-							}
-							idxlast = idxrow;
+				if (idxrow == idxlast) { // 같은 행을 다시 채크하지 않기 위해
+					if (!gz.skip(fmtsize, datalen)) break;
+					continue;
+				}
+				idxlast = idxrow;
 
-							if (!rows[idxrow][idxcol]) {
-							string sval;
-							switch (recfmt) {
-							case 1: {
-							float fval; if (!gz.fetch(fval, datalen)) { goto next_packet2; }
-							sval = string_format("%f", fval);
-							break;
-							}
-							case 2: {
-							double fval; if (!gz.fetch(fval, datalen)) { goto next_packet2; }
-							sval = string_format("%lf", fval);
-							break;
-							}
-							case 3: {
-							char ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-							float fval = ival * gain + offset;
-							sval = string_format("%f", fval);
-							break;
-							}
-							case 4: {
-							unsigned char ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-							float fval = ival * gain + offset;
-							sval = string_format("%f", fval);
-							break;
-							}
-							case 5: {
-							short ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-							float fval = ival * gain + offset;
-							sval = string_format("%f", fval);
-							break;
-							}
-							case 6: {
-							unsigned short ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-							float fval = ival * gain + offset;
-							sval = string_format("%f", fval);
-							break;
-							}
-							case 7: {
-							long ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-							float fval = ival * gain + offset;
-							sval = string_format("%f", fval);
-							break;
-							}
-							case 8: {
-							unsigned long ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-							float fval = ival * gain + offset;
-							sval = string_format("%f", fval);
-							break;
-							}
-							}
-							rows[idxrow][idxcol] = new string(sval);
-							hasdata[idxcol] = true;
-							}
-							}
-							*/
+				if (!rows[idxrow][idxcol]) {
+					string sval;
+					switch (recfmt) {
+					case 1: {
+						float fval; if (!gz.fetch(fval, datalen)) { goto next_packet2; }
+						sval = string_format("%f", fval);
+						break;
+					}
+					case 2: {
+						double fval; if (!gz.fetch(fval, datalen)) { goto next_packet2; }
+						sval = string_format("%lf", fval);
+						break;
+					}
+					case 3: {
+						char ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
+						float fval = ival * gain + offset;
+						sval = string_format("%f", fval);
+						break;
+					}
+					case 4: {
+						unsigned char ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
+						float fval = ival * gain + offset;
+						sval = string_format("%f", fval);
+						break;
+					}
+					case 5: {
+						short ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
+						float fval = ival * gain + offset;
+						sval = string_format("%f", fval);
+						break;
+					}
+					case 6: {
+						unsigned short ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
+						float fval = ival * gain + offset;
+						sval = string_format("%f", fval);
+						break;
+					}
+					case 7: {
+						long ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
+						float fval = ival * gain + offset;
+						sval = string_format("%f", fval);
+						break;
+					}
+					case 8: {
+						unsigned long ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
+						float fval = ival * gain + offset;
+						sval = string_format("%f", fval);
+						break;
+					}
+					}
+					rows[idxrow][idxcol] = new string(sval);
+					hasdata[idxcol] = true;
+				}
+			}
+*/
 		} else if (rectype == 2) { // num
 			float fval; if (!gz.fetch(fval, datalen)) { goto next_packet2; }
 			nums[tid].push_back(make_pair(dt_rec_start, fval));
-			//
 		} else if (rectype == 5) { // str
 			if (!gz.skip(4, datalen)) { goto next_packet2; }
 			string sval; if (!gz.fetch(sval, datalen)) { goto next_packet2; }
 			strs[tid].push_back(make_pair(dt_rec_start, sval));
 		}
-
-	next_packet2:
+		
+next_packet2:
 		if (!gz.skip(datalen)) break;
 	}
 
 	map<unsigned short, uint64_t> tid_tid64;
 	char buf[256];
 	for (auto tid : tids) {
-		//itoa(tid, buf, 10);
-		sprintf(buf, "%d", tid);
+		itoa(tid, buf, 10);
 		tid_tid64[tid] = crc64(caseid + buf);
 	}
 
@@ -476,32 +443,26 @@ int main(int argc, char* argv[]) {
 	auto f = ::fopen((odir + "/" + caseid + ".trks").c_str(), "wt");
 	// 트랙 정보를 저장함
 	for (auto tid : tids) {
-		//cout<< tid_dnames[tid].c_str()<<endl;
 		fprintf(f, "\"%s\",%llu,\"%s/%s\"\n", caseid.c_str(), tid_tid64[tid], tid_dnames[tid].c_str(), tid_tnames[tid].c_str());
 	}
 	::fclose(f);
 
 	// 숫자값을 저장함
 	f = ::fopen((odir + "/" + caseid + ".nums").c_str(), "wt");
-	//fprintf(f,"test!");
-
 	for (auto it : nums) {
 		auto& tid = it.first;
 		auto& recs = it.second;
-		//printf("%d,\n",tid);
 		for (auto& rec : recs) {
 			fprintf(f, "%llu,%f,%f\n", tid_tid64[tid], rec.first, rec.second);
 		}
 	}
 	::fclose(f);
 
-	//	f = ::fopen((odir + "/" + caseid + ".wavs").c_str(), "wt");
-	//	::fclose(f);
-	//
-	//	f = ::fopen((odir + "/" + caseid + ".strs").c_str(), "wt");
-	//	::fclose(f);
+	f = ::fopen((odir + "/" + caseid + ".wavs").c_str(), "wt");
+	::fclose(f);
 
-	printf("Terminated!");
+	f = ::fopen((odir + "/" + caseid + ".strs").c_str(), "wt");
+	::fclose(f);
 
 	return 0;
 }

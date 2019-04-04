@@ -3,6 +3,7 @@
 #include "VitalUtils.h"
 #include "VitalUtilsDlg.h"
 #include "afxdialogex.h"
+#include "dlgdownload.h"
 
 #define LVIS_CHECKED 0x2000 
 #define LVIS_UNCHECKED 0x1000
@@ -29,6 +30,7 @@ void CVitalUtilsDlg::DoDataExchange(CDataExchange* pDX) {
 	DDX_Control(pDX, IDC_TRKLIST, m_ctrlTrkList);
 	DDX_Check(pDX, IDC_MAKE_SUBDIR, m_bMakeSubDir);
 
+	DDX_Control(pDX, IDC_SEL_RUN, m_ctrlSelRun);
 	DDX_Control(pDX, IDC_SEL_COPY, m_ctrlSelCopyFiles);
 	DDX_Control(pDX, IDC_SEL_RECS, m_ctrlSelRecs);
 	DDX_Control(pDX, IDC_SEL_DEL_TRKS, m_ctrlSelDelTrks);
@@ -80,6 +82,7 @@ BEGIN_MESSAGE_MAP(CVitalUtilsDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_FILE_NONE, &CVitalUtilsDlg::OnBnClickedFileNone)
 	ON_BN_CLICKED(IDC_SAVE_LIST, &CVitalUtilsDlg::OnBnClickedSaveList)
 
+	ON_BN_CLICKED(IDC_SEL_RUN, &CVitalUtilsDlg::OnBnClickedSelRunScript)
 	ON_BN_CLICKED(IDC_SEL_COPY, &CVitalUtilsDlg::OnBnClickedSelCopyFiles)
 	ON_BN_CLICKED(IDC_SEL_RENAME_DEV, &CVitalUtilsDlg::OnBnClickedSelRenameDev)
 	ON_BN_CLICKED(IDC_SEL_DEL_TRKS, &CVitalUtilsDlg::OnBnClickedSelDelTrks)
@@ -91,6 +94,8 @@ BEGIN_MESSAGE_MAP(CVitalUtilsDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_SELECT, &CVitalUtilsDlg::OnBnClickedSelect)
 	ON_NOTIFY(HDN_ITEMCLICK, 0, &CVitalUtilsDlg::OnHdnItemclickFilelist)
 	ON_BN_CLICKED(IDC_TRK_SELECT, &CVitalUtilsDlg::OnBnClickedTrkSelect)
+	ON_NOTIFY(LVN_BEGINDRAG, IDC_FILELIST, &CVitalUtilsDlg::OnLvnBegindragFilelist)
+	ON_BN_CLICKED(IDC_SETUP_PYTHON, &CVitalUtilsDlg::OnBnClickedSetupPython)
 END_MESSAGE_MAP()
 
 UINT WINAPI RescanThread(void* p) {
@@ -98,6 +103,7 @@ UINT WINAPI RescanThread(void* p) {
 
 	auto pDlg = (CVitalUtilsDlg*)(theApp.m_pMainWnd);
 	auto rootdir = pDlg->m_strIdir;
+	rootdir.TrimRight("\\");
 	Queue<CString> remain;
 	remain.Push(CString("\\")); // root directory
 	CString dirname;
@@ -135,16 +141,7 @@ UINT WINAPI RescanThread(void* p) {
 	theApp.Log(str);
 
 	// 메인 쓰레드에서 타이머에 의해 이들을 목록에 넣을 것이다.
-
-	// 기존에 parsing 했던 cache를 읽음
-	// 어차피 현재 cache 파일이 없으므로 읽지 않음
-//	char temp[MAX_PATH];
-//	SHGetSpecialFolderPathA(NULL, temp, CSIDL_LOCAL_APPDATA, FALSE);
-//	CString sLocalAppDataFolder(temp);
-//	sLocalAppDataFolder += "\\VitalUtils";
-//	CreateDirectory(sLocalAppDataFolder, NULL);
-
-	// 루트 폴더에 있는 파일을 읽어옴
+	// 루트 폴더에 있는 trks 파일을 읽어옴
 	map<CString, DWORD_CString> cachedata;
 	CString cachepath = rootdir + "\\trks.tsv";
 	if (FileExists(cachepath)) {
@@ -178,8 +175,10 @@ UINT WINAPI RescanThread(void* p) {
 		bool hascache = false;
 		auto it = cachedata.find(p->path);
 		if (it != cachedata.end()) { // 캐쉬가 존재
-			auto& t = cachedata[p->path]; // 경로와 시간이 같음
-			if (t.first == p->mtime) hascache = true;
+			auto& t = cachedata[p->path]; // 경로가 같음
+			if (t.second.Find("#") >= 0) // 최신 버전 포맷이어야함
+				if (t.first == p->mtime) // 시간도 같아야함
+					hascache = true;
 		}
 
 		if (!hascache) { // 캐쉬가 없음. 파징 목록에 추가
@@ -260,6 +259,7 @@ BOOL CVitalUtilsDlg::OnInitDialog() {
 
 	m_canFolder.LoadIcon((HICON)LoadImage(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_FOLDER), IMAGE_ICON, 16, 16, 0));
 
+	m_ctrlSelRun.SetIcon((HICON)LoadImage(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_COPY), IMAGE_ICON, 16, 16, 0));
 	m_ctrlSelCopyFiles.SetIcon((HICON)LoadImage(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_COPY), IMAGE_ICON, 16, 16, 0));
 	m_ctrlSelRecs.SetIcon((HICON)LoadImage(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_CSV), IMAGE_ICON, 16, 16, 0));
 	m_ctrlSelDelTrks.SetIcon((HICON)LoadImage(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_DEL), IMAGE_ICON, 16, 16, 0));
@@ -299,28 +299,33 @@ BOOL CVitalUtilsDlg::OnInitDialog() {
 //	m_ctrlFileList.SetImageList(&m_imglist, LVSIL_SMALL);
 
 	m_ctrlFileList.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-	m_ctrlFileList.InsertColumn(0, "Filename", LVCFMT_LEFT, 170);
-	m_ctrlFileList.InsertColumn(1, "Location", LVCFMT_LEFT, 110);
-	m_ctrlFileList.InsertColumn(2, "Modification", LVCFMT_LEFT, 120);
-	m_ctrlFileList.InsertColumn(3, "Size", LVCFMT_RIGHT, 65);
-	
+	m_ctrlFileList.InsertColumn(0, "Filename", LVCFMT_LEFT, 160);
+	m_ctrlFileList.InsertColumn(1, "Location", LVCFMT_LEFT, 70);
+	m_ctrlFileList.InsertColumn(2, "Modification", LVCFMT_LEFT, 115);
+	m_ctrlFileList.InsertColumn(3, "Size", LVCFMT_RIGHT, 55);
+	m_ctrlFileList.InsertColumn(4, "Start Time", LVCFMT_RIGHT, 115);
+	m_ctrlFileList.InsertColumn(5, "End Time", LVCFMT_RIGHT, 115);
+	m_ctrlFileList.InsertColumn(6, "Length", LVCFMT_RIGHT, 40);
+
 	// 도구 선택 다이알로그들을 만듬
-	m_dlgCopyFiles.Create(IDD_OPT_COPY_FILES, this);
+	m_dlgRun.Create(IDD_OPT_RUN_SCRIPT, this);
+	m_dlgCopy.Create(IDD_OPT_COPY_FILES, this);
 	m_dlgRecs.Create(IDD_OPT_RECS, this);
 	m_dlgRename.Create(IDD_OPT_RENAME, this);
 	m_dlgDelTrks.Create(IDD_OPT_DEL_TRKS, this);
 
 	m_ctrlFilter.SetLimitText(0);
 
-	CRect rwSelRecs;
-	m_ctrlSelRecs.GetWindowRect(rwSelRecs);
-	ScreenToClient(rwSelRecs);
-	m_dlgCopyFiles.SetWindowPos(NULL, rwSelRecs.left, rwSelRecs.bottom + 15, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-	m_dlgRecs.SetWindowPos(NULL, rwSelRecs.left, rwSelRecs.bottom + 15, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-	m_dlgRename.SetWindowPos(NULL, rwSelRecs.left, rwSelRecs.bottom + 15, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-	m_dlgDelTrks.SetWindowPos(NULL, rwSelRecs.left, rwSelRecs.bottom + 15, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	CRect rwc;
+	m_ctrlSelRun.GetWindowRect(rwc);
+	ScreenToClient(rwc);
+	m_dlgRun.SetWindowPos(NULL, rwc.right + 10, rwc.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	m_dlgCopy.SetWindowPos(NULL, rwc.right + 10, rwc.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	m_dlgRecs.SetWindowPos(NULL, rwc.right + 10, rwc.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	m_dlgRename.SetWindowPos(NULL, rwc.right + 10, rwc.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	m_dlgDelTrks.SetWindowPos(NULL, rwc.right + 10, rwc.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
-	m_ctrlSelRecs.SetCheck(TRUE);
+	m_ctrlSelRun.SetCheck(TRUE);
 
 	// 입력 디렉토리 읽기 시작
 	OnBnClickedRescan();
@@ -370,51 +375,17 @@ HCURSOR CVitalUtilsDlg::OnQueryDragIcon() {
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-void CVitalUtilsDlg::OnBnClickedBtnIdir() {
-	UpdateData(TRUE);
-	auto olddir = m_strIdir;
-	while (true) {
-		BROWSEINFO bi;
-		ZeroMemory(&bi, sizeof(bi));
-		TCHAR szDisplayName[MAX_PATH];
-		szDisplayName[0] = ' ';
-
-		bi.hwndOwner = NULL;
-		bi.pidlRoot = NULL;
-		bi.pszDisplayName = szDisplayName;
-		bi.lpszTitle = _T("Please select a folder:");
-		bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
-		bi.lParam = NULL;
-		bi.iImage = 0;
-
-		LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
-		TCHAR szPathName[MAX_PATH];
-		_tcsncpy_s(szPathName, (LPCTSTR)m_strIdir, MAX_PATH);
-		if (NULL == pidl) return;
-
-		BOOL bRet = SHGetPathFromIDList(pidl, szPathName);
-		if (!bRet) return;
-		
-		CString newdir(szPathName);
-
-		if (newdir.Left(m_strOdir.GetLength()) == m_strOdir ||
-			m_strOdir.Left(newdir.GetLength()) == newdir) {
-			AfxMessageBox("Output folder must not overlap with input folder\nPlease select another folder");
-			continue;
-		}
-
-		m_strIdir = newdir;
-		break;
+int CALLBACK BrowseCallbackIdir(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData) {
+	if (uMsg == BFFM_INITIALIZED) {
+		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
 	}
-	UpdateData(FALSE);
-
-	theApp.WriteProfileString(g_name, _T("idir"), m_strIdir);
-	if(m_strIdir != olddir) OnBnClickedRescan();
+	return 0;
 }
 
-int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData) {
-	switch (uMsg) {
-	case BFFM_INITIALIZED: {
+int CALLBACK BrowseCallbackOdir(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData) {
+	if (uMsg == BFFM_INITIALIZED) {
+		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
+
 		// 해당 Control ID는 shell32.dll version 5.0 이상에서 사용된다.
 		// 하위 버전에서는 현재 tree control이 id가 다르며
 		// 새폴더 버튼을 생성할 수 없다.
@@ -440,17 +411,12 @@ int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpDa
 		MoveWindow(hOK, rectWnd.right - 10 - rectCancel.Width() - 5 - rectOK.Width(), rectWnd.bottom - rectOK.Height() - 10, rectOK.Width(), rectOK.Height(), TRUE);  // 확인 Button
 		MoveWindow(hCancel, rectWnd.right - 10 - rectCancel.Width(), rectWnd.bottom - rectCancel.Height() - 10, rectCancel.Width(), rectCancel.Height(), TRUE);  // 취소 Button
 	}
-	break;
-	case BFFM_SELCHANGED:
-	case BFFM_VALIDATEFAILED:
-		break;
-	}
 	return 0;
 }
 
-void CVitalUtilsDlg::OnBnClickedBtnOdir() {
+void CVitalUtilsDlg::OnBnClickedBtnIdir() {
 	UpdateData(TRUE);
-
+	auto olddir = m_strIdir;
 	while (true) {
 		BROWSEINFO bi;
 		ZeroMemory(&bi, sizeof(bi));
@@ -461,9 +427,54 @@ void CVitalUtilsDlg::OnBnClickedBtnOdir() {
 		bi.pidlRoot = NULL;
 		bi.pszDisplayName = szDisplayName;
 		bi.lpszTitle = _T("Please select a folder:");
+		bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
+		bi.lpfn = BrowseCallbackIdir;
+		bi.lParam = (LPARAM)olddir.GetString();
+		bi.iImage = 0;
+
+		LPITEMIDLIST pidl = SHBrowseForFolder(&bi); // 경로를 받아옴
+		TCHAR szPathName[MAX_PATH];
+		_tcsncpy_s(szPathName, (LPCTSTR)m_strIdir, MAX_PATH);
+		if (NULL == pidl) return;
+
+		BOOL bRet = SHGetPathFromIDList(pidl, szPathName);
+		if (!bRet) return;
+		
+		CString newdir(szPathName);
+
+		if (newdir.Left(m_strOdir.GetLength()) == m_strOdir ||
+			m_strOdir.Left(newdir.GetLength()) == newdir) {
+			AfxMessageBox("Output folder must not overlap with input folder\nPlease select another folder");
+			continue;
+		}
+
+		m_strIdir = newdir;
+		break;
+	}
+	UpdateData(FALSE);
+
+	theApp.WriteProfileString(g_name, _T("idir"), m_strIdir);
+	if(m_strIdir != olddir) OnBnClickedRescan();
+}
+
+void CVitalUtilsDlg::OnBnClickedBtnOdir() {
+	UpdateData(TRUE);
+
+	while (true) {
+		auto olddir = m_strOdir;
+
+		BROWSEINFO bi;
+		ZeroMemory(&bi, sizeof(bi));
+		TCHAR szDisplayName[MAX_PATH];
+		szDisplayName[0] = ' ';
+
+		bi.hwndOwner = NULL;
+		bi.pidlRoot = NULL;
+		bi.pszDisplayName = szDisplayName;
+		bi.lpszTitle = _T("Please select a folder:");
 		bi.ulFlags = BIF_NEWDIALOGSTYLE | BIF_USENEWUI;
-		bi.lpfn = BrowseCallbackProc;
-		bi.lParam = NULL;
+		bi.lpfn = BrowseCallbackOdir;
+		bi.lParam = (LPARAM)olddir.GetString();
 		bi.iImage = 0;
 
 		LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
@@ -495,16 +506,87 @@ void CVitalUtilsDlg::OnBnClickedBtnOdir() {
 #include <set>
 using namespace std;
 
+bool FileExists(CString path) {
+	CFile fil;
+	if (fil.Open(path, CFile::modeRead | CFile::shareDenyNone)) { // Open succeeded, file exists 
+		fil.Close();
+		return true;
+	}
+	if (ERROR_FILE_NOT_FOUND == ::GetLastError()) return false;
+	return false;
+}
+
+void InstallPython() {
+	char tmpdir[MAX_PATH];
+	GetTempPath(MAX_PATH, tmpdir);
+
+	CString strSetupUrl = "https:/""/vitaldb.net/python_setup.exe";
+	CString tmppath; tmppath.Format("%spysetup_%u.exe", tmpdir, time(nullptr));
+	CDlgDownload dlg(nullptr, strSetupUrl, tmppath);
+	if (IDOK != dlg.DoModal()) {
+		AfxMessageBox("Cannot download python setup file.\nPlease download it from " + strSetupUrl + "\nand run it in the Vital Recorder installation folder");
+		return;
+	}
+
+	SHELLEXECUTEINFO shExInfo = { 0 };
+	shExInfo.cbSize = sizeof(shExInfo);
+	shExInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+	shExInfo.hwnd = 0;
+	shExInfo.lpVerb = _T("runas"); // Operation to perform
+	shExInfo.lpFile = tmppath; // Application to start    
+	shExInfo.lpParameters = ""; // Additional parameters
+	shExInfo.lpDirectory = GetModuleDir(); // 현재 프로그램 디렉토리에 압축을 풀어야함
+	shExInfo.nShow = SW_SHOW;
+	shExInfo.hInstApp = 0;
+
+	if (!ShellExecuteEx(&shExInfo)) {
+		AfxMessageBox("cannot start installer");
+		return;
+	}
+
+	if (WAIT_OBJECT_0 != WaitForSingleObject(shExInfo.hProcess, INFINITE)) {
+		AfxMessageBox("cannot install python");
+		return;
+	}
+
+	CloseHandle(shExInfo.hProcess);
+}
+
 void CVitalUtilsDlg::OnBnClickedRun() {
 	UpdateData(TRUE);
 
 	// 툴 골라잡음
 	CString strTool, strPre, strPost;
-	if (m_ctrlSelCopyFiles.GetCheck()) {
-		strTool = "copy";
+	if (m_ctrlSelRun.GetCheck()) {
+		CString python_path = "python\\python.exe";
+		if (!FileExists(python_path)) {
+			InstallPython(); // 블록킹
+		}
+
+		m_dlgRun.UpdateData(TRUE);
+		strTool = python_path + " utilities\\" + m_dlgRun.m_strScript;
+	} else if (m_ctrlSelCopyFiles.GetCheck()) {
+		strTool = "utilities\\vital_copy.exe";
+
+		// 옵션 가져옴
+		m_dlgCopy.UpdateData();
+		if (m_dlgCopy.m_bTracks) { // 선택된 트랙만 추출
+			CString strDevTrk = ""; // 추출할 트랙
+			for (int i = 0; i < m_ctrlTrkList.GetCount(); i++) {
+				if (!m_ctrlTrkList.GetSel(i)) continue;
+				CString s; m_ctrlTrkList.GetText(i, s);
+				if (s.Find(',') >= 0) continue;
+
+				if (!strDevTrk.IsEmpty()) strDevTrk += ',';
+				strDevTrk += s;
+			}
+			if (!strDevTrk.IsEmpty()) {
+				strPost += _T("\"") + strDevTrk + _T("\"");
+			}
+		}
 	} else if (m_ctrlSelRecs.GetCheck()) {
-		strTool = _T("vital_recs");
-		if (m_b64) strTool += _T("_x64");
+		strTool = "utilities\\vital_recs.exe";
+		if (m_b64) strTool = "utilities\\vital_recs_x64.exe";
 
 		// 옵션 가져옴
 		m_dlgRecs.UpdateData();
@@ -513,6 +595,9 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 		if (m_dlgRecs.m_bLast) strPre += _T("l");
 		if (m_dlgRecs.m_bPrintHeader) strPre += _T("h");
 		if (m_dlgRecs.m_bPrintFilename) strPre += _T("c");
+		if (m_dlgRecs.m_bPrintMean) strPre += _T("m");
+		if (m_dlgRecs.m_bPrintClosest) strPre += _T("n");
+		if (m_dlgRecs.m_bSkipBlank) strPre += _T("s");
 		if (!strPre.IsEmpty()) strPre = _T("-") + strPre;
 
 		strPost.Format(_T("%f "), m_dlgRecs.m_fInterval);
@@ -531,7 +616,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 			strPost += _T("\"") + strDevTrk + _T("\"");
 		}
 	} else if (m_ctrlSelDelTrks.GetCheck()) {
-		strTool = "vital_edit_trks";
+		strTool = "utilities\\vital_edit_trks.exe";
 
 		// 삭제 할 트랙
 		CString smsg;
@@ -556,7 +641,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 			strPost += _T("\"") + strDevTrk + _T("\"");
 		}
 	} else if (m_ctrlSelRenameTrks.GetCheck()) {
-		strTool = "vital_edit_trks";
+		strTool = "utilities\\vital_edit_trks.exe";
 
 		// 이름 변경할 트랙
 		CString smsg;
@@ -590,7 +675,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 			return;
 		}
 	} else if (m_ctrlSelRenameDev.GetCheck()) {
-		strTool = "vital_edit_devs";
+		strTool = "utilities\\vital_edit_devs.exe";
 
 		// 이름 변경할 장비
 		m_dlgRename.UpdateData();
@@ -631,7 +716,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 
 	// recs 의 경우는 piped 이고 이 경우에는 tool strpre ifile strpost > ofile 형태가 된다.
 	// 그 외에는 tool strpre ifile ofile strpost 형태가 된다.
-	bool is_recs = (strTool.Left(10) == "vital_recs");
+	bool is_recs = (strTool.Find("vital_recs") >= 0);
 	if (m_dlgRecs.m_bLong) { // longitudinal 인데 파일이 존재하면?
 		if (m_dlgRecs.m_strOutputFile.IsEmpty()) {
 			AfxMessageBox("Please enter output file name");
@@ -668,6 +753,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 	m_btnRun.EnableWindow(FALSE);
 	m_btnStop.EnableWindow(TRUE);
 
+	m_ctrlSelRun.EnableWindow(FALSE);
 	m_ctrlSelCopyFiles.EnableWindow(FALSE);
 	m_ctrlSelRecs.EnableWindow(FALSE);
 	m_ctrlSelDelTrks.EnableWindow(FALSE);
@@ -675,47 +761,52 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 	m_ctrlSelRenameDev.EnableWindow(FALSE);
 
 	// 실제 툴 실행 명령을 job 리스트에 추가함
-	for (int i = 0; i < m_ctrlFileList.GetItemCount(); i++) {
-		if (m_ctrlFileList.GetItemState(i, LVIS_SELECTED)) {
-			auto ifile = m_shown[i]->path;
+	for (auto pos = m_ctrlFileList.GetFirstSelectedItemPosition(); pos;) {
+		auto i = m_ctrlFileList.GetNextSelectedItem(pos);
 
-			// sub directory 생성이면?
-			CString subdir;
-			if (m_bMakeSubDir) {
-				subdir = DirName(ifile).TrimRight('\\').Mid(idir.GetLength());
-				CreateDir(odir + '\\' + subdir + '\\');
-			}
+		auto ifile = m_shown[i]->path;
+		ifile.TrimRight('\\');
 
-			CString ofile = BaseName(ifile);
-			if (is_recs) {
-				ofile = ofile.Left(ofile.ReverseFind('.')); // remove ext
-				ofile = ofile + _T(".csv");
-			}
-
-			auto opath = odir + '\\' + subdir + '\\' + ofile;
-
-			if (is_recs && m_dlgRecs.m_bLong) {
-				opath = odir + '\\' + m_dlgRecs.m_strOutputFile;
-			}
-
-			// 파일 존재시 삭제이면?
-			if (m_bSkip) if (FileExists(opath)) continue;
-
-			// 최종 명령문
-			CString strJob;
-			if (is_recs) {
-				strJob = strTool + _T(".exe ") + strPre + _T(" \"") + ifile + _T("\" ") + strPost + " >";
-				if (is_recs && m_dlgRecs.m_bLong) strJob += '>'; // longitudinal
-				strJob += "\"" + opath + "\"";
-			} else if (strTool == "copy") {
-				strJob = strTool + " " + ifile + "|" + opath;
-			} else {
-				strJob = strTool + _T(".exe ") + strPre + _T(" \"") + ifile + _T("\" \"") + opath + _T("\" ") + strPost;
-			}
-
-			// 실행 큐에 추가
-			theApp.AddJob(strJob);
+		// sub directory 생성이면?
+		CString subdir;
+		if (m_bMakeSubDir) {
+			subdir = DirName(ifile).Mid(idir.GetLength());
+			CreateDir(odir + '\\' + subdir + '\\');
 		}
+
+		CString ofile = BaseName(ifile);
+		if (is_recs) {
+			ofile = ofile.Left(ofile.ReverseFind('.')); // remove ext
+			ofile = ofile + _T(".csv");
+		}
+
+		auto opath = odir + '\\';
+		if (!subdir.IsEmpty())
+			opath += subdir + '\\';
+		opath += ofile;
+		if (is_recs && m_dlgRecs.m_bLong) {
+			opath = odir + '\\' + m_dlgRecs.m_strOutputFile;
+		}
+
+		// 파일 존재시 삭제이면?
+		if (m_bSkip) {
+			if (FileExists(opath)) {
+				continue;
+			}
+		}
+
+		// 최종 명령문
+		CString strJob;
+		if (is_recs) {
+			strJob = strTool + " " + strPre + _T(" \"") + ifile + _T("\" ") + strPost + " >";
+			if (is_recs && m_dlgRecs.m_bLong) strJob += '>'; // longitudinal
+			strJob += "\"" + opath + "\"";
+		} else {
+			strJob = strTool +" " + strPre + _T(" \"") + ifile + _T("\" \"") + opath + _T("\" ") + strPost;
+		}
+
+		// 실행 큐에 추가
+		theApp.AddJob(strJob);
 	}
 
 	UpdateData(FALSE);
@@ -810,7 +901,7 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 		CString str;
 		pair<DWORD, CString> msg;
 		while (theApp.m_msgs.Pop(msg)) {
-			str += DtToStr(msg.first) + " " + msg.second + _T("\r\n");
+			str += DtToStr(msg.first).Mid(11) + " " + msg.second + _T("\r\n");
 		}
 
 		if (!str.IsEmpty()) {
@@ -850,6 +941,7 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 				m_btnRun.EnableWindow(TRUE);
 				m_btnStop.EnableWindow(FALSE);
 
+				m_ctrlSelRun.EnableWindow(TRUE);
 				m_ctrlSelCopyFiles.EnableWindow(TRUE);
 				m_ctrlSelRecs.EnableWindow(TRUE);
 				m_ctrlSelDelTrks.EnableWindow(TRUE);
@@ -871,8 +963,9 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 			m_ctrlTrkList.EnableWindow(theApp.m_bparsing ? FALSE : TRUE);
 
 		// parsing이 추가로 되었을 때
-		if (m_ctrlTrkList.GetCount() != theApp.m_devtrks.size()) {
-			theApp.Log("Updating track list");
+		if (m_ctrlTrkList.GetCount() + 2 != theApp.m_devtrks.size()) {
+			//TRACE("Updating track list %d,%d\n", m_ctrlTrkList.GetCount(), theApp.m_devtrks.size());
+
 			EnterCriticalSection(&theApp.m_csTrk);
 			vector<CString> copy(theApp.m_devtrks.begin(), theApp.m_devtrks.end());
 			LeaveCriticalSection(&theApp.m_csTrk);
@@ -881,13 +974,16 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 			m_ctrlTrkList.SetRedraw(FALSE);
 			auto nscr = m_ctrlTrkList.GetTopIndex();
 			m_ctrlTrkList.ResetContent();
-			for (const auto& s : copy)
+			for (const auto& s : copy) {
+				if (s.Left(1) == "#") continue;
 				m_ctrlTrkList.AddString(s);
+			}
 			m_ctrlTrkList.SetTopIndex(nscr);
 			m_ctrlTrkList.SetRedraw(TRUE);
-			m_ctrlTrkList.RedrawWindow();
+			m_ctrlTrkList.Invalidate();
 
-			theApp.Log("Updating track list done");
+			// 파일 시간이 업데이트 되었으므로 파일 리스트도 새로 그려야 함
+			m_ctrlFileList.Invalidate();
 		}
 
 		CString oldstr, newstr;
@@ -919,20 +1015,25 @@ void CVitalUtilsDlg::OnBnClickedClear() {
 void CVitalUtilsDlg::OnSize(UINT nType, int cx, int cy) {
 	CDialogEx::OnSize(nType, cx, cy);
 
+/*	CRect rwc;
+	m_ctrlSelRun.GetWindowRect(rwc);
+	ScreenToClient(rwc);
+
 	CRect rwFileList;
 	m_ctrlFileList.GetWindowRect(rwFileList);
 	ScreenToClient(rwFileList);
-	m_ctrlFileList.SetWindowPos(nullptr, 0, 0, rwFileList.Width(), cy - rwFileList.top - 10, SWP_NOZORDER | SWP_NOMOVE);
+//	m_ctrlFileList.SetWindowPos(nullptr, 0, 0, rwFileList.Width(), cy - rwFileList.top - 10, SWP_NOZORDER | SWP_NOMOVE);
 
 	CRect rwTrkList;
 	m_ctrlTrkList.GetWindowRect(rwTrkList);
 	ScreenToClient(rwTrkList);
-	m_ctrlTrkList.SetWindowPos(nullptr, 0, 0, rwTrkList.Width(), cy - rwTrkList.top - 10, SWP_NOZORDER | SWP_NOMOVE);
+//	m_ctrlTrkList.SetWindowPos(nullptr, 0, 0, rwTrkList.Width(), cy - rwTrkList.top - 10, SWP_NOZORDER | SWP_NOMOVE);
 
 	CRect rwLog;
 	m_ctrLog.GetWindowRect(rwLog);
 	ScreenToClient(rwLog);
-	m_ctrLog.SetWindowPos(nullptr, 0, 0, cx - rwLog.left - 10, cy - rwLog.top - 10, SWP_NOZORDER | SWP_NOMOVE);
+//	m_ctrLog.SetWindowPos(nullptr, 0, 0, cx - rwLog.left - 10, cy - rwLog.top - 10, SWP_NOZORDER | SWP_NOMOVE);
+*/
 }
 
 void CVitalUtilsDlg::OnOK() {
@@ -968,6 +1069,36 @@ void CVitalUtilsDlg::OnGetdispinfoFilelist(NMHDR *pNMHDR, LRESULT *pResult) {
 		case 1: strncpy(pItem->pszText, p->dirname, pItem->cchTextMax - 1); break;
 		case 2: strncpy(pItem->pszText, DtToStr(p->mtime).Left(16), pItem->cchTextMax - 1); break;
 		case 3: strncpy(pItem->pszText, FormatSize(p->size), pItem->cchTextMax - 1); break;
+		case 4:
+			if (!p->dtstart) {
+				auto& tl = theApp.m_path_trklist[p->path].second;
+				auto pos = tl.Find("#dtstart=");
+				if (pos >= 0) {
+					p->dtstart = strtoul(tl.Mid(pos + 9), nullptr, 10);
+					if (p->dtstart && p->dtend) p->dtlen = p->dtend - p->dtstart;
+				}
+			}
+			if (p->dtstart)
+				strncpy(pItem->pszText, DtToStr(p->dtstart).Left(16), pItem->cchTextMax - 1);
+			break;
+		case 5:
+			if (!p->dtend) {
+				auto& tl = theApp.m_path_trklist[p->path].second;
+				auto pos = tl.Find("#dtend=");
+				if (pos >= 0) {
+					p->dtend = strtoul(tl.Mid(pos + 7), nullptr, 10);
+					if (p->dtstart && p->dtend) p->dtlen = p->dtend - p->dtstart;
+				}
+			}
+			if (p->dtend)
+				strncpy(pItem->pszText, DtToStr(p->dtend).Left(16), pItem->cchTextMax - 1);
+			break;
+		case 6:
+			if (p->dtlen) {
+				CString s; s.Format("%.1f", (p->dtend - p->dtstart) / 3600.0);
+				strncpy(pItem->pszText, s, pItem->cchTextMax - 1);
+			}
+			break;
 		}
 	} 
 
@@ -1013,33 +1144,30 @@ BOOL CVitalUtilsDlg::PreTranslateMessage(MSG* pMsg) {
 				return TRUE;
 			case 'C': // ctrl+c
 				if (GetFocus()->m_hWnd == m_ctrlFileList.m_hWnd) {
-					DWORD strlen = 0;
-					vector<CString> showns;
-					for (int i = 0; i < m_ctrlFileList.GetItemCount(); i++) {
-						if(m_ctrlFileList.GetItemState(i, LVIS_SELECTED) != LVIS_SELECTED) continue;
-						auto p = m_shown[i];
-						showns.push_back(p->path);
-						strlen += p->path.GetLength() + 1;
-					}
-					DWORD buflen = strlen + sizeof(DROPFILES) + 2;
-					buflen = (buflen / 32 + 1) * 32;
+					vector<CString> paths;
+					for (auto pos = m_ctrlFileList.GetFirstSelectedItemPosition(); pos;)
+						paths.push_back(m_shown[m_ctrlFileList.GetNextSelectedItem(pos)]->path);
 
-					BeginWaitCursor();
+					DWORD buflen = sizeof(DROPFILES) + 2;
+					for (auto path : paths) {
+						buflen += path.GetLength() + 1;
+					}
+					buflen = (buflen / 32 + 1) * 32;
 
 					HGLOBAL hMemFile = ::GlobalAlloc(GMEM_ZEROINIT | GMEM_MOVEABLE | GMEM_DDESHARE, buflen);
 					auto pbuf = (char*)::GlobalLock(hMemFile);
 					((DROPFILES*)pbuf)->pFiles = sizeof(DROPFILES);
 					pbuf += sizeof(DROPFILES);
-					for (auto& s : showns) {
-						strcpy(pbuf, s);
-						pbuf += s.GetLength() + 1;
+					for (auto& path : paths) {
+						strcpy(pbuf, path);
+						pbuf += path.GetLength() + 1;
 					}
 					::GlobalUnlock(hMemFile);
 
-					strlen += showns.size(); // '\r\n'을 할거이므로
-					HGLOBAL hMemText = ::GlobalAlloc(GMEM_MOVEABLE, strlen);
+					buflen += paths.size(); // '\r\n'을 할거이므로
+					HGLOBAL hMemText = ::GlobalAlloc(GMEM_MOVEABLE, buflen);
 					pbuf = (char*)::GlobalLock(hMemText);
-					for (auto& s : showns) {
+					for (auto& s : paths) {
 						strcpy(pbuf, s);
 						pbuf += s.GetLength();
 						(*pbuf++) = '\r';
@@ -1052,8 +1180,6 @@ BOOL CVitalUtilsDlg::PreTranslateMessage(MSG* pMsg) {
 					SetClipboardData(CF_HDROP, hMemFile);
 					SetClipboardData(CF_TEXT, hMemText);
 					CloseClipboard();
-
-					EndWaitCursor();
 				}
 				return TRUE;
 			}
@@ -1066,7 +1192,7 @@ void CVitalUtilsDlg::OnNMDblclkFilelist(NMHDR *pNMHDR, LRESULT *pResult) {
 	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
 	if (pNMItemActivate->iItem < m_shown.size()) {
 		auto path = m_shown[pNMItemActivate->iItem]->path;
-		ShellExecute(NULL, "open", GetModuleDir() + "\\vital.exe", "/f " + path, nullptr, SW_SHOW);
+		ShellExecute(NULL, "open", GetModuleDir() + "\\vital.exe", path, nullptr, SW_SHOW);
 	}
 	*pResult = 0;
 }
@@ -1123,16 +1249,16 @@ void CVitalUtilsDlg::OnSelchangeTrklist() {
 		if (filedevtrk.Right(1) != ',') filedevtrk = filedevtrk + ',';
 		bool shown = false;
 		if (is_or) { // 선택된 트랙 중 하나라도 있으면 보여짐
-			for (const auto& dt : devtrks) {
-				if (filedevtrk.Find(CString(",") + dt + ",") >= 0) {
+			for (const auto& dtname : devtrks) {
+				if (filedevtrk.Find(CString(",") + dtname + ",") >= 0) {
 					shown = true;
 					break;
 				}
 			}
 		} else { // 하나라도 없으면 안보임
 			shown = true;
-			for (const auto& dt : devtrks) { 
-				if (filedevtrk.Find(CString(",") + dt + ",") < 0) {
+			for (const auto& dtname : devtrks) {
+				if (filedevtrk.Find(CString(",") + dtname + ",") < 0) {
 					shown = false;
 					break;
 				}
@@ -1142,12 +1268,14 @@ void CVitalUtilsDlg::OnSelchangeTrklist() {
 	}
 
 	m_shown = newshown; // 자동으로 갯수에 반영될 것이다
+	m_ctrlFileList.SetItemCountEx(m_shown.size(), LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
 
 	// rename 창을 업데이트
 	m_dlgRename.UpdateForm();
 
 	// 보여질 파일 목록을 업데이트
-	m_ctrlFileList.Invalidate();
+	OnBnClickedFileNone();
+	//m_ctrlFileList.Invalidate();
 
 	UpdateData(FALSE);
 }
@@ -1178,9 +1306,8 @@ void CVitalUtilsDlg::OnBnClickedFileAll() {
 
 void CVitalUtilsDlg::OnBnClickedFileNone() {
 	m_ctrlFileList.SetRedraw(FALSE);
-	for (int i = 0; i < m_ctrlFileList.GetItemCount(); i++) {
-		m_ctrlFileList.SetItemState(i, ~LVIS_SELECTED, LVIS_SELECTED);
-	}
+	for (auto pos = m_ctrlFileList.GetFirstSelectedItemPosition(); pos;)
+		m_ctrlFileList.SetItemState(m_ctrlFileList.GetNextSelectedItem(pos), ~LVIS_SELECTED, LVIS_SELECTED);
 	m_ctrlFileList.SetRedraw(TRUE);
 	m_ctrlFileList.RedrawWindow();
 }
@@ -1202,21 +1329,29 @@ void CVitalUtilsDlg::OnBnClickedSaveList() {
 		theApp.Log("Saving list failed! " + GetLastErrorString());
 		return;
 	}
+
 	// 헤더를 출력
-	fprintf(fo, "Filename,Path,");
-	bool is_first = true;
+	fprintf(fo, "Filename,Path,Size,Start Time,End Time,Length (hr)");
 	for (const auto& trkname : devtrks) {
-		if (is_first) is_first = false;
-		else fputc(',', fo);
+		fputc(',', fo);
 		fputs(trkname, fo);
 	}
 
 	fprintf(fo, "\n");
 	for (auto& it : showns) {
-		fprintf(fo, "%s,%s", BaseName(it->path), it->path);
 		auto& tl = Explode(theApp.m_path_trklist[it->path].second, ',');
+
+		DWORD dtstart = 0;
+		DWORD dtend = 0;
 		map<CString, BYTE> trk_exists;
-		for (const auto& trkname : tl) trk_exists[trkname] = 1;
+		for (const auto& trkname : tl) {
+			if (trkname.Left(9) == "#dtstart=") dtstart = strtoul(trkname.Mid(9), nullptr, 10);
+			else if (trkname.Left(7) == "#dtend=") dtend = strtoul(trkname.Mid(7), nullptr, 10);
+			else trk_exists[trkname] = 1;
+		}
+
+		fprintf(fo, "%s,%s,%u,%s,%s,%f", BaseName(it->path), it->path, it->size, DtToStr(dtstart), DtToStr(dtend), (dtend - dtstart) / 3600.0);
+		
 		for (const auto& trkname : devtrks) {
 			fputc(',', fo);
 			fputc(trk_exists[trkname]?'1':'0', fo);
@@ -1228,22 +1363,33 @@ void CVitalUtilsDlg::OnBnClickedSaveList() {
 	theApp.Log("Saving list done");
 }
 
+void CVitalUtilsDlg::OnBnClickedSelRunScript() {
+	m_dlgRun.ShowWindow(SW_SHOW);
+	m_dlgCopy.ShowWindow(SW_HIDE);
+	m_dlgRecs.ShowWindow(SW_HIDE);
+	m_dlgRename.ShowWindow(SW_HIDE);
+	m_dlgDelTrks.ShowWindow(SW_HIDE);
+}
+
 void CVitalUtilsDlg::OnBnClickedSelCopyFiles() {
-	m_dlgCopyFiles.ShowWindow(SW_SHOW);
+	m_dlgRun.ShowWindow(SW_HIDE);
+	m_dlgCopy.ShowWindow(SW_SHOW);
 	m_dlgRecs.ShowWindow(SW_HIDE);
 	m_dlgRename.ShowWindow(SW_HIDE);
 	m_dlgDelTrks.ShowWindow(SW_HIDE);
 }
 
 void CVitalUtilsDlg::OnBnClickedSelRecs() {
-	m_dlgCopyFiles.ShowWindow(SW_HIDE);
+	m_dlgRun.ShowWindow(SW_HIDE);
+	m_dlgCopy.ShowWindow(SW_HIDE);
 	m_dlgRecs.ShowWindow(SW_SHOW);
 	m_dlgRename.ShowWindow(SW_HIDE);
 	m_dlgDelTrks.ShowWindow(SW_HIDE);
 }
 
 void CVitalUtilsDlg::OnBnClickedSelRenameDev() {
-	m_dlgCopyFiles.ShowWindow(SW_HIDE);
+	m_dlgRun.ShowWindow(SW_HIDE);
+	m_dlgCopy.ShowWindow(SW_HIDE);
 	m_dlgRecs.ShowWindow(SW_HIDE);
 	m_dlgRename.ShowWindow(SW_SHOW);
 	m_dlgRename.UpdateForm();
@@ -1251,14 +1397,16 @@ void CVitalUtilsDlg::OnBnClickedSelRenameDev() {
 }
 
 void CVitalUtilsDlg::OnBnClickedSelDelTrks() {
-	m_dlgCopyFiles.ShowWindow(SW_HIDE);
+	m_dlgRun.ShowWindow(SW_HIDE);
+	m_dlgCopy.ShowWindow(SW_HIDE);
 	m_dlgRecs.ShowWindow(SW_HIDE);
 	m_dlgRename.ShowWindow(SW_HIDE);
 	m_dlgDelTrks.ShowWindow(SW_SHOW);
 }
 
 void CVitalUtilsDlg::OnBnClickedSelRenameTrks() {
-	m_dlgCopyFiles.ShowWindow(SW_HIDE);
+	m_dlgRun.ShowWindow(SW_HIDE);
+	m_dlgCopy.ShowWindow(SW_HIDE);
 	m_dlgRecs.ShowWindow(SW_HIDE);
 	m_dlgRename.ShowWindow(SW_SHOW);
 	m_dlgRename.UpdateForm();
@@ -1423,6 +1571,18 @@ void CVitalUtilsDlg::OnHdnItemclickFilelist(NMHDR *pNMHDR, LRESULT *pResult) {
 		if (m_bSortAsc) sort(m_shown.begin(), m_shown.end(), [](const VITAL_FILE_INFO* a, const VITAL_FILE_INFO* b) -> bool { return a->size < b->size; });
 		else sort(m_shown.begin(), m_shown.end(), [](const VITAL_FILE_INFO* a, const VITAL_FILE_INFO* b) -> bool { return a->size > b->size; });
 		break;
+	case 4:
+		if (m_bSortAsc) sort(m_shown.begin(), m_shown.end(), [](const VITAL_FILE_INFO* a, const VITAL_FILE_INFO* b) -> bool { return a->dtstart < b->dtstart; });
+		else sort(m_shown.begin(), m_shown.end(), [](const VITAL_FILE_INFO* a, const VITAL_FILE_INFO* b) -> bool { return a->dtstart > b->dtstart; });
+		break;
+	case 5:
+		if (m_bSortAsc) sort(m_shown.begin(), m_shown.end(), [](const VITAL_FILE_INFO* a, const VITAL_FILE_INFO* b) -> bool { return a->dtend < b->dtend; });
+		else sort(m_shown.begin(), m_shown.end(), [](const VITAL_FILE_INFO* a, const VITAL_FILE_INFO* b) -> bool { return a->dtend > b->dtend; });
+		break;
+	case 6:
+		if (m_bSortAsc) sort(m_shown.begin(), m_shown.end(), [](const VITAL_FILE_INFO* a, const VITAL_FILE_INFO* b) -> bool { return a->dtlen < b->dtlen; });
+		else sort(m_shown.begin(), m_shown.end(), [](const VITAL_FILE_INFO* a, const VITAL_FILE_INFO* b) -> bool { return a->dtlen > b->dtlen; });
+		break;
 	}
 	m_ctrlFileList.SetRedraw(TRUE);
 	m_ctrlFileList.RedrawWindow();
@@ -1430,3 +1590,50 @@ void CVitalUtilsDlg::OnHdnItemclickFilelist(NMHDR *pNMHDR, LRESULT *pResult) {
 	*pResult = 0;
 }
 
+void CVitalUtilsDlg::OnLvnBegindragFilelist(NMHDR *pNMHDR, LRESULT *pResult) {
+	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
+
+	// 선택된 파일 목록을 받아옴
+	vector<CString> paths;
+	for(auto pos = m_ctrlFileList.GetFirstSelectedItemPosition(); pos;)
+		paths.push_back(m_shown[m_ctrlFileList.GetNextSelectedItem(pos)]->path);
+
+	DWORD buflen = sizeof(DROPFILES) + 2;
+	for (auto path : paths)
+		buflen += path.GetLength() + 1;
+	buflen = (buflen / 32 + 1) * 32;
+
+	// Allocate memory from the heap for the DROPFILES struct
+	auto hDrop = GlobalAlloc(GMEM_ZEROINIT | GMEM_MOVEABLE | GMEM_DDESHARE, buflen);
+	if (!hDrop) return;
+
+	auto pDrop = (DROPFILES*)GlobalLock(hDrop);
+	if (!pDrop) {GlobalFree(hDrop); return; }
+
+	// Copy all the filenames into memory after the end of the DROPFILES struct.
+	pDrop->pFiles = sizeof(DROPFILES); // offset to the file list
+	auto pstr = (char*)pDrop + sizeof(DROPFILES);
+	for (auto path : paths) {
+		strcpy(pstr, path);
+		pstr += path.GetLength() + 1;
+	}
+	GlobalUnlock(hDrop);
+
+	COleDataSource datasrc;
+	datasrc.CacheGlobalData(CF_HDROP, hDrop);
+
+	auto dwEffect = datasrc.DoDragDrop(DROPEFFECT_COPY | DROPEFFECT_MOVE, NULL);
+	if (dwEffect == DROPEFFECT_NONE) {
+		GlobalFree(hDrop);
+	}
+
+	*pResult = 0;
+}
+
+void CVitalUtilsDlg::OnBnClickedSetupPython() {
+	CString str = "Setup python?";
+	if (FileExists("python\\python.exe")) str = "Reinstall python?";
+	if (IDOK != AfxMessageBox(str, MB_OKCANCEL)) return;
+	InstallPython();
+	AfxMessageBox("Setup Completed");
+}

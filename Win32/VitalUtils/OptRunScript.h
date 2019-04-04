@@ -2,14 +2,14 @@
 #include "afxwin.h"
 #include "EditEx.h"
 
-class COptCopyFilesDlg : public CDialogEx {
-	DECLARE_DYNAMIC(COptCopyFilesDlg)
+class COptRunScriptDlg : public CDialogEx {
+	DECLARE_DYNAMIC(COptRunScriptDlg)
 
 public:
-	COptCopyFilesDlg(CWnd* pParent = NULL);   // standard constructor
-	virtual ~COptCopyFilesDlg();
+	COptRunScriptDlg(CWnd* pParent = NULL);   // standard constructor
+	virtual ~COptRunScriptDlg();
 
-	enum { IDD = IDD_OPT_COPY_FILES };
+	enum { IDD = IDD_OPT_RUN_SCRIPT };
 
 public:
 
@@ -21,5 +21,6 @@ public:
 	virtual void OnOK() {};
 	virtual void OnCancel() {};
 	virtual BOOL OnInitDialog();
-	BOOL m_bTracks = TRUE;
+	CComboBox m_ctrlScript;
+	CString m_strScript;
 };

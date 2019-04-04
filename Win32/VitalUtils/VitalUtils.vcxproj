@@ -76,14 +76,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\..\..\VitalRecorder\</OutDir>
+    <OutDir>c:\VitalRecorder\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\..\..\VitalRecorder\</OutDir>
+    <OutDir>c:\VitalRecorder\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -189,11 +189,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Canvas.h" />
+    <ClInclude Include="DlgDownload.h" />
     <ClInclude Include="EditEx.h" />
+    <ClInclude Include="Https.h" />
     <ClInclude Include="OptCopyFilesDlg.h" />
     <ClInclude Include="OptDelTrksDlg.h" />
     <ClInclude Include="OptRecsDlg.h" />
     <ClInclude Include="OptRenameDlg.h" />
+    <ClInclude Include="OptRunScript.h" />
     <ClInclude Include="QUEUE.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
@@ -203,11 +206,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="canvas.cpp" />
+    <ClCompile Include="DlgDownload.cpp" />
     <ClCompile Include="EditEx.cpp" />
+    <ClCompile Include="Https.cpp" />
     <ClCompile Include="OptCopyFilesDlg.cpp" />
     <ClCompile Include="OptDelTrksDlg.cpp" />
     <ClCompile Include="OptRecsDlg.cpp" />
     <ClCompile Include="OptRenameDlg.cpp" />
+    <ClCompile Include="OptRunScript.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

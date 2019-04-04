@@ -10,6 +10,7 @@
 #define IDD_OPT_RENAME                  136
 #define IDD_OPT_COPY_FILES              137
 #define IDI_FOLDER                      138
+#define IDD_OPT_RUN_SCRIPT              138
 #define IDI_CSV                         139
 #define IDI_DEL                         142
 #define IDI_SAVE                        143
@@ -20,6 +21,7 @@
 #define IDI_STOP                        148
 #define IDI_COPY                        149
 #define IDI_SELECT                      150
+#define IDD_DOWNLOAD                    252
 #define IDC_LOG                         1001
 #define IDC_TOOL                        1002
 #define IDC_LOG3                        1002
@@ -28,8 +30,11 @@
 #define IDC_IDIR                        1005
 #define IDC_CHECK1                      1006
 #define IDC_RESCAN                      1006
+#define IDC_TRACKS                      1006
 #define IDC_ABSTIME                     1007
 #define IDB_CHECKBOX                    1007
+#define IDC_RESCAN2                     1007
+#define IDC_SETUP_PYTHON                1007
 #define IDC_TOOL_DESC2                  1008
 #define IDC_SAVE_LIST                   1008
 #define IDC_CASENAME                    1008
@@ -40,8 +45,11 @@
 #define IDC_CHECK3                      1012
 #define IDC_RESTRICTED                  1013
 #define IDC_ABSTIME2                    1014
+#define IDC_PRINT_CLOSEST               1014
 #define IDC_BTN_ODIR                    1015
+#define IDC_PRINT_MEAN                  1015
 #define IDC_CHECK4                      1016
+#define IDC_SKIP_BLANK                  1016
 #define IDC_LAST                        1017
 #define IDC_ODIR                        1018
 #define IDC_LONGITUDINAL                1018
@@ -75,6 +83,7 @@
 #define IDC_MAKE_SUBDIR                 1039
 #define IDC_SEL_RENAME_DEV              1040
 #define IDC_SEL_COPY                    1041
+#define IDC_SEL_RUN                     1042
 #define IDC_TRK_OPER                    1043
 #define IDC_FROM1                       1044
 #define IDC_TO1                         1045
@@ -99,12 +108,15 @@
 #define IDC_FILTER                      1062
 #define IDC_FROM10                      1063
 #define IDC_SELECT                      1063
+#define IDC_PROGRESS1                   1063
 #define IDC_TO11                        1064
 #define IDC_TRK_SELECT                  1064
 #define IDC_OUTPUT_FILE                 1064
+#define IDC_STATUS                      1064
 #define IDC_TO12                        1065
 #define IDC_TRK_FILTER                  1065
 #define IDC_TO13                        1066
+#define IDC_SCRIPT                      1066
 #define IDC_TO14                        1067
 #define IDC_TO15                        1068
 #define IDC_TO16                        1069
@@ -147,9 +159,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        144
+#define _APS_NEXT_RESOURCE_VALUE        146
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1065
+#define _APS_NEXT_CONTROL_VALUE         1067
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

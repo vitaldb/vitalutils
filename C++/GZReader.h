@@ -21,8 +21,22 @@ protected:
 	string opened_path;
 
 public:
-	bool write(void* buf, unsigned long len) {
+	bool write(const void* buf, unsigned int len) {
 		return gzwrite(fi, buf, len) > 0;
+	}
+	bool write(const double& f) {
+		return write(&f, sizeof(f));
+	}
+	bool write(const float& f) {
+		return write(&f, sizeof(f));
+	}
+	bool write(unsigned char& b) {
+		return write(&b, sizeof(b));
+	}
+	bool write(const string& s) {
+		unsigned long len = s.size();
+		if (gzwrite(fi, &len, sizeof(len)) <= 0) return false;
+		return write(&s[0], len);
 	}
 	bool opened() const {
 		return fi != 0;
@@ -195,6 +209,20 @@ public:
 	void skip(unsigned long len) {
 		pos += len;
 	}
+	void skip_str() {
+		unsigned long strlen;
+		if (!fetch(strlen)) return;
+		pos += strlen;
+	}
+	bool fetch(unsigned char& x) {
+		if (size() < pos + sizeof(x)) {
+			pos = size();
+			return false;
+		}
+		memcpy(&x, &(*this)[pos], sizeof(x)); // 그 외에는 무조건 복사 가능
+		pos += sizeof(x);
+		return true;
+	}
 	bool fetch(unsigned short& x) {
 		if (size() < pos + sizeof(x)) {
 			pos = size();
@@ -205,6 +233,24 @@ public:
 		return true;
 	}
 	bool fetch(unsigned long& x) {
+		if (size() < pos + sizeof(x)) {
+			pos = size();
+			return false;
+		}
+		memcpy(&x, &(*this)[pos], sizeof(x)); // 그 외에는 무조건 복사 가능
+		pos += sizeof(x);
+		return true;
+	}
+	bool fetch(float& x) {
+		if (size() < pos + sizeof(x)) {
+			pos = size();
+			return false;
+		}
+		memcpy(&x, &(*this)[pos], sizeof(x)); // 그 외에는 무조건 복사 가능
+		pos += sizeof(x);
+		return true;
+	}
+	bool fetch(double& x) {
 		if (size() < pos + sizeof(x)) {
 			pos = size();
 			return false;

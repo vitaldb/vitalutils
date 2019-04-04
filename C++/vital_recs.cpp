@@ -19,7 +19,10 @@ OPTIONS : one or many of the followings. ex) -rl\n\
   r : all tracks should be exists\n\
   l : replace blank value with the last value\n\
   h : print header at the first row\n\
-  c : print filename at the first column\n\n\
+  c : print filename at the first column\n\
+  n : print the closest value from the start of the time interval as a representative\n\
+  m : print mean value as a representative for numeric and wave tracks\n\
+  s : skip blank rows\n\n\
 INPUT_FILENAME : vital file name\n\n\
 INTERVAL : time interval of each row in sec. default = 1. ex) 1/100\n\n\
 DEVNAME/TRKNAME : comma seperated device and track name list. ex) BIS/BIS,BIS/SEF\n\
@@ -51,6 +54,9 @@ int main(int argc, char* argv[]) {
 	bool fill_last = false;
 	bool print_header = false;
 	bool print_filename = false;
+	bool print_mean = false;
+	bool print_closest = false;
+	bool skip_blank_row = false;
 	if (argc > 0) {
 		string opts(argv[0]);
 		if (opts.substr(0, 1) == "-") {
@@ -60,6 +66,9 @@ int main(int argc, char* argv[]) {
 			if (opts.find('l') != -1) fill_last = true;
 			if (opts.find('h') != -1) print_header = true;
 			if (opts.find('c') != -1) print_filename = true;
+			if (opts.find('m') != -1) print_mean = true;
+			if (opts.find('s') != -1) skip_blank_row = true;
+			if (opts.find('n') != -1) print_closest = true;
 		}
 	}
 
@@ -104,11 +113,11 @@ int main(int argc, char* argv[]) {
 		int ncols = tnames.size();
 		tids.resize(ncols);
 		dnames.resize(ncols);
-		for (int i = 0; i < ncols; i++) {
-			int pos = tnames[i].find('/');
+		for (int j = 0; j < ncols; j++) {
+			int pos = tnames[j].find('/');
 			if (pos != -1) {// devname 을 지정
-				dnames[i] = tnames[i].substr(0, pos);
-				tnames[i] = tnames[i].substr(pos + 1);
+				dnames[j] = tnames[j].substr(0, pos);
+				tnames[j] = tnames[j].substr(pos + 1);
 			}
 		}
 	}
@@ -288,10 +297,38 @@ next_packet:
 	// 결과를 저장할 리스트를 생성
 	int ncols = tids.size();
 	int nrows = ceil((dtend - dtstart) / epoch);
-	vector<vector<string*>> rows(nrows);
-	for (int i = 0; i < nrows; i++) rows[i].resize(ncols); // 각 트랙의 출력 결과를 담고 있는 테이블 // 이정도 메모리는 된다.
 
-	vector<bool> hasdata(ncols);
+	// 모든 값들을 메모리로 올릴 준비
+	// 파일의 맨 뒤라도 가장 빠른 시간의 데이터가 올 수 있기 때문에 전체를 메모리로 올려야 한다.
+	vector<vector<string*>> rows(nrows);
+	for (int i = 0; i < nrows; i++) rows[i].resize(ncols); // 각 트랙의 출력 결과를 담고 있는 테이블 // 이정도 메모리는 되어야 실행된다.
+
+	// 평균 출력할 때만 사용
+	vector<vector<double>> sums(nrows);
+	vector<vector<int>> cnts(nrows);
+	if (print_mean) {
+		for (int i = 0; i < nrows; i++) {
+			sums[i].resize(ncols); // 0으로 초기화
+			cnts[i].resize(ncols);
+		}
+	}
+
+	// 가장 가까운 값 출력할 때만 사용
+	vector<vector<double>> dists(nrows);
+	if (print_closest) {
+		for (int i = 0; i < nrows; i++) {
+			dists[i].resize(ncols);
+			for (int j = 0; j < ncols; j++) {
+				dists[i][j] = DBL_MAX;
+			}
+		}
+	}
+
+	///////////////////////////////////////////
+	// body를 다시 parsing 하면서 값들을 읽음
+	///////////////////////////////////////////
+	vector<bool> has_data_in_col(ncols);
+	vector<bool> has_data_in_row(nrows);
 	while (!gz.eof()) {// body를 다시 parsing
 		unsigned char type; if (!gz.read(&type, 1)) break;
 		unsigned long datalen; if (!gz.read(&datalen, 4)) break;
@@ -303,7 +340,7 @@ next_packet:
 		if (dt_rec_start < dtstart) goto next_packet2; 
 		unsigned short tid; if (!gz.fetch(tid, datalen)) goto next_packet2; 
 		if (tid_col.find(tid) == tid_col.end()) goto next_packet2; // tid가 없으면 출력하지 않음
-		unsigned int idxcol = tid_col[tid];
+		unsigned int icol = tid_col[tid];
 
 		// 트랙 속성을 가져옴
 		unsigned char rectype = rectypes[tid]; // 1:wav,2:num,3:str
@@ -321,89 +358,153 @@ next_packet:
 		double offset = offsets[tid];
 
 		if (rectype == 1) { // wav
-			int idxlast = -1;
-			for (int i = 0; i < nsamp; i++) {
-				int idxrow = (dt_rec_start + (double)i / srate - dtstart) / epoch; // 현 sample의 인덱스
-				if (idxrow < 0) { goto next_packet2; }
-				if (idxrow >= nrows) { goto next_packet2; }
+			for (int i = 0; i < nsamp; i++) { // wave내의 각 샘플에 대해
+				// 현 sample이 어느 행에 속하는가?
+				// closest 인 경우에는 반올림하고 나머지는 그냥 interval 내에 속한 샘플들만 출력
+				double frow = (dt_rec_start + (double)i / srate - dtstart) / epoch;
+				int irow = frow + (print_closest ? 0.5 : 0.0);
+				if (irow < 0) { goto next_packet2; }
+				if (irow >= nrows) { goto next_packet2; }
 
-				if (idxrow == idxlast) { // 같은 행을 다시 채크하지 않기 위해
+				// 이번 샘플을 처리할 것인지를 매우 빠르게 판단해야함
+				bool skip_this_sample = true;
+				if (print_closest) { // closest 인 경우에는 이전 distance 보다 가까운 경우만 처리
+					double fdist = fabs(frow - irow);
+					if (fdist < dists[irow][icol]) {
+						dists[irow][icol] = fdist;
+						skip_this_sample = false;
+					}
+				} else if (print_mean) { // 평균일 경우에는 모든 샘플을 처리
+					skip_this_sample = false;
+				} else { // 그 외의 경우에는 이전 값이 없는 경우만 처리
+					skip_this_sample = rows[irow][icol];
+				}
+
+				// 이번 샘플을 건너 뜀
+				if (skip_this_sample) {
 					if (!gz.skip(fmtsize, datalen)) break;
 					continue;
 				}
-				idxlast = idxrow;
 
-				if (!rows[idxrow][idxcol]) {
-					string sval;
-					switch (recfmt) {
-					case 1: {
-						float fval; if (!gz.fetch(fval, datalen)) { goto next_packet2; }
-						sval = string_format("%f", fval);
-						break;
-					}
-					case 2: {
-						double fval; if (!gz.fetch(fval, datalen)) { goto next_packet2; }
-						sval = string_format("%lf", fval);
-						break;
-					}
-					case 3: {
-						char ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-						float fval = ival * gain + offset;
-						sval = string_format("%f", fval);
-						break;
-					}
-					case 4: {
-						unsigned char ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-						float fval = ival * gain + offset;
-						sval = string_format("%f", fval);
-						break;
-					}
-					case 5: {
-						short ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-						float fval = ival * gain + offset;
-						sval = string_format("%f", fval);
-						break;
-					}
-					case 6: {
-						unsigned short ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-						float fval = ival * gain + offset;
-						sval = string_format("%f", fval);
-						break;
-					}
-					case 7: {
-						long ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-						float fval = ival * gain + offset;
-						sval = string_format("%f", fval);
-						break;
-					}
-					case 8: {
-						unsigned long ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
-						float fval = ival * gain + offset;
-						sval = string_format("%f", fval);
-						break;
-					}
-					}
-					rows[idxrow][idxcol] = new string(sval);
-					hasdata[idxcol] = true;
+				string sval;
+				float fval;
+				switch (recfmt) {
+				case 1: { // float
+					float v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
+					sval = string_format("%f", v);
+					fval = v;
+					break;
 				}
+				case 2: { // double
+					double v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
+					sval = string_format("%lf", v);
+					fval = v;
+					break;
+				}
+				case 3: { // char
+					char v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
+					fval = v * gain + offset;
+					sval = string_format("%f", fval);
+					break;
+				}
+				case 4: { // byte
+					unsigned char v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
+					fval = v * gain + offset;
+					sval = string_format("%f", fval);
+					break;
+				}
+				case 5: { // short
+					short v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
+					fval = v * gain + offset;
+					sval = string_format("%f", fval);
+					break;
+				}
+				case 6: { // word
+					unsigned short v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
+					fval = v * gain + offset;
+					sval = string_format("%f", fval);
+					break;
+				}
+				case 7: { // long
+					long v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
+					fval = v * gain + offset;
+					sval = string_format("%f", fval);
+					break;
+				}
+				case 8: { // dword
+					unsigned long v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
+					fval = v * gain + offset;
+					sval = string_format("%f", fval);
+					break;
+				}
+				}
+				
+				if (print_mean) {
+					sums[irow][icol] += fval;
+					cnts[irow][icol] ++;
+				} else {
+					rows[irow][icol] = new string(sval);
+				}
+				has_data_in_col[icol] = true;
+				has_data_in_row[irow] = true;
 			}
 		} else if (rectype == 2) { // num
-			int idxrow = (dt_rec_start - dtstart) / epoch; // 첫 sample의 인덱스
-			if (idxrow < 0) { goto next_packet2; }
-			if (idxrow >= nrows) { goto next_packet2; }
-			if (rows[idxrow][idxcol]) { goto next_packet2; }
+			double frow = (dt_rec_start - dtstart) / epoch;
+			int irow = frow + (print_closest ? 0.5 : 0.0);
+			if (irow < 0) { goto next_packet2; }
+			if (irow >= nrows) { goto next_packet2; }
+			
+			// 이번 샘플을 처리할 것인지를 매우 빠르게 판단해야함
+			bool skip_this_sample = true;
+			if (print_closest) { // closest 인 경우에는 이전 distance 보다 가까운 경우만 처리
+				double fdist = fabs(frow - irow);
+				if (fdist < dists[irow][icol]) {
+					dists[irow][icol] = fdist;
+					skip_this_sample = false;
+				}
+			} else if (print_mean) { // 평균일 경우에는 모든 샘플을 처리
+				skip_this_sample = false;
+			} else { // 그 외의 경우에는 이전 값이 없는 경우만 처리
+				skip_this_sample = rows[irow][icol];
+			}
+
+			if (skip_this_sample) { goto next_packet2; }
+
 			float fval; if (!gz.fetch(fval, datalen)) { goto next_packet2; }
-			rows[idxrow][idxcol] = new string(string_format("%f", fval));
-			hasdata[idxcol] = true;
+			if (print_mean) {
+				sums[irow][icol] += fval;
+				cnts[irow][icol] ++;
+			} else {
+				rows[irow][icol] = new string(string_format("%f", fval));
+			}
+			
+			has_data_in_col[icol] = true;
+			has_data_in_row[irow] = true;
 		} else if (rectype == 5) { // str
-			int idxrow = (dt_rec_start - dtstart) / epoch; // 첫 sample의 인덱스
-			if (idxrow < 0) { goto next_packet2; }
-			if (idxrow >= nrows) { goto next_packet2; }
-			if (rows[idxrow][idxcol]) { goto next_packet2; }
+			double frow = (dt_rec_start - dtstart) / epoch;
+			int irow = frow + (print_closest ? 0.5 : 0.0);
+			if (irow < 0) { goto next_packet2; }
+			if (irow >= nrows) { goto next_packet2; }
+
+			// 이번 샘플을 처리할 것인지를 매우 빠르게 판단해야함
+			bool skip_this_sample = true;
+			if (print_closest) { // closest 인 경우에는 이전 distance 보다 가까운 경우만 처리
+				double fdist = fabs(frow - irow);
+				if (fdist < dists[irow][icol]) {
+					dists[irow][icol] = fdist;
+					skip_this_sample = false;
+				}
+			} else { // 그 외의 경우에는 이전 값이 없는 경우만 처리
+				skip_this_sample = rows[irow][icol];
+			}
+
+			if (skip_this_sample) { goto next_packet2; }
+
 			if (!gz.skip(4, datalen)) { goto next_packet2; }
 			string sval; if (!gz.fetch(sval, datalen)) { goto next_packet2; }
-			rows[idxrow][idxcol] = new string(escape_csv(sval));
-			hasdata[idxcol] = true;
+			rows[irow][icol] = new string(escape_csv(sval));
+			has_data_in_col[icol] = true;
+			has_data_in_row[irow] = true;
 		}
 		
 next_packet2:
@@ -411,20 +512,34 @@ next_packet2:
 	}
 
 	if(all_required) // 한 변수라도 데이터가 없으면?
-		for (int i = 0; i < ncols; i++)
-			if (!hasdata[i]) {
+		for (int j = 0; j < ncols; j++)
+			if (!has_data_in_col[j]) {
 				fprintf(stderr, "No data\n");
 				return -1;
 			}
 
 
-	// 종료, 결과를 출력
+	///////////////////////////////////////////////////////
+	// 읽기 종료, 결과를 출력
+	///////////////////////////////////////////////////////
+	if (print_mean) {
+		for (int i = 0; i < nrows; i++) {
+			for (int j = 0; j < ncols; j++) {
+				if (cnts[i][j]) {
+					double m = sums[i][j] / cnts[i][j];
+					rows[i][j] = new string(string_format("%f", m));
+				}
+			}
+		}
+	}
+
+	// 헤더 행을 출력
 	if (print_header) {
 		if (print_filename) printf("Filename,"); // 뒤에 time은 반드시 있으므로 , 를 붙여도 안전
 		printf("Time"); // 트랙명을 출력
-		for (int i = 0; i < ncols; i++) {
-			string str = tnames[i];
-			if (!dnames[i].empty()) str = dnames[i] + "/" + str;
+		for (int j = 0; j < ncols; j++) {
+			string str = tnames[j];
+			if (!dnames[j].empty()) str = dnames[j] + "/" + str;
 			putchar(',');
 			printf(str.c_str());
 		}
@@ -433,12 +548,15 @@ next_packet2:
 
 	vector<string> lastval(ncols); // 각 컬럼의 마지막 값
 	for (int i = 0; i < nrows; i++) { // 각 행의 데이터를 출력
+		if (skip_blank_row) {
+			if (!has_data_in_row[i]) continue;
+		}
+
 		double dt = dtstart + i * epoch;
 
 		if (print_filename) {
 			printf(basename(filename).c_str());
-			//printf(filename.c_str());
-			putchar(','); // time은 반드시 있으므로 , 를 붙여도 안전
+			putchar(','); // 뒤에 time은 반드시 있으므로 , 를 붙여도 안전
 		}
 
 		// 시간을 출력

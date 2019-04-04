@@ -2,6 +2,7 @@
 #include "afxwin.h"
 #include "EditEx.h"
 #include "afxcmn.h"
+#include "OptRunScript.h"
 #include "OptRecsDlg.h"
 #include "OptRenameDlg.h"
 #include "OptDelTrksDlg.h"
@@ -46,6 +47,7 @@ protected:
 	afx_msg void OnBnClickedFileAll();
 	afx_msg void OnBnClickedFileNone();
 	afx_msg void OnBnClickedSaveList();
+	afx_msg void OnBnClickedSelRunScript();
 	afx_msg void OnBnClickedSelCopyFiles();
 	afx_msg void OnBnClickedSelRenameDev();
 	afx_msg void OnBnClickedSelDelTrks();
@@ -60,7 +62,8 @@ protected:
 	virtual void OnCancel();
 	int GetNumVisibleLines();
 public:
-	COptCopyFilesDlg m_dlgCopyFiles;
+	COptRunScriptDlg m_dlgRun;
+	COptCopyFilesDlg m_dlgCopy;
 	COptRecsDlg m_dlgRecs;
 	COptRenameDlg m_dlgRename;
 	COptDelTrksDlg m_dlgDelTrks;
@@ -68,6 +71,7 @@ public:
 	HICON m_hIcon;
 
 	// 각 윈도우 선택하는 버튼
+	CMFCButton m_ctrlSelRun;
 	CMFCButton m_ctrlSelCopyFiles;
 	CMFCButton m_ctrlSelRecs;
 	CMFCButton m_ctrlSelDelTrks;
@@ -97,7 +101,7 @@ public:
 	CString m_strProgress;
 
 	CListBox m_ctrlTrkList;
-	BOOL m_bSkip = FALSE;
+	BOOL m_bSkip = TRUE;
 	BOOL m_bMakeSubDir = TRUE;
 	Canvas m_canFolder;
 	CStatic m_ctrlOdirStatic;
@@ -120,4 +124,6 @@ public:
 	afx_msg void OnHdnItemclickFilelist(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnBnClickedTrkSelect();
 	CEditEx m_ctrlTrkFilter;
+	afx_msg void OnLvnBegindragFilelist(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnBnClickedSetupPython();
 };

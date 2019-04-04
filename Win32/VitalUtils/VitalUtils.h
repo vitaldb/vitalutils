@@ -17,8 +17,11 @@ struct VITAL_FILE_INFO {
 	CString filename;
 	CString dirname;
 	CString path;
-	DWORD mtime;
-	size_t size;
+	DWORD mtime = 0;
+	size_t size = 0;
+	DWORD dtstart = 0;
+	DWORD dtend = 0;
+	DWORD dtlen = 0;
 };
 
 CString GetLastErrorString();
