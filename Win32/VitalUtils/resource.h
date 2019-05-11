@@ -33,8 +33,8 @@
 #define IDC_TRACKS                      1006
 #define IDC_ABSTIME                     1007
 #define IDB_CHECKBOX                    1007
-#define IDC_RESCAN2                     1007
 #define IDC_SETUP_PYTHON                1007
+#define IDC_IDIR_OPEN                   1007
 #define IDC_TOOL_DESC2                  1008
 #define IDC_SAVE_LIST                   1008
 #define IDC_CASENAME                    1008

@@ -81,7 +81,7 @@ public:
 	CMFCButton m_btnRun;
 	CMFCButton m_btnStop;
 	CMFCButton m_btnIdir;
-	CMFCButton m_btnRescan;
+	CMFCButton m_btnScan;
 	CMFCButton m_btnSaveList;
 	CMFCButton m_btnTrkAll;
 	CMFCButton m_btnTrkNone;
@@ -112,8 +112,9 @@ public:
 	CButton m_ctrlExact;
 	CStatic m_ctrlTrkCnt;
 	CStatic m_ctrlFileCnt;
-
 	CListCtrl m_ctrlFileList;
+
+	int m_nOldCy = 0, m_nOldCx = 0;
 
 	// LVS_OWNERDATA 속성인경우 SetItemText, SetItemData는 사용 불가하다
 	// 따라서 내가 item data를 처리해야 한다
@@ -125,5 +126,9 @@ public:
 	afx_msg void OnBnClickedTrkSelect();
 	CEditEx m_ctrlTrkFilter;
 	afx_msg void OnLvnBegindragFilelist(NMHDR *pNMHDR, LRESULT *pResult);
-	afx_msg void OnBnClickedSetupPython();
+	CEditEx m_ctrIdir;
+	CEditEx m_ctrOdir;
+	afx_msg void OnEnKillfocusIdir();
+	afx_msg void OnEnKillfocusOdir();
+	afx_msg void OnBnClickedIdirOpen();
 };

@@ -3,7 +3,6 @@
 #include "VitalUtils.h"
 #include "VitalUtilsDlg.h"
 #include "afxdialogex.h"
-#include "dlgdownload.h"
 
 #define LVIS_CHECKED 0x2000 
 #define LVIS_UNCHECKED 0x1000
@@ -38,7 +37,7 @@ void CVitalUtilsDlg::DoDataExchange(CDataExchange* pDX) {
 	DDX_Control(pDX, IDC_SEL_RENAME_DEV, m_ctrlSelRenameDev);
 
 	DDX_Control(pDX, IDC_BTN_IDIR, m_btnIdir);
-	DDX_Control(pDX, IDC_RESCAN, m_btnRescan);
+	DDX_Control(pDX, IDC_RESCAN, m_btnScan);
 	DDX_Control(pDX, IDC_SAVE_LIST, m_btnSaveList);
 	DDX_Control(pDX, IDC_TRK_ALL, m_btnTrkAll);
 	DDX_Control(pDX, IDC_TRK_NONE, m_btnTrkNone);
@@ -56,6 +55,8 @@ void CVitalUtilsDlg::DoDataExchange(CDataExchange* pDX) {
 	DDX_Control(pDX, IDC_TRACK_COUNT, m_ctrlTrkCnt);
 	DDX_Control(pDX, IDC_FILE_COUNT, m_ctrlFileCnt);
 	DDX_Control(pDX, IDC_TRK_FILTER, m_ctrlTrkFilter);
+	DDX_Control(pDX, IDC_IDIR, m_ctrIdir);
+	DDX_Control(pDX, IDC_ODIR, m_ctrOdir);
 }
 
 CString g_name = _T("VitalUtils");
@@ -95,141 +96,76 @@ BEGIN_MESSAGE_MAP(CVitalUtilsDlg, CDialogEx)
 	ON_NOTIFY(HDN_ITEMCLICK, 0, &CVitalUtilsDlg::OnHdnItemclickFilelist)
 	ON_BN_CLICKED(IDC_TRK_SELECT, &CVitalUtilsDlg::OnBnClickedTrkSelect)
 	ON_NOTIFY(LVN_BEGINDRAG, IDC_FILELIST, &CVitalUtilsDlg::OnLvnBegindragFilelist)
-	ON_BN_CLICKED(IDC_SETUP_PYTHON, &CVitalUtilsDlg::OnBnClickedSetupPython)
+	ON_EN_KILLFOCUS(IDC_IDIR, &CVitalUtilsDlg::OnEnKillfocusIdir)
+	ON_EN_KILLFOCUS(IDC_ODIR, &CVitalUtilsDlg::OnEnKillfocusOdir)
+	ON_BN_CLICKED(IDC_IDIR_OPEN, &CVitalUtilsDlg::OnBnClickedIdirOpen)
 END_MESSAGE_MAP()
 
-UINT WINAPI RescanThread(void* p) {
-	theApp.Log("Scanning folder");
+void CVitalUtilsDlg::OnBnClickedRescan() {
+	CString str;
+	m_btnScan.GetWindowText(str);
+	if (str == "Scan") { // rescan
+		theApp.m_dtnames.clear();
+		theApp.m_path_trklist.clear();
+		theApp.m_parses.Clear();
 
-	auto pDlg = (CVitalUtilsDlg*)(theApp.m_pMainWnd);
-	auto rootdir = pDlg->m_strIdir;
-	rootdir.TrimRight("\\");
-	Queue<CString> remain;
-	remain.Push(CString("\\")); // root directory
-	CString dirname;
-	while (remain.Pop(dirname)) {
-		CString path = rootdir + dirname;
+		theApp.Log("Scanning folder");
 
-		WIN32_FIND_DATA fd;
-		ZeroMemory(&fd, sizeof(WIN32_FIND_DATA));
+		m_btnScan.SetWindowText("Stop");
+		m_ctrIdir.EnableWindow(FALSE);
+		m_btnIdir.EnableWindow(FALSE);
 
-		HANDLE hFind = FindFirstFile(path + "*.*", &fd);
-		for (BOOL ret = (hFind != INVALID_HANDLE_VALUE); ret; ret = FindNextFile(hFind, &fd)) {
-			if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) { // directory
-				if (strcmp(fd.cFileName, ".") == 0) continue;
-				if (strcmp(fd.cFileName, "..") == 0) continue;
-				remain.Push(dirname + fd.cFileName + "\\");
-			} else { // 파일
-				if (ExtName(fd.cFileName) != "vital") continue;
+		// 기존 선택들을 전부 지우고
+		m_ctrlTrkList.SetCurSel(-1);
+		m_ctrlTrkList.ResetContent();
+		m_shown.clear();
 
-				auto p = new VITAL_FILE_INFO();
-				p->path = rootdir + dirname + fd.cFileName;
-				p->filename = fd.cFileName;
-				p->dirname = dirname; // 보여주는 목적으로만 사용한다.
-				p->dirname.Trim('\\'); // 따라서 앞 뒤의 슬래쉬는 불필요하다
-				p->mtime = FileTimeToUnixTime(fd.ftLastWriteTime);
-				p->size = fd.nFileSizeLow + fd.nFileSizeHigh * ((ULONGLONG)MAXDWORD + 1);
+		// 기존 파일 선택을 전부 지우고
+		m_ctrlFileList.SetItemCountEx(0, NULL);
 
-				EnterCriticalSection(&theApp.m_csFile);
-				theApp.m_files.push_back(p);
-				LeaveCriticalSection(&theApp.m_csFile);
-			}
-		}
-		FindClose(hFind);
-	}
-	CString str; str.Format("Scanning folder done. %d files", theApp.m_files.size());
-	theApp.Log(str);
-
-	// 메인 쓰레드에서 타이머에 의해 이들을 목록에 넣을 것이다.
-	// 루트 폴더에 있는 trks 파일을 읽어옴
-	map<CString, DWORD_CString> cachedata;
-	CString cachepath = rootdir + "\\trks.tsv";
-	if (FileExists(cachepath)) {
-		CStdioFile cachefile(cachepath, CFile::modeRead | CFile::typeText);
-		CString line;
-		while (cachefile.ReadString(line)) {
-			auto tabs = Explode(line, '\t');
-			if (tabs.size() < 3) continue;
-			// 상대 경로\t시간\t트랙목록
-			DWORD mtime = strtoul(tabs[1], nullptr, 10);
-			auto path = rootdir + "\\" + tabs[0];
-			cachedata[path] = make_pair(mtime, tabs[2]);
-		}
-		cachefile.Close();
-	}
-
-	// 캐쉬에 없는 파일 목록을 m_parses 에 넣음
-	theApp.m_dtstart = time(nullptr);
-	theApp.m_ntotal = 0;
-	theApp.m_bparsing = true;
-	theApp.Log("Parsing started");
-	for (int i = 0; ; i++) {
 		EnterCriticalSection(&theApp.m_csFile);
-		if (i >= theApp.m_files.size()) {
-			LeaveCriticalSection(&theApp.m_csFile);
-			break;
-		}
-		auto p = theApp.m_files[i];
+		auto copy = theApp.m_files;
+		theApp.m_files.clear();
 		LeaveCriticalSection(&theApp.m_csFile);
+		for (auto& p : copy) delete p;
 
-		bool hascache = false;
-		auto it = cachedata.find(p->path);
-		if (it != cachedata.end()) { // 캐쉬가 존재
-			auto& t = cachedata[p->path]; // 경로가 같음
-			if (t.second.Find("#") >= 0) // 최신 버전 포맷이어야함
-				if (t.first == p->mtime) // 시간도 같아야함
-					hascache = true;
-		}
+		// 입력 디렉토리 읽기 쓰레드 시작
+		// workthread 에서 알아서 scanning을 시작할 것이다
+		auto rootdir = m_strIdir;
+		rootdir.TrimRight("\\");
 
-		if (!hascache) { // 캐쉬가 없음. 파징 목록에 추가
-			theApp.m_parses.Push(make_pair(p->mtime, p->path));
-			theApp.m_ntotal++;
-			// 파징이 끝나면 각 쓰레드에서 m_path_trklist 로 옮겨 준다
-		} else {
-			theApp.m_path_trklist[p->path] = cachedata[p->path];
-		}
+		theApp.m_dtstart = time(nullptr);
+		theApp.m_scans.Push(rootdir + "\\"); // root directory를 파싱 스레드에 추가
+		theApp.m_ntotal = 1;
+		theApp.m_nJob = theApp.JOB_SCANNING;
+
+		m_btnRun.EnableWindow(FALSE);
+		m_btnStop.EnableWindow(FALSE);
+		m_ctrlSelRun.EnableWindow(FALSE);
+		m_ctrlSelCopyFiles.EnableWindow(FALSE);
+		m_ctrlSelRecs.EnableWindow(FALSE);
+		m_ctrlSelDelTrks.EnableWindow(FALSE);
+		m_ctrlSelRenameTrks.EnableWindow(FALSE);
+		m_ctrlSelRenameDev.EnableWindow(FALSE);
+	} else { // parsing 중단
+		theApp.m_parses.Clear();
+		theApp.m_scans.Clear();
+		theApp.m_dtstart = 0;
+		theApp.m_ntotal = 0;
+		theApp.m_bStopping = true;
+
+		m_btnScan.SetWindowText("Scan");
+		m_ctrIdir.EnableWindow(TRUE);
+		m_btnIdir.EnableWindow(TRUE);
 	}
+}
 
-	// 파징 끝날 때 까지 기다림
-	auto lastsize = theApp.m_path_trklist.size();
-	while (theApp.m_parses.GetSize()) {
-		if (lastsize + 500 < theApp.m_path_trklist.size()) {// 만일 cachedata의 길이가 1000 이상 증가하면
-			CString str; 
-			str.Format("Parsing... %d remained", theApp.m_parses.GetSize());
-			theApp.Log(str);
-			lastsize = theApp.m_path_trklist.size();
-			theApp.SaveCache(cachepath);
-		} else {
-			// cache를 저장
-			Sleep(500); 
-		}
-		TRACE("parsing %d\n", theApp.m_parses.GetSize());
-	}
-	while (theApp.m_nrunning.Get()) { // 잔무를 끝냄
-		TRACE("running %d\n", theApp.m_nrunning.Get());
-		Sleep(500);
-	}
-
-	theApp.Log("Parsing done");
+// running 중단
+void CVitalUtilsDlg::OnBnClickedCancel() {
+	theApp.m_jobs.Clear();
+	theApp.m_dtstart = 0;
 	theApp.m_ntotal = 0;
-	theApp.m_bparsing = false;
-
-	// 최종 cache를 저장
-	theApp.SaveCache(cachepath);
-
-	// 모든 파일들은 theApp.m_path_trklist에 존재
-	// 모든 트랙 종류를 합침
-	set<CString> tempset;
-	for (const auto& it : theApp.m_path_trklist) {
-		auto devtrks = Explode(it.second.second, ',');
-		tempset.insert(devtrks.begin(), devtrks.end());
-	}
-	EnterCriticalSection(&theApp.m_csTrk);
-	theApp.m_devtrks.clear();
-	theApp.m_devtrks.insert(tempset.begin(), tempset.end());
-	LeaveCriticalSection(&theApp.m_csTrk);
-
-	return 0;
+	theApp.m_bStopping = true;
 }
 
 typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
@@ -277,7 +213,9 @@ BOOL CVitalUtilsDlg::OnInitDialog() {
 	SetIcon(m_hIcon, TRUE);			// 큰 아이콘을 설정합니다.
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
-	m_ctrLog.SetOptions(ECOOP_XOR, ECO_SAVESEL);
+	m_ctrLog.SetOptions(ECOOP_OR, ECO_SAVESEL); // turn on savesel (포커스를 잃어도 선택영역을 유지)
+	m_ctrLog.SetOptions(ECOOP_AND, ~(ECO_AUTOVSCROLL | ECO_AUTOHSCROLL)); // turn off autoscroll
+	m_ctrLog.HideSelection(FALSE, TRUE);
 
 	m_strIdir = theApp.GetProfileString(g_name, _T("idir"));
 	if (!DirExists(m_strIdir)) {
@@ -327,9 +265,6 @@ BOOL CVitalUtilsDlg::OnInitDialog() {
 
 	m_ctrlSelRun.SetCheck(TRUE);
 
-	// 입력 디렉토리 읽기 시작
-	OnBnClickedRescan();
-
 	// refresh timer
 	SetTimer(0, 1000, nullptr);
 	SetTimer(1, 1000, nullptr);
@@ -359,10 +294,12 @@ void CVitalUtilsDlg::OnPaint() {
 		dc.DrawIcon(x, y, m_hIcon);
 	} else {
 		CRect rw;
-		m_ctrlIdirStatic.GetWindowRect(rw); ScreenToClient(rw);
+		m_ctrlIdirStatic.GetWindowRect(rw); 
+		ScreenToClient(rw);
 		m_canFolder.BitBltTrans(dc.m_hDC, rw.left - 25, rw.top - 2);
 
-		m_ctrlOdirStatic.GetWindowRect(rw); ScreenToClient(rw);
+		m_ctrlOdirStatic.GetWindowRect(rw); 
+		ScreenToClient(rw);
 		m_canFolder.BitBltTrans(dc.m_hDC, rw.left - 25, rw.top - 2);
 
 		CDialogEx::OnPaint();
@@ -516,57 +453,22 @@ bool FileExists(CString path) {
 	return false;
 }
 
-void InstallPython() {
-	char tmpdir[MAX_PATH];
-	GetTempPath(MAX_PATH, tmpdir);
-
-	CString strSetupUrl = "https:/""/vitaldb.net/python_setup.exe";
-	CString tmppath; tmppath.Format("%spysetup_%u.exe", tmpdir, time(nullptr));
-	CDlgDownload dlg(nullptr, strSetupUrl, tmppath);
-	if (IDOK != dlg.DoModal()) {
-		AfxMessageBox("Cannot download python setup file.\nPlease download it from " + strSetupUrl + "\nand run it in the Vital Recorder installation folder");
-		return;
-	}
-
-	SHELLEXECUTEINFO shExInfo = { 0 };
-	shExInfo.cbSize = sizeof(shExInfo);
-	shExInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-	shExInfo.hwnd = 0;
-	shExInfo.lpVerb = _T("runas"); // Operation to perform
-	shExInfo.lpFile = tmppath; // Application to start    
-	shExInfo.lpParameters = ""; // Additional parameters
-	shExInfo.lpDirectory = GetModuleDir(); // 현재 프로그램 디렉토리에 압축을 풀어야함
-	shExInfo.nShow = SW_SHOW;
-	shExInfo.hInstApp = 0;
-
-	if (!ShellExecuteEx(&shExInfo)) {
-		AfxMessageBox("cannot start installer");
-		return;
-	}
-
-	if (WAIT_OBJECT_0 != WaitForSingleObject(shExInfo.hProcess, INFINITE)) {
-		AfxMessageBox("cannot install python");
-		return;
-	}
-
-	CloseHandle(shExInfo.hProcess);
-}
-
 void CVitalUtilsDlg::OnBnClickedRun() {
 	UpdateData(TRUE);
 
 	// 툴 골라잡음
 	CString strTool, strPre, strPost;
 	if (m_ctrlSelRun.GetCheck()) {
-		CString python_path = "python\\python.exe";
-		if (!FileExists(python_path)) {
-			InstallPython(); // 블록킹
+		CString python_exe = GetModuleDir() + "python\\python.exe";
+		if (!FileExists(python_exe)) {
+			auto str = "Running Script requires python interpreter\nDownload and setup python?";
+			if (IDOK != AfxMessageBox(str, MB_OKCANCEL)) return;
+			theApp.InstallPython(); // 블록킹
 		}
-
 		m_dlgRun.UpdateData(TRUE);
-		strTool = python_path + " utilities\\" + m_dlgRun.m_strScript;
+		strTool = "\"" + python_exe + "\" \"" + GetModuleDir() + "scripts\\" + m_dlgRun.m_strScript + "\"";
 	} else if (m_ctrlSelCopyFiles.GetCheck()) {
-		strTool = "utilities\\vital_copy.exe";
+		strTool = "\"" + GetModuleDir() + "utilities\\vital_copy.exe\"";
 
 		// 옵션 가져옴
 		m_dlgCopy.UpdateData();
@@ -585,8 +487,8 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 			}
 		}
 	} else if (m_ctrlSelRecs.GetCheck()) {
-		strTool = "utilities\\vital_recs.exe";
-		if (m_b64) strTool = "utilities\\vital_recs_x64.exe";
+		strTool = "\"" + GetModuleDir() + "utilities\\vital_recs.exe\"";
+		if (m_b64) strTool = "\"" + GetModuleDir() + "utilities\\vital_recs_x64.exe\"";
 
 		// 옵션 가져옴
 		m_dlgRecs.UpdateData();
@@ -616,7 +518,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 			strPost += _T("\"") + strDevTrk + _T("\"");
 		}
 	} else if (m_ctrlSelDelTrks.GetCheck()) {
-		strTool = "utilities\\vital_edit_trks.exe";
+		strTool = "\"" + GetModuleDir() + "utilities\\vital_edit_trks.exe\"";
 
 		// 삭제 할 트랙
 		CString smsg;
@@ -641,7 +543,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 			strPost += _T("\"") + strDevTrk + _T("\"");
 		}
 	} else if (m_ctrlSelRenameTrks.GetCheck()) {
-		strTool = "utilities\\vital_edit_trks.exe";
+		strTool = "\"" + GetModuleDir() + "utilities\\vital_edit_trks.exe\"";
 
 		// 이름 변경할 트랙
 		CString smsg;
@@ -675,7 +577,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 			return;
 		}
 	} else if (m_ctrlSelRenameDev.GetCheck()) {
-		strTool = "utilities\\vital_edit_devs.exe";
+		strTool = "\"" + GetModuleDir() + "utilities\\vital_edit_devs.exe\"";
 
 		// 이름 변경할 장비
 		m_dlgRename.UpdateData();
@@ -743,7 +645,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 		for (int i = 0; i < m_ctrlTrkList.GetCount(); i++) {
 			if (!m_ctrlTrkList.GetSel(i)) continue;
 			CString s; m_ctrlTrkList.GetText(i, s);
-			fprintf(fa, ",%s", s);
+			fprintf(fa, "," + s);
 		}
 		fprintf(fa, "\r\n");
 		fclose(fa);
@@ -771,6 +673,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 		CString subdir;
 		if (m_bMakeSubDir) {
 			subdir = DirName(ifile).Mid(idir.GetLength());
+			subdir.Trim('\\');
 			CreateDir(odir + '\\' + subdir + '\\');
 		}
 
@@ -791,6 +694,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 		// 파일 존재시 삭제이면?
 		if (m_bSkip) {
 			if (FileExists(opath)) {
+				theApp.Log(opath + " already exists.");
 				continue;
 			}
 		}
@@ -806,8 +710,11 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 		}
 
 		// 실행 큐에 추가
-		theApp.AddJob(strJob);
+		theApp.m_jobs.Push(strJob);
+		theApp.m_ntotal++;
 	}
+
+	theApp.m_nJob = theApp.JOB_RUNNING;
 
 	UpdateData(FALSE);
 }
@@ -875,9 +782,13 @@ CString InsertComma(__int64 dwNumber) {
 }
 
 CString FormatSize(__int64 dwFileSize) {
-	int dwNumber = round(dwFileSize / 1048576.0);
 	CString ret;
-	ret.Format(_T("%s MB"), InsertComma(dwNumber));
+	if (dwFileSize < 1048576) {
+		ret.Format(_T("%s KB"), InsertComma(dwFileSize / 1024));
+	} else {
+		int dwNumber = floor(dwFileSize / 1048576.0);
+		ret.Format(_T("%s MB"), InsertComma(dwNumber));
+	}
 	return ret;
 }
 
@@ -897,11 +808,11 @@ CString DtToStr(time_t t) {
 }
 
 void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
-	if (nIDEvent == 0) { // refresh timer
+	if (nIDEvent == 0) { // 상태를 업데이트
 		CString str;
 		pair<DWORD, CString> msg;
 		while (theApp.m_msgs.Pop(msg)) {
-			str += DtToStr(msg.first).Mid(11) + " " + msg.second + _T("\r\n");
+			str += "[" + DtToStr(msg.first).Mid(11) + "] " + msg.second + _T("\r\n");
 		}
 
 		if (!str.IsEmpty()) {
@@ -917,27 +828,76 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 			m_ctrLog.LineScroll(1 - nVisible);
 		}
 
-		// update progress
-		if (theApp.m_nrunning.Get()) {
-			auto nremain = theApp.m_bparsing ? theApp.m_parses.GetSize() : theApp.m_jobs.GetSize();
-			auto ndone = theApp.m_ntotal - nremain;
-			auto tspan = difftime(time(nullptr), theApp.m_dtstart);
-			auto speed = tspan ? (ndone / tspan) : 1.0;
-			auto eta = nremain / speed;
+		if (theApp.m_nJob == theApp.JOB_SCANNING) {
+			if (theApp.m_scans.IsEmpty() && !theApp.m_nrunning.Get()) { // 이제 모든 스캐닝이 끝났다
+				if (theApp.m_bStopping) {
+					theApp.m_bStopping = false;
+					theApp.m_nJob = theApp.JOB_NONE;
+					theApp.Log("Scanning stopped");
+				} else {
+					theApp.m_nJob = theApp.JOB_PARSING;
+					theApp.m_dtstart = time(nullptr);
+					theApp.m_ntotal = theApp.m_parses.GetSize();
+					theApp.Log("Scanning done");
+				}
+			}
+		} else if (theApp.m_nJob == theApp.JOB_PARSING) {
+			if (theApp.m_parses.IsEmpty() && !theApp.m_nrunning.Get()) { // 이제 모든 파징이 끝났다
+				if (theApp.m_bStopping) {
+					theApp.m_bStopping = false;
+					theApp.m_nJob = theApp.JOB_NONE;
+					theApp.Log("Parsing stopped");
+				} else {
+					theApp.m_nJob = theApp.JOB_NONE;
+					theApp.m_dtstart = 0;
+					theApp.m_ntotal = 0;
+					theApp.SaveCaches();
 
-			CString str;
-			if (theApp.m_ntotal) {
-				str.Format(_T("%d/%d (%d%%) @ %d threads, ETA %s"), ndone, theApp.m_ntotal,
-					(ndone * 100) / theApp.m_ntotal, theApp.m_nrunning.Get(), SpanToStr(eta));
-				m_ctrProgress.SetWindowText(str);
+					theApp.Log("Parsing done");
+
+					m_btnScan.SetWindowText("Scan");
+					m_ctrIdir.EnableWindow(TRUE);
+					m_btnIdir.EnableWindow(TRUE);
+
+					// 모든 파일들은 theApp.m_path_trklist에 존재
+					// 모든 트랙 종류를 합침
+					set<CString> tempset;
+					for (const auto& it : theApp.m_path_trklist) {
+						auto dtnames = Explode(it.second.second, ',');
+						for (auto& dtname : dtnames) {
+							if (dtname.Left(1) != "#")
+								tempset.insert(dtname);
+						}
+					}
+
+					// 트랙 목록을 업데이트
+					EnterCriticalSection(&theApp.m_csTrk);
+					theApp.m_dtnames.clear();
+					theApp.m_dtnames.insert(tempset.begin(), tempset.end());
+					LeaveCriticalSection(&theApp.m_csTrk);
+
+					m_btnRun.EnableWindow(TRUE);
+					m_btnStop.EnableWindow(FALSE);
+
+					m_ctrlSelRun.EnableWindow(TRUE);
+					m_ctrlSelCopyFiles.EnableWindow(TRUE);
+					m_ctrlSelRecs.EnableWindow(TRUE);
+					m_ctrlSelDelTrks.EnableWindow(TRUE);
+					m_ctrlSelRenameTrks.EnableWindow(TRUE);
+					m_ctrlSelRenameDev.EnableWindow(TRUE);
+				}
 			}
-		} else { // 실행이 종료됨
-			m_ctrProgress.GetWindowText(str);
-			if (str != "All done!") {
-				str = _T("All done!");
-				m_ctrProgress.SetWindowText(str);
-			}
-			if (!m_btnRun.IsWindowEnabled()) { 
+		} else if (theApp.m_nJob == theApp.JOB_RUNNING) {
+			if (theApp.m_jobs.IsEmpty() && !theApp.m_nrunning.Get()) {// 모든 작업이 끝났다
+				if (theApp.m_bStopping) {
+					theApp.m_bStopping = false;
+					theApp.m_nJob = theApp.JOB_NONE;
+					theApp.Log("Running stopped");
+				} else {
+					theApp.m_nJob = theApp.JOB_NONE;
+					theApp.m_ntotal = 0;
+					theApp.Log("Running done");
+				}
 				m_btnRun.EnableWindow(TRUE);
 				m_btnStop.EnableWindow(FALSE);
 
@@ -949,25 +909,59 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 				m_ctrlSelRenameDev.EnableWindow(TRUE);
 			}
 		}
+
+		// update progress
+		if (theApp.m_nrunning.Get()) {
+			int nremain = 0;
+			if (theApp.m_nJob == theApp.JOB_PARSING) nremain = theApp.m_parses.GetSize();
+			else if (theApp.m_nJob == theApp.JOB_SCANNING) nremain = theApp.m_scans.GetSize();
+			else if (theApp.m_nJob == theApp.JOB_RUNNING) nremain = theApp.m_jobs.GetSize();
+			auto ndone = theApp.m_ntotal - nremain;
+			auto tspan = difftime(time(nullptr), theApp.m_dtstart);
+			auto speed = tspan ? (ndone / tspan) : 1.0;
+			auto eta = int(nremain / speed);
+
+			CString str;
+			if (theApp.m_nJob == theApp.JOB_PARSING) str = "Parsing";
+			else if (theApp.m_nJob == theApp.JOB_SCANNING) str = "Scanning";
+			else if (theApp.m_nJob == theApp.JOB_RUNNING) str = "Running";
+			if (theApp.m_ntotal) {
+				CString s;
+				s.Format(_T(" %d/%d (%d%%) @ %d threads, ETA %s"), ndone, theApp.m_ntotal, (ndone * 100) / theApp.m_ntotal, theApp.m_nrunning.Get(), SpanToStr(eta));
+				str += s;
+				m_ctrProgress.SetWindowText(str);
+			}
+		} else { // 현재 실행 중이던 작업이 종료됨
+			m_ctrProgress.GetWindowText(str);
+			if (str != "") {
+				str = _T("");
+				m_ctrProgress.SetWindowText(str);
+			}
+		}
 	} else if (nIDEvent == 1) {
-		// 추가로 adding 되었을 때
+		// 추가로 파일이 adding 되었을 때
 		if (m_shown.size() != theApp.m_files.size()) {
 			if (!m_ctrlTrkList.GetSelCount()) {
 				m_shown = theApp.m_files; // m_shown 을 업데이트
 				// 원래는 현재의 sorting 기준에 맞춰 재정렬 해야한다
 			}
+		}
+
+		if (m_shown.size() != m_ctrlFileList.GetItemCount()) {
 			m_ctrlFileList.SetItemCountEx(m_shown.size(), LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
 		}
-		
-		if (m_ctrlTrkList.IsWindowEnabled() == theApp.m_bparsing)
-			m_ctrlTrkList.EnableWindow(theApp.m_bparsing ? FALSE : TRUE);
+
+		// 트랙 리스트 목록을 업데이트
+		bool bparsing = (theApp.m_nJob == theApp.JOB_PARSING);
+		if (m_ctrlTrkList.IsWindowEnabled() == bparsing)
+			m_ctrlTrkList.EnableWindow(bparsing ? FALSE : TRUE);
 
 		// parsing이 추가로 되었을 때
-		if (m_ctrlTrkList.GetCount() + 2 != theApp.m_devtrks.size()) {
-			//TRACE("Updating track list %d,%d\n", m_ctrlTrkList.GetCount(), theApp.m_devtrks.size());
+		if (m_ctrlTrkList.GetCount() != theApp.m_dtnames.size()) {
+			TRACE("Updating track list %d,%d\n", m_ctrlTrkList.GetCount(), theApp.m_dtnames.size());
 
 			EnterCriticalSection(&theApp.m_csTrk);
-			vector<CString> copy(theApp.m_devtrks.begin(), theApp.m_devtrks.end());
+			vector<CString> copy(theApp.m_dtnames.begin(), theApp.m_dtnames.end());
 			LeaveCriticalSection(&theApp.m_csTrk);
 			
 			// 트랙 리스트를 완전히 새로 만든다
@@ -975,7 +969,6 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 			auto nscr = m_ctrlTrkList.GetTopIndex();
 			m_ctrlTrkList.ResetContent();
 			for (const auto& s : copy) {
-				if (s.Left(1) == "#") continue;
 				m_ctrlTrkList.AddString(s);
 			}
 			m_ctrlTrkList.SetTopIndex(nscr);
@@ -994,18 +987,13 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 		}
 
 		m_ctrlTrkCnt.GetWindowText(oldstr);
-		newstr.Format("%d/%d", m_ctrlTrkList.GetSelCount(), theApp.m_devtrks.size());
+		newstr.Format("%d/%d", m_ctrlTrkList.GetSelCount(), theApp.m_dtnames.size());
 		if (oldstr != newstr) {
 			m_ctrlTrkCnt.SetWindowText(newstr);
 		}
 	}
 
 	CDialogEx::OnTimer(nIDEvent);
-}
-
-void CVitalUtilsDlg::OnBnClickedCancel() {
-	theApp.m_jobs.Clear();
-	theApp.m_ntotal = 0;
 }
 
 void CVitalUtilsDlg::OnBnClickedClear() {
@@ -1015,16 +1003,75 @@ void CVitalUtilsDlg::OnBnClickedClear() {
 void CVitalUtilsDlg::OnSize(UINT nType, int cx, int cy) {
 	CDialogEx::OnSize(nType, cx, cy);
 
-/*	CRect rwc;
-	m_ctrlSelRun.GetWindowRect(rwc);
-	ScreenToClient(rwc);
+	if (cx == 0 || cy == 0) return;
 
-	CRect rwFileList;
-	m_ctrlFileList.GetWindowRect(rwFileList);
-	ScreenToClient(rwFileList);
-//	m_ctrlFileList.SetWindowPos(nullptr, 0, 0, rwFileList.Width(), cy - rwFileList.top - 10, SWP_NOZORDER | SWP_NOMOVE);
+	if (m_nOldCx == 0 && m_nOldCy == 0) {
+		m_nOldCx = cx;
+		m_nOldCy = cy;
+		return;
+	}
 
-	CRect rwTrkList;
+	// filelist 보다 아래에 있는 것들의 목록을 만듬
+	if (IsWindow(m_ctrlFileList)) {
+		CRect rcw;
+		m_ctrlFileList.GetWindowRect(rcw);
+		ScreenToClient(rcw);
+		int splity = rcw.bottom;
+
+		m_ctrlFileList.SetWindowPos(nullptr, 0, 0, rcw.Width() + cx - m_nOldCx, rcw.Height() + cy - m_nOldCy, SWP_NOZORDER | SWP_NOMOVE);
+		
+		m_ctrlTrkList.GetWindowRect(rcw);
+		m_ctrlTrkList.SetWindowPos(nullptr, 0, 0, rcw.Width(), rcw.Height() + cy - m_nOldCy, SWP_NOZORDER | SWP_NOMOVE);
+
+		// 세로로 위치 이동
+		vector<HWND> children;
+		EnumChildWindows(m_hWnd, [](HWND hwnd, LPARAM lParam)->BOOL {
+			auto pvec = (vector<HWND>*)lParam;
+			pvec->push_back(hwnd);
+			return TRUE;
+		}, (LPARAM)&children);
+
+		for (auto hchild : children) {
+			::GetWindowRect(hchild, &rcw);
+			if (rcw.top > splity && ::GetParent(hchild) == m_hWnd) {
+				ScreenToClient(rcw);
+				::SetWindowPos(hchild, nullptr, rcw.left, rcw.top + cy - m_nOldCy, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
+			}
+		}
+
+		// 크기 변경
+		m_ctrLog.GetWindowRect(rcw);
+		m_ctrLog.SetWindowPos(nullptr, 0, 0, rcw.Width() + cx - m_nOldCx, rcw.Height(), SWP_NOZORDER | SWP_NOMOVE);
+
+		m_ctrlFilter.GetWindowRect(rcw);
+		m_ctrlFilter.SetWindowPos(nullptr, 0, 0, rcw.Width() + cx - m_nOldCx, rcw.Height(), SWP_NOZORDER | SWP_NOMOVE);
+
+		// 가로로 위치 이동
+		m_btnRun.GetWindowRect(rcw);
+		ScreenToClient(rcw);
+		m_btnRun.SetWindowPos(nullptr, rcw.left + cx - m_nOldCx, rcw.top, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
+
+		m_btnStop.GetWindowRect(rcw);
+		ScreenToClient(rcw);
+		m_btnStop.SetWindowPos(nullptr, rcw.left + cx - m_nOldCx, rcw.top, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
+
+		m_ctrlFileCnt.GetWindowRect(rcw);
+		ScreenToClient(rcw);
+		m_ctrlFileCnt.SetWindowPos(nullptr, rcw.left + cx - m_nOldCx, rcw.top, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
+
+		m_ctrlExact.GetWindowRect(rcw);
+		ScreenToClient(rcw);
+		m_ctrlExact.SetWindowPos(nullptr, rcw.left + cx - m_nOldCx, rcw.top, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
+
+		m_btnSelect.GetWindowRect(rcw);
+		ScreenToClient(rcw);
+		m_btnSelect.SetWindowPos(nullptr, rcw.left + cx - m_nOldCx, rcw.top, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
+	}
+
+	m_nOldCx = cx;
+	m_nOldCy = cy;
+
+	/*CRect rwTrkList;
 	m_ctrlTrkList.GetWindowRect(rwTrkList);
 	ScreenToClient(rwTrkList);
 //	m_ctrlTrkList.SetWindowPos(nullptr, 0, 0, rwTrkList.Width(), cy - rwTrkList.top - 10, SWP_NOZORDER | SWP_NOMOVE);
@@ -1122,10 +1169,18 @@ void CVitalUtilsDlg::OnGetdispinfoFilelist(NMHDR *pNMHDR, LRESULT *pResult) {
 BOOL CVitalUtilsDlg::PreTranslateMessage(MSG* pMsg) {
 	if (pMsg->message == WM_KEYDOWN) {
 		if (pMsg->wParam == VK_DELETE) {
-			if (IDYES != AfxMessageBox("Are you sure to delete these files?", MB_YESNO)) {
-				return TRUE;
+			if (GetFocus()->m_hWnd == m_ctrlFileList.m_hWnd) {
+				if (IDYES == AfxMessageBox("Are you sure to delete these files?", MB_YESNO)) {
+					for (int i = m_ctrlFileList.GetItemCount()-1; i >= 0; i--)
+						if (m_ctrlFileList.GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED) {
+							if (DeleteFile(m_shown[i]->path)) {
+								theApp.Log("deleted " + m_shown[i]->path);
+								m_ctrlFileList.DeleteItem(i);
+							}
+						}
+					return TRUE;
+				}
 			}
-
 		}
 		if (::GetKeyState(VK_CONTROL) < 0) {
 			switch (pMsg->wParam) {
@@ -1192,42 +1247,18 @@ void CVitalUtilsDlg::OnNMDblclkFilelist(NMHDR *pNMHDR, LRESULT *pResult) {
 	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
 	if (pNMItemActivate->iItem < m_shown.size()) {
 		auto path = m_shown[pNMItemActivate->iItem]->path;
-		ShellExecute(NULL, "open", GetModuleDir() + "\\vital.exe", path, nullptr, SW_SHOW);
+		ShellExecute(NULL, "open", GetModuleDir() + "\\vital.exe", "\"" + path + "\"", nullptr, SW_SHOW);
 	}
 	*pResult = 0;
 }
 
-void CVitalUtilsDlg::OnBnClickedRescan() {
-	// 기존 선택들을 전부 지우고
-	m_ctrlTrkList.SetCurSel(-1);
-	m_ctrlTrkList.ResetContent();
-	m_shown.clear();
-
-	// 기존 파일 선택을 전부 지우고
-	m_ctrlFileList.SetItemCountEx(0, NULL);
-
-	EnterCriticalSection(&theApp.m_csFile);
-	auto copy = theApp.m_files;
-	theApp.m_files.clear();
-	LeaveCriticalSection(&theApp.m_csFile);
-	for (auto& p : copy)
-		delete p;
-
-	// 캐쉬도 전부 날림
-	theApp.m_devtrks.clear();
-	theApp.m_path_trklist.clear();
-
-	// 입력 디렉토리 읽기 쓰레드 시작
-	_beginthreadex(0, 0, RescanThread, 0, 0, 0);
-}
-
 void CVitalUtilsDlg::OnSelchangeTrklist() {
 	UpdateData(TRUE);
-	vector<CString> devtrks;
+	vector<CString> dtnames;
 	for (int i = 0; i < m_ctrlTrkList.GetCount(); i++) {
 		if (!m_ctrlTrkList.GetSel(i)) continue;
 		CString s; m_ctrlTrkList.GetText(i, s);
-		devtrks.push_back(s);
+		dtnames.push_back(s);
 	}
 
 	CString str; m_ctrlSelOper.GetWindowText(str);
@@ -1249,7 +1280,7 @@ void CVitalUtilsDlg::OnSelchangeTrklist() {
 		if (filedevtrk.Right(1) != ',') filedevtrk = filedevtrk + ',';
 		bool shown = false;
 		if (is_or) { // 선택된 트랙 중 하나라도 있으면 보여짐
-			for (const auto& dtname : devtrks) {
+			for (const auto& dtname : dtnames) {
 				if (filedevtrk.Find(CString(",") + dtname + ",") >= 0) {
 					shown = true;
 					break;
@@ -1257,7 +1288,7 @@ void CVitalUtilsDlg::OnSelchangeTrklist() {
 			}
 		} else { // 하나라도 없으면 안보임
 			shown = true;
-			for (const auto& dtname : devtrks) {
+			for (const auto& dtname : dtnames) {
 				if (filedevtrk.Find(CString(",") + dtname + ",") < 0) {
 					shown = false;
 					break;
@@ -1321,7 +1352,7 @@ void CVitalUtilsDlg::OnBnClickedSaveList() {
 	theApp.Log("Saving list");
 
 	auto showns = m_shown;
-	auto devtrks = theApp.m_devtrks;
+	auto dtnames = theApp.m_dtnames;
 
 	auto filepath = dlg.GetPathName();
 	FILE* fo = fopen(filepath, "wt");
@@ -1331,13 +1362,13 @@ void CVitalUtilsDlg::OnBnClickedSaveList() {
 	}
 
 	// 헤더를 출력
-	fprintf(fo, "Filename,Path,Size,Start Time,End Time,Length (hr)");
-	for (const auto& trkname : devtrks) {
-		fputc(',', fo);
+	fputs("Filename,Path,Size,Start Time,End Time,Length (hr)", fo);
+	for (const auto& trkname : dtnames) {
+		putc(',', fo);
 		fputs(trkname, fo);
 	}
+	putc('\n', fo);
 
-	fprintf(fo, "\n");
 	for (auto& it : showns) {
 		auto& tl = Explode(theApp.m_path_trklist[it->path].second, ',');
 
@@ -1350,13 +1381,18 @@ void CVitalUtilsDlg::OnBnClickedSaveList() {
 			else trk_exists[trkname] = 1;
 		}
 
-		fprintf(fo, "%s,%s,%u,%s,%s,%f", BaseName(it->path), it->path, it->size, DtToStr(dtstart), DtToStr(dtend), (dtend - dtstart) / 3600.0);
+		fputs(BaseName(it->path) + ',', fo);
+		fputs(it->path + ',', fo);
+		fprintf(fo, "%u,", it->size);
+		fputs(DtToStr(dtstart) + ',', fo);
+		fputs(DtToStr(dtend) + ',', fo);
+		fprintf(fo, "%f", (dtend - dtstart) / 3600.0);
 		
-		for (const auto& trkname : devtrks) {
-			fputc(',', fo);
-			fputc(trk_exists[trkname]?'1':'0', fo);
+		for (const auto& trkname : dtnames) {
+			putc(',', fo);
+			putc(trk_exists[trkname]?'1':'0', fo);
 		}
-		fputc('\n', fo);
+		putc('\n', fo);
 	}
 	fclose(fo);
 
@@ -1417,16 +1453,16 @@ void CVitalUtilsDlg::OnLvnItemchangedFilelist(NMHDR *pNMHDR, LRESULT *pResult) {
 	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
 	bool shiftpressed = ::GetKeyState(VK_SHIFT) < 0;
 	auto iItem = pNMLV->iItem;
-	TRACE("item %d, old %d, new %d\n", iItem, pNMLV->uOldState, pNMLV->uNewState);
+	//TRACE("item %d, old %d, new %d\n", iItem, pNMLV->uOldState, pNMLV->uNewState);
 	if (iItem == -1 && (pNMLV->uOldState & LVIS_SELECTED) && ((pNMLV->uNewState & LVIS_SELECTED) == 0)) { // deselect all
 //		auto iItem = pNMLV->iItem;
 //		TRACE("item:%d, old:%x, new:%x\n", iItem, pNMLV->uOldState, pNMLV->uNewState);
 //		m_ctrlFileList.SetItemState(m_nLastFileSel, LVIS_SELECTED, LVIS_SELECTED);
-		TRACE("selecting: %d\n", m_nLastFileSel);
+		//TRACE("selecting: %d\n", m_nLastFileSel);
 	}
 	if ((pNMLV->uNewState & LVIS_SELECTED) && ((pNMLV->uOldState & LVIS_SELECTED) == 0)) {// 선택이면?
 		m_nLastFileSel = iItem; // 최종 선택 아이템 저장
-		TRACE("saving lastsel: %d\n", iItem);
+		//TRACE("saving lastsel: %d\n", iItem);
 	}
 	/*
 	if (pNMLV->uNewState & LVIS_SELECTED) {// 선택이면?
@@ -1585,7 +1621,7 @@ void CVitalUtilsDlg::OnHdnItemclickFilelist(NMHDR *pNMHDR, LRESULT *pResult) {
 		break;
 	}
 	m_ctrlFileList.SetRedraw(TRUE);
-	m_ctrlFileList.RedrawWindow();
+	m_ctrlFileList.Invalidate();
 
 	*pResult = 0;
 }
@@ -1630,10 +1666,36 @@ void CVitalUtilsDlg::OnLvnBegindragFilelist(NMHDR *pNMHDR, LRESULT *pResult) {
 	*pResult = 0;
 }
 
-void CVitalUtilsDlg::OnBnClickedSetupPython() {
-	CString str = "Setup python?";
-	if (FileExists("python\\python.exe")) str = "Reinstall python?";
-	if (IDOK != AfxMessageBox(str, MB_OKCANCEL)) return;
-	InstallPython();
-	AfxMessageBox("Setup Completed");
+void CVitalUtilsDlg::OnEnKillfocusIdir() {
+	auto olddir = m_strIdir;
+	UpdateData();
+	if (olddir == m_strIdir) return;
+	if (!DirExists(m_strIdir)) {
+		AfxMessageBox("Folder not exists!");
+		m_ctrIdir.SetFocus();
+		m_ctrIdir.SetSel(0, -1);
+	} else {
+		theApp.WriteProfileString(g_name, _T("idir"), m_strIdir);
+		OnBnClickedRescan();
+	}
+}
+
+
+void CVitalUtilsDlg::OnEnKillfocusOdir() {
+	auto olddir = m_strIdir;
+	UpdateData();
+	if (olddir == m_strIdir) return;
+	if (!DirExists(m_strOdir)) {
+		AfxMessageBox("Folder not exists!");
+		m_ctrOdir.SetFocus();
+		m_ctrOdir.SetSel(0, -1);
+	} else {
+		theApp.WriteProfileString(g_name, _T("odir"), m_strOdir);
+		OnBnClickedRescan();
+	}
+}
+
+void CVitalUtilsDlg::OnBnClickedIdirOpen() {
+	UpdateData();
+	ShellExecute(NULL, "open", m_strIdir, nullptr, nullptr, SW_SHOW);
 }

@@ -3,6 +3,7 @@
 #include "VitalUtilsDlg.h"
 #include <time.h>
 #include <thread>
+#include "dlgdownload.h"
 #pragma comment(lib, "Version.lib")
 
 #ifdef _DEBUG
@@ -85,8 +86,69 @@ CString GetLastErrorString() {
 	return message;
 }
 
-CStringA execCmd(CString cmd) {
-	CStringA strResult;
+// output과 error를 모두 받음
+CString ExecCmdGetErr(CString cmd) {
+	CString strResult;
+	HANDLE hPipeRead, hPipeWrite;
+
+	SECURITY_ATTRIBUTES saAttr = { sizeof(SECURITY_ATTRIBUTES) };
+	saAttr.bInheritHandle = TRUE;   //Pipe handles are inherited by child process.
+	saAttr.lpSecurityDescriptor = NULL;
+
+	// Create a pipe to get results from child's stdout.
+	if (!CreatePipe(&hPipeRead, &hPipeWrite, &saAttr, 0))
+		return strResult;
+
+	STARTUPINFO si = { sizeof(STARTUPINFO) };
+	si.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+	si.hStdOutput = hPipeWrite;
+	si.hStdError = hPipeWrite;
+	si.wShowWindow = SW_HIDE;       // Prevents cmd window from flashing. Requires STARTF_USESHOWWINDOW in dwFlags.
+
+	PROCESS_INFORMATION pi = { 0 };
+
+	BOOL fSuccess = CreateProcess(NULL, (LPSTR)(LPCTSTR)cmd, NULL, NULL, TRUE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
+	if (!fSuccess) {
+		theApp.Log(cmd + " " + GetLastErrorString());
+		CloseHandle(hPipeWrite);
+		CloseHandle(hPipeRead);
+		return strResult;
+	}
+
+	bool bProcessEnded = false;
+	for (; !bProcessEnded;) {
+		// Give some timeslice (50ms), so we won't waste 100% cpu.
+		bProcessEnded = WaitForSingleObject(pi.hProcess, 50) == WAIT_OBJECT_0;
+
+		// Even if process exited - we continue reading, if there is some data available over pipe.
+		for (;;) {
+			char buf[1024];
+			DWORD dwRead = 0;
+			DWORD dwAvail = 0;
+			if (!::PeekNamedPipe(hPipeRead, NULL, 0, NULL, &dwAvail, NULL))
+				break;
+
+			if (!dwAvail) // no data available, return
+				break;
+
+			if (!::ReadFile(hPipeRead, buf, min(sizeof(buf) - 1, dwAvail), &dwRead, NULL) || !dwRead)
+				// error, the child process might ended
+				break;
+
+			buf[dwRead] = 0;
+			strResult += buf;
+		}
+	} //for
+
+	CloseHandle(hPipeWrite);
+	CloseHandle(hPipeRead);
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+	return strResult;
+}
+
+CString ExecCmdGetOutput(CString cmd) {
+	CString strResult;
 	HANDLE hPipeRead, hPipeWrite;
 
 	SECURITY_ATTRIBUTES saAttr = { sizeof(SECURITY_ATTRIBUTES) };
@@ -107,6 +169,7 @@ CStringA execCmd(CString cmd) {
 
 	BOOL fSuccess = CreateProcess(NULL, (LPSTR)(LPCTSTR)cmd, NULL, NULL, TRUE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
 	if (!fSuccess) {
+		theApp.Log(cmd + " " + GetLastErrorString());
 		CloseHandle(hPipeWrite);
 		CloseHandle(hPipeRead);
 		return strResult;
@@ -154,11 +217,9 @@ bool executeCommandLine(CString cmdLine, CString ofile) {
 	sa.lpSecurityDescriptor = NULL;
 	sa.bInheritHandle = TRUE;
 
-	// 파이프를 생성
-	// temp file 을 연다.
+	// 파이프를 생성. // temp file 을 연다.
 	bool ret = false;
-	HANDLE fo = CreateFile(ofile, GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, 
-						   &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE fo = CreateFile(ofile, GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (fo == INVALID_HANDLE_VALUE) {
 		CString str;
 		str.Format(_T("[%d] cannot open file"), jobid);
@@ -261,59 +322,138 @@ DWORD FileTimeToUnixTime(const FILETIME &ft) {
 
 UINT WINAPI WorkThread(void* p) {
 	while (1) {
-		DWORD_CString dstr;
-		CString cmd;
-		if (theApp.m_bparsing && theApp.m_parses.Pop(dstr)) { // 파징 해야할 파일이 있다면
-			theApp.m_nrunning.Inc();
+		if (theApp.m_nJob == theApp.JOB_SCANNING) {
+			CString dirname;
+			if (theApp.m_scans.Pop(dirname)) { // 스캐닝 상태
+				theApp.m_nrunning.Inc();
 
-			auto path = dstr.second;
-			auto mtime = dstr.first;
-			auto cmd = GetModuleDir() + "utilities\\vital_trks.exe -s \"" + path + "\"";
-			auto res = execCmd(cmd);
-			theApp.m_path_trklist[path] = make_pair(mtime, res);
-			theApp.m_nrunning.Dec();
-		} else if (!theApp.m_bparsing && theApp.m_jobs.Pop(cmd)) { // 추출해야할 파일이 있다면
-			theApp.m_nrunning.Inc();
+				theApp.LoadCache(dirname);
 
-			auto jobid = GetThreadId(GetCurrentThread());
+				WIN32_FIND_DATA fd;
+				ZeroMemory(&fd, sizeof(WIN32_FIND_DATA));
 
-			CString str;
-			str.Format(_T("[%d] %s"), jobid, cmd);
-			theApp.Log(str);
+				HANDLE hFind = FindFirstFile(dirname + "*.*", &fd);
+				for (BOOL ret = (hFind != INVALID_HANDLE_VALUE); ret; ret = FindNextFile(hFind, &fd)) {
+					if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) { // directory
+						if (strcmp(fd.cFileName, ".") == 0) continue;
+						if (strcmp(fd.cFileName, "..") == 0) continue;
 
-			// 실제 프로그램을 실행
-			time_t ts = time(nullptr);
-			cmd = GetModuleDir() + cmd;
-			int dred = cmd.Find(">>");
-			int red = cmd.Find('>');
-			if (dred >= 1) { // Longitudinal file
-				CString ofile = cmd.Mid(dred + 2);
-				ofile = ofile.Trim(_T("\t \""));
-				cmd = cmd.Left(dred);
-				auto s = execCmd(cmd);
-					
-				// lock and save the result
-				EnterCriticalSection(&theApp.m_csLong);
-				FILE* fa = fopen(ofile, "ab"); // append file
-				s.TrimRight("\r\n");
-				fwrite(s, 1, s.GetLength(), fa);
-				if(!s.IsEmpty()) fprintf(fa, "\r\n");
-				fclose(fa);
-				LeaveCriticalSection(&theApp.m_csLong);
-			} else if (red >= 1) { // 파이프 실행
-				CString ofile = cmd.Mid(red + 1);
-				ofile = ofile.Trim(_T("\t \""));
-				cmd = cmd.Left(red);
-				executeCommandLine(cmd, ofile);
-			} else { // 단순 실행
-				execCmd(cmd);
+						theApp.Log("Scanning " + dirname + fd.cFileName);
+						theApp.m_scans.Push(dirname + fd.cFileName + "\\");
+						theApp.m_ntotal++;
+					} else { // vital 파일 정보
+						if (ExtName(fd.cFileName) != "vital") continue;
+
+						auto p = new VITAL_FILE_INFO();
+						p->path = dirname + fd.cFileName;
+						p->filename = fd.cFileName;
+						p->dirname = dirname; // 보여주는 목적으로만 사용한다.
+						p->mtime = FileTimeToUnixTime(fd.ftLastWriteTime);
+						p->size = fd.nFileSizeLow + fd.nFileSizeHigh * ((ULONGLONG)MAXDWORD + 1);
+
+						EnterCriticalSection(&theApp.m_csFile);
+						theApp.m_files.push_back(p);
+						LeaveCriticalSection(&theApp.m_csFile);
+
+						// 캐쉬에 없는 파일 목록을 m_parses 에 넣음
+						bool hascache = false;
+						auto it = theApp.m_path_trklist.find(p->path);
+						if (it != theApp.m_path_trklist.end()) { // 경로가 존재하고
+							if (it->second.first == p->mtime) {// 시간도 같으면
+								hascache = true;
+							} 
+						}
+
+						if (!hascache) { // 캐쉬가 없음. 파징 목록에 추가
+							TRACE("no cache: " + p->path + '\n');
+							theApp.m_parses.Push(make_pair(p->mtime, p->path));
+							theApp.m_ntotal++;
+							// 파징이 끝나면 각 쓰레드에서 m_path_trklist 로 옮겨 주고 캐쉬를 저장함
+						}
+					}
+				}
+				FindClose(hFind);
+
+				theApp.m_nrunning.Dec();
+			} else {
+				Sleep(100);
+			}
+		} else if (theApp.m_nJob == theApp.JOB_PARSING) {
+			static time_t tlast = 0;
+			time_t tnow = time(nullptr);
+			if (!theApp.m_cache_updated.empty() && tlast + 30 < tnow) { // 마지막으로 저장할 캐쉬 파일이 있고, 30초 지났으면
+				tlast = tnow;
+				theApp.SaveCaches();
 			}
 
-			time_t te = time(nullptr);
-			str.Format(_T("[%d] finished in %d sec"), jobid, (int)difftime(te, ts));
-			theApp.Log(str);
+			DWORD_CString dstr;
+			if (theApp.m_parses.Pop(dstr)) { // 파징 해야할 파일이 있다면
+				theApp.m_nrunning.Inc();
 
-			theApp.m_nrunning.Dec();
+				auto mtime = dstr.first;
+				auto path = dstr.second;
+				auto dirname = DirName(path);
+				auto filename = BaseName(path);
+				auto cmd = "\"" + GetModuleDir() + "utilities\\vital_trks.exe\" -s \"" + path + "\"";
+				auto res = ExecCmdGetOutput(cmd); // 이게 오래 걸림
+
+				// 파징이 완료됨
+				EnterCriticalSection(&theApp.m_csCache);
+				theApp.m_path_trklist[path] = make_pair(mtime, res); // m_path_trklist에 데이터를 추가
+				theApp.m_cache_updated.insert(dirname); // 새로운 파징이 완료되었으므로 캐쉬를 업데이트 해야함
+				LeaveCriticalSection(&theApp.m_csCache);
+
+				theApp.m_nrunning.Dec();
+			} else {
+				Sleep(100);
+			}
+		} else if (theApp.m_nJob == theApp.JOB_RUNNING) { // 추출해야할 파일이 있다면
+			CString cmd;
+			if (theApp.m_jobs.Pop(cmd)) {
+				theApp.m_nrunning.Inc();
+
+				auto jobid = GetThreadId(GetCurrentThread());
+
+				CString str;
+				str.Format(_T("[%d] %s"), jobid, cmd);
+				theApp.Log(str);
+
+				time_t tstart = time(nullptr);
+
+				// 실제 프로그램을 실행
+				int dred = cmd.Find(">>");
+				int red = cmd.Find('>');
+				if (dred >= 1) { // Longitudinal file
+					CString ofile = cmd.Mid(dred + 2);
+					ofile = ofile.Trim(_T("\t \""));
+					cmd = cmd.Left(dred);
+					auto s = ExecCmdGetOutput(cmd);
+
+					// lock and save the result
+					EnterCriticalSection(&theApp.m_csLong);
+					FILE* fa = fopen(ofile, "ab"); // append file
+					s.TrimRight("\r\n");
+					fwrite(s, 1, s.GetLength(), fa);
+					if (!s.IsEmpty()) fprintf(fa, "\r\n");
+					fclose(fa);
+					LeaveCriticalSection(&theApp.m_csLong);
+				} else if (red >= 1) { // 파이프 실행
+					CString ofile = cmd.Mid(red + 1);
+					ofile = ofile.Trim(_T("\t \""));
+					cmd = cmd.Left(red);
+					executeCommandLine(cmd, ofile);
+				} else { // 단순 실행
+					auto s = ExecCmdGetErr(cmd);
+					theApp.Log(s);
+				}
+
+				str.Format(_T("[%d] finished in %d sec"), jobid, (int)difftime(time(nullptr), tstart));
+				theApp.Log(str);
+
+				theApp.m_nrunning.Dec();
+			} else {
+				Sleep(100);
+			}
 		} else {
 			Sleep(100);
 		}
@@ -381,7 +521,8 @@ BOOL CVitalUtilsApp::InitInstance() {
 
 	CWinApp::InitInstance();
 
-	if (!FileExists(GetModuleDir() + _T("utilities\\vital_trks.exe")) || (!FileExists(GetModuleDir() + _T("utilities\\vital_recs.exe")) && !FileExists(GetModuleDir() + _T("utilities\\vital_recs_x64.exe")))) {
+	if (!FileExists(GetModuleDir() + "utilities\\vital_trks.exe") || (!FileExists(GetModuleDir() + "utilities\\vital_recs.exe") 
+																	  && !FileExists(GetModuleDir() + "utilities\\vital_recs_x64.exe"))) {
 		AfxMessageBox(_T("vital_recs.exe and vital_trks.exe should be exist in utilities folder"));
 		return FALSE;
 	}
@@ -391,7 +532,7 @@ BOOL CVitalUtilsApp::InitInstance() {
 	if (WSAStartup(MAKEWORD(2, 2), &wd) != 0) return FALSE;
 
 	AfxOleInit();
-	AfxEnableControlContainer();
+	AfxEnableControlContainer(); //현재 프로젝트에서 ActiveX컨트롤을 사용할 수 있게 해줌
 	AfxInitRichEdit();
 
 	// 대화 상자에 셸 트리 뷰 또는
@@ -405,6 +546,7 @@ BOOL CVitalUtilsApp::InitInstance() {
 
 	InitializeCriticalSection(&m_csFile);
 	InitializeCriticalSection(&m_csTrk);
+	InitializeCriticalSection(&m_csCache);
 	InitializeCriticalSection(&m_csLong);
 
 	// begin worker thread pool
@@ -439,12 +581,11 @@ BOOL CVitalUtilsApp::InitInstance() {
 }
 
 void CVitalUtilsApp::Log(CString msg) {
-	m_msgs.Push(make_pair((DWORD)time(nullptr), msg));
-}
+	// 관용구 제거
+	auto trivial = GetModuleDir();
+	while (msg.Find(trivial) >= 0) msg.Replace(trivial, "");
 
-void CVitalUtilsApp::AddJob(CString cmd) {
-	m_jobs.Push(cmd);
-	m_ntotal++;
+	if (!msg.IsEmpty()) m_msgs.Push(make_pair((DWORD)time(nullptr), msg));
 }
 
 int CVitalUtilsApp::ExitInstance() {
@@ -457,6 +598,7 @@ int CVitalUtilsApp::ExitInstance() {
 		delete p;
 
 	DeleteCriticalSection(&m_csTrk);
+	DeleteCriticalSection(&m_csCache);
 	DeleteCriticalSection(&m_csFile);
 	DeleteCriticalSection(&m_csLong);
 
@@ -479,38 +621,129 @@ vector<CString> Explode(CString str, TCHAR sep) {
 	return ret;
 }
 
-void CVitalUtilsApp::SaveCache(CString cachepath) { // 새 캐쉬를 저장
-	Log("Saving cache");
+void CVitalUtilsApp::InstallPython() {
+	char tmpdir[MAX_PATH];
+	GetTempPath(MAX_PATH, tmpdir);
 
-	char temppath[MAX_PATH] = { 0 };
-	char tempdir[MAX_PATH] = { 0 };
-	if (!GetTempPath(MAX_PATH, tempdir))
+	CString strSetupUrl = "https:/""/vitaldb.net/python_setup.exe";
+	CString tmppath; tmppath.Format("%spysetup_%u.exe", tmpdir, time(nullptr));
+	CDlgDownload dlg(nullptr, strSetupUrl, tmppath);
+	if (IDOK != dlg.DoModal()) {
+		AfxMessageBox("Cannot download python setup file.\nPlease download it from " + strSetupUrl + "\nand run it in the Vital Recorder installation folder");
 		return;
+	}
 
-	GetTempFileName(tempdir, "trks", (DWORD)time(nullptr), temppath);
+	SHELLEXECUTEINFO shExInfo = { 0 };
+	shExInfo.cbSize = sizeof(shExInfo);
+	shExInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+	shExInfo.hwnd = 0;
+	shExInfo.lpVerb = _T("runas"); // Operation to perform
+	shExInfo.lpFile = tmppath; // Application to start    
+	shExInfo.lpParameters = ""; // Additional parameters
+	shExInfo.lpDirectory = GetModuleDir(); // 현재 프로그램 디렉토리에 압축을 풀어야함
+	shExInfo.nShow = SW_SHOW;
+	shExInfo.hInstApp = 0;
+
+	if (!ShellExecuteEx(&shExInfo)) {
+		AfxMessageBox("cannot start installer");
+		return;
+	}
+
+	if (WAIT_OBJECT_0 != WaitForSingleObject(shExInfo.hProcess, INFINITE)) {
+		AfxMessageBox("cannot install python");
+		return;
+	}
+
+	CloseHandle(shExInfo.hProcess);
+
+	theApp.Log("Python installed");
+}
+
+bool GetFileContent(LPCTSTR path, vector<BYTE>& ret) {
+	FILE* f = fopen(path, "rb");
+	if (!f) return false;
+	fseek(f, 0, SEEK_END);
+	auto len = ftell(f);
+	rewind(f);
+	ret.resize(len);
+	fread(&ret[0], 1, len, f);
+	fclose(f);
+	return true;
+}
+
+void CVitalUtilsApp::LoadCache(CString dirname) {
+	// 폴더에 있는 trks 파일을 읽어옴
+	dirname.TrimRight('\\');
+	CString cachepath = dirname + "\\trks.tsv";
+	vector<BYTE> buf;
+	if (!GetFileContent(cachepath, buf)) return;
 	
-	CString idir = DirName(cachepath); // 마지막 \ 포함
-	auto idir_len = idir.GetLength();
+	// 파일명\t시간\t트랙목록
+	int icol = 0;
+	int num = 0;
+	CString tabs[3];
+	for (auto c : buf) {
+		switch (c) {
+		case '\t':
+			icol++;
+			if (icol < 3) tabs[icol] = "";
+			break;
+		case '\n':
+			if (tabs[0].Find('\\') == -1) { // old version 은 하위 폴더가 포함되어있었다. 이것은 무시
+				DWORD mtime = strtoul(tabs[1], nullptr, 10);
+				auto path = dirname + '\\' + tabs[0];
+				if (!path.IsEmpty() && mtime) {
+					EnterCriticalSection(&theApp.m_csCache);
+					m_path_trklist[path] = make_pair(mtime, tabs[2]);
+					num++;
+					LeaveCriticalSection(&theApp.m_csCache);
+				}
+			}
+			icol = 0;
+			tabs[0] = "";
+			break;
+		case '\r':
+			break;
+		default:
+			if (icol < 3) tabs[icol].AppendChar(c);
+		}
+	}
 
-	// 다른 스래드에서 사용중이므로 일단 복사
+	CString str; str.Format("Cache Loaded %s (%d records)", dirname, num);
+	theApp.Log(str);
+}
+
+void CVitalUtilsApp::SaveCaches() {
+	EnterCriticalSection(&m_csCache);
+	auto need_updated = m_cache_updated; // 캐쉬 업데이트가 필요한 폴더명
+	m_cache_updated.clear(); // 다른 스레드에서 추가할 수 있도록 함
 	auto copyed = m_path_trklist;
-	FILE* fo = fopen(temppath, "wt");
-	if (!fo) {
-		Log("Saving cache failed! " + GetLastErrorString());
-		return;
-	}
-	
-	// 상대 경로, 시간, 트랙 저장
-	for (const auto& it : copyed) {
-		fprintf(fo, "%s\t%u\t%s\n", it.first.Mid(idir_len), it.second.first, it.second.second);
-	}
-	fclose(fo);
+	LeaveCriticalSection(&m_csCache);
 
-	if (!MoveFileEx(temppath, cachepath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED)) {
-		Log("Saving cache failed! " + GetLastErrorString());
-		return;
-	}
-	DeleteFile(temppath);
+	for (auto dirname : need_updated) {
+		CString str;
+		int num = 0;
+		for (const auto& it : copyed) { // 다른 스레드에서 계속 추가중이다
+			if (DirName(it.first) != dirname) continue;
+			if (it.second.first == 0) continue; // mtime 이 0이면
+			str += BaseName(it.first) + '\t';
+			CString s; s.Format("%u", it.second.first);
+			str += s + '\t' + it.second.second + '\n';
+			num++;
+		}
 
-	Log("Saving done");
+		auto cachefile = dirname + "trks.tsv.tmp";
+		FILE* fo = fopen(cachefile, "wb");
+		if (fo) {
+			CString s; s.Format("Cache file saved: %s (%d records)", dirname, num);
+			Log(s);
+			::fwrite(str, 1, str.GetLength(), fo);
+			::fclose(fo);
+
+			// hidden file로 변경
+			auto newfile = cachefile.Left(cachefile.GetLength() - 4);
+			SetFileAttributes(cachefile, GetFileAttributes(cachefile) | FILE_ATTRIBUTE_HIDDEN);
+			MoveFileEx(cachefile, newfile, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+		}
+	}
 }

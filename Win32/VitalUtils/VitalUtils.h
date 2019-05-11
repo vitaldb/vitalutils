@@ -51,8 +51,9 @@ public:
 
 public:
 	CString m_ver;
-	time_t m_dtstart = 0;
-	bool m_bparsing = false; // 파일을 파징 중인지?
+	bool m_bStopping = false;
+	enum {JOB_NONE, JOB_SCANNING, JOB_PARSING, JOB_RUNNING} m_nJob = JOB_NONE; // 현재 진행 중인 작업 종류
+	time_t m_dtstart = 0; // 현재 진행중인 작업 시작 시각
 	int m_ntotal = 0; // 현재 진행중인 작업의 총 수
 	
 	struct ThreadCounter {
@@ -83,21 +84,26 @@ public:
 	} m_nrunning; // 현재 진행중인 쓰레드의 총 수
 	
 	vector<VITAL_FILE_INFO*> m_files;
-	set<CString> m_devtrks;
+	set<CString> m_dtnames; // 모든 장치트랙명 다 모음
 	Queue<pair<DWORD, CString>> m_msgs;
 	Queue<CString> m_jobs;
-
+	
+	set<CString> m_cache_updated;
+	Queue<CString> m_scans;
 	Queue<DWORD_CString> m_parses;
+
 	map<CString, DWORD_CString> m_path_trklist; // 여기에 트랙 데이터가 들어간다
 	
+	CRITICAL_SECTION m_csCache;
 	CRITICAL_SECTION m_csTrk;
 	CRITICAL_SECTION m_csFile;
 	CRITICAL_SECTION m_csLong;
 
 	void Log(CString msg);
-	void AddJob(CString cmd);
 	virtual int ExitInstance();
-	void SaveCache(CString path);
+	void InstallPython();
+	void LoadCache(CString dirname);
+	void SaveCaches();
 };
 
 extern CVitalUtilsApp theApp;

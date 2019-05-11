@@ -127,12 +127,13 @@ save_and_next_packet:
 			if (dname.empty()) dname = dtype;
 			did_dnames[did] = dname;
 		} else if (type == 1) { // rec
-			unsigned short infolen; if (!gz.fetch(infolen, datalen)) goto next_packet;
-			double dt; if (!gz.fetch(dt, datalen)) goto next_packet;
-			unsigned short tid; if (!gz.fetch(tid, datalen)) goto next_packet;
+			unsigned short infolen = 0; if (!gz.fetch(infolen, datalen)) goto next_packet;
+			double dt = 0; if (!gz.fetch(dt, datalen)) goto next_packet;
+			unsigned short tid = 0; if (!gz.fetch(tid, datalen)) goto next_packet;
 
 			// 전체 파일의 dtstart, dtend만 구함
-			if (!dtstart || dtstart > dt) dtstart = dt;
+			if (!dtstart) dtstart = dt;
+			else if (dtstart > dt) dtstart = dt;
 			if (dtend < dt) dtend = dt;
 
 			if (is_short) {
@@ -213,12 +214,16 @@ next_packet:
 		string smin, smax, scnt, savg, sfirst;
 		auto it_mins = tid_mins.find(tid);
 		auto it_maxs = tid_maxs.find(tid);
-		auto it_firstvals = tid_firstvals.find(tid);
-		auto it_cnts = tid_cnts.find(tid);
 		auto it_sums = tid_sums.find(tid);
 		if (it_mins != tid_mins.end()) smin = string_format("%f", it_mins->second);
 		if (it_maxs != tid_maxs.end()) smax = string_format("%f", it_maxs->second);
-		if (it_firstvals != tid_firstvals.end()) sfirst = escape_csv(it_firstvals->second);
+
+		auto it_firstvals = tid_firstvals.find(tid);
+		if (it_firstvals != tid_firstvals.end()) {
+			sfirst = escape_csv(it_firstvals->second);
+		}
+
+		auto it_cnts = tid_cnts.find(tid);
 		if (it_cnts != tid_cnts.end()) {
 			scnt = escape_csv(string_format("%d", it_cnts->second));
 			if (it_cnts->second > 0) {

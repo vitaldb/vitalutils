@@ -117,15 +117,14 @@ void CDlgDownload::DownloadThreadFunc() {
 	CString strRemotePath = str.Mid(ipos);
 
 	Https https(strHost);
-	if (!https.Download(strRemotePath, m_strLocalPath, [this](DWORD dwRead, DWORD dwTotal)->bool{ OnProgress(dwRead, dwTotal); return !m_bCancelling; }))
-	{
+	if (!https.Download(strRemotePath, m_strLocalPath, [this](DWORD dwRead, DWORD dwTotal)->bool{ OnProgress(dwRead, dwTotal); return !m_bCancelling; })) {
 		m_bCancelling = false;
 		PostMessage(WM_COMMAND, IDCANCEL);
 		return;
 	}
 
+	// 자기 자신을 종료 시킨다
 	PostMessage(WM_COMMAND, IDOK);
-
-	theApp.Log("DownloadThread reurned");
+	theApp.Log("Download completed");
 }
 

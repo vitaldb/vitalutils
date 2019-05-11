@@ -23,4 +23,5 @@ public:
 	virtual BOOL OnInitDialog();
 	CComboBox m_ctrlScript;
 	CString m_strScript;
+	afx_msg void OnBnClickedSetupPython();
 };
