@@ -96,7 +96,6 @@ public:
 	CRichEditCtrl m_ctrLog;
 	CString m_strIdir;
 	CString m_strOdir;
-	bool m_b64;
 	CListBox m_ctrList;
 	CString m_strProgress;
 
@@ -109,10 +108,14 @@ public:
 	CStatic m_ctrProgress;
 	CEditEx m_ctrlFilter;
 	CComboBox m_ctrlSelOper;
-	CButton m_ctrlExact;
 	CStatic m_ctrlTrkCnt;
 	CStatic m_ctrlFileCnt;
 	CListCtrl m_ctrlFileList;
+
+	// 체크 버튼
+	CButton m_ctrlExact;
+	CButton m_ctrlMakeSubDir;
+	CButton m_ctrlSkip;
 
 	int m_nOldCy = 0, m_nOldCx = 0;
 

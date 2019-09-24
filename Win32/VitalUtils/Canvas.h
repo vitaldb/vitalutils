@@ -206,8 +206,6 @@ public:
 	Canvas() = default;
 	Canvas(int w, int h);
 	Canvas(const Canvas& can);
-	Canvas(const Canvas& can, int width, int height);
-	Canvas(BYTE* pBuf, int w1, int h1, int w2, int h2);
 
 	// create from file or memory
 	Canvas(HGLOBAL hdib);
@@ -239,8 +237,6 @@ public:
 	bool Create(const Canvas& can);
 
 	// create resizing
-	bool Create(BYTE* pBuf, int w1, int h1, int w2, int h2);
-	bool Create(const Canvas& can, int width, int height);
 	bool Create(HINSTANCE hInst, LPCTSTR lpBitmapName);
 	bool Create(HINSTANCE hInst, WORD uint);
 	bool Create(HINSTANCE hInst, LPCTSTR lpBitmapName, LPCTSTR lpType);
@@ -545,8 +541,6 @@ public:
 	bool CreateFromDesktopCapture(void);
 	void Blend(Canvas &can1, Canvas &can2, BYTE factor);
 	void FlipV(void);
-	void Resize(const Canvas& can, int width, int height);
-	void Resize(int NewWidth, int NewHeight);
 	bool SaveBMP(LPCTSTR lpszFileName) const;
 };
 

@@ -10,8 +10,9 @@
 #include <time.h> 
 #include "GZReader.h"
 #include "Util.h"
+
 using namespace std;
-double dt_moveto = 4102444800;
+double dt_moveto = 4102444800; // 2100년 1월 1일 0시
 
 void print_usage(const char* progname) {
 	fprintf(stderr, "Deidentify vital file\n\n\
@@ -64,12 +65,22 @@ int main(int argc, char* argv[]) {
 	if (!gi.skip(headerlen)) return -1;
 
 	// 1st pass to find out dtstart
+	unsigned short tid_evt = 0; // event trkid
 	double dtstart = DBL_MAX;
 	while (!gi.eof()) { // body is just a list of packet
 		unsigned char type; if (!gi.read(&type, 1)) break;
-		unsigned long datalen; if (!gi.read(&datalen, 4)) break;
+		unsigned int datalen; if (!gi.read(&datalen, 4)) break;
 		if(datalen > 1000000) break;
 		if (type == 0) { // trkinfo : tname, tid, dname, did, type (NUM, STR, WAV), srate
+			unsigned short tid; if (!gi.fetch(tid, datalen)) goto next_packet;
+			gi.skip(2, datalen);
+			string tname; if (!gi.fetch(tname, datalen)) goto next_packet;
+			string unit; gi.fetch(unit, datalen);
+			gi.skip(4 + 4 + 4 + 4 + 8 + 8 + 1, datalen);
+			unsigned int did = 0; gi.fetch(did, datalen);
+			if (did == 0 && tname == "EVENT") {
+				tid_evt = tid;
+			}
 			goto next_packet;
 		} else if (type == 9) { // devinfo
 			goto next_packet;
@@ -94,11 +105,10 @@ next_packet:
 	if (!go.write(&buf[0], 10 + headerlen)) return -1; // write header
 	while (!gi.eof()) {
 		unsigned char type; if (!gi.read(&type, 1)) break;
-		unsigned long datalen; if (!gi.read(&datalen, 4)) break;
+		unsigned int datalen; if (!gi.read(&datalen, 4)) break;
 		if(datalen > 1000000) break;
 		if(buf.size() < datalen) buf.resize(datalen);
 		if (!gi.read(&buf[0], datalen)) break; // read packet
-
 		if (type == 0) { // trkinfo : tname, tid, dname, did, type (NUM, STR, WAV), srate
 			goto next_packet2;
 		} else if (type == 9) { // devinfo
@@ -106,6 +116,9 @@ next_packet:
 		} else if (type == 1) { // rec
 			if (datalen < 10) break;
 			double* pdt = (double*)&buf[2];
+			auto ptid = (unsigned short*)& buf[10];
+			if (*ptid == tid_evt) continue; // skip the old event records
+
 			if (seconds) { // 상대시간만큼 이동
 				*pdt += seconds;
 			} else { // 2100년 1월 1일로 이동

@@ -6,6 +6,11 @@
 #include <time.h>
 using namespace std;
 
+string to_lower(string strToConvert) {
+	transform(strToConvert.begin(), strToConvert.end(), strToConvert.begin(), ::tolower);
+	return strToConvert;
+}
+
 string basename(string path) {
 	for (auto i = (int)path.size() - 1; i >= 0; i--) {
 		if (path[i] == '\\' || path[i] == '/') 

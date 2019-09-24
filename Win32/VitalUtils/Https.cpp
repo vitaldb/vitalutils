@@ -191,9 +191,9 @@ inline BYTE toByte(const BYTE &x) {
 CString URLDecode(CString sIn) {
 	CString sOut;
 	const int nLen = sIn.GetLength() + 1;
-	register LPBYTE pOutTmp = NULL;
+	LPBYTE pOutTmp = NULL;
 	LPBYTE pOutBuf = NULL;
-	register LPBYTE pInTmp = NULL;
+	LPBYTE pInTmp = NULL;
 	LPBYTE pInBuf = (LPBYTE)sIn.GetBuffer(nLen);
 	//alloc out buffer
 	pOutBuf = (LPBYTE)sOut.GetBuffer(nLen);
@@ -224,9 +224,9 @@ CString URLDecode(CString sIn) {
 CString URLEncode(CString sIn) {
 	CString sOut;
 	const int nLen = sIn.GetLength() + 1;
-	register LPBYTE pOutTmp = NULL;
+	LPBYTE pOutTmp = NULL;
 	LPBYTE pOutBuf = NULL;
-	register LPBYTE pInTmp = NULL;
+	LPBYTE pInTmp = NULL;
 	LPBYTE pInBuf = (LPBYTE)sIn.GetBuffer(nLen);
 	//alloc out buffer
 	pOutBuf = (LPBYTE)sOut.GetBuffer(nLen * 3);

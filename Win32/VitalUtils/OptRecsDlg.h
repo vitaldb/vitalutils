@@ -23,6 +23,7 @@ public:
 	BOOL m_bRestricted = FALSE;
 	BOOL m_bLast = FALSE;
 	BOOL m_bSkipBlank = FALSE;
+	BOOL m_bPrintDname = FALSE;
 	BOOL m_bPrintClosest = FALSE;
 	BOOL m_bPrintMean = FALSE;
 	double m_fInterval = 60.0;

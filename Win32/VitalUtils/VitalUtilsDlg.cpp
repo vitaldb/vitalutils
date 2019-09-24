@@ -3,6 +3,7 @@
 #include "VitalUtils.h"
 #include "VitalUtilsDlg.h"
 #include "afxdialogex.h"
+#include <filesystem>
 
 #define LVIS_CHECKED 0x2000 
 #define LVIS_UNCHECKED 0x1000
@@ -57,6 +58,8 @@ void CVitalUtilsDlg::DoDataExchange(CDataExchange* pDX) {
 	DDX_Control(pDX, IDC_TRK_FILTER, m_ctrlTrkFilter);
 	DDX_Control(pDX, IDC_IDIR, m_ctrIdir);
 	DDX_Control(pDX, IDC_ODIR, m_ctrOdir);
+	DDX_Control(pDX, IDC_MAKE_SUBDIR, m_ctrlMakeSubDir);
+	DDX_Control(pDX, IDC_SKIP, m_ctrlSkip);
 }
 
 CString g_name = _T("VitalUtils");
@@ -85,9 +88,10 @@ BEGIN_MESSAGE_MAP(CVitalUtilsDlg, CDialogEx)
 
 	ON_BN_CLICKED(IDC_SEL_RUN, &CVitalUtilsDlg::OnBnClickedSelRunScript)
 	ON_BN_CLICKED(IDC_SEL_COPY, &CVitalUtilsDlg::OnBnClickedSelCopyFiles)
+	ON_BN_CLICKED(IDC_SEL_RECS, &CVitalUtilsDlg::OnBnClickedSelRecs)
+
 	ON_BN_CLICKED(IDC_SEL_RENAME_DEV, &CVitalUtilsDlg::OnBnClickedSelRenameDev)
 	ON_BN_CLICKED(IDC_SEL_DEL_TRKS, &CVitalUtilsDlg::OnBnClickedSelDelTrks)
-	ON_BN_CLICKED(IDC_SEL_RECS, &CVitalUtilsDlg::OnBnClickedSelRecs)
 	ON_BN_CLICKED(IDC_SEL_RENAME_TRKS, &CVitalUtilsDlg::OnBnClickedSelRenameTrks)
 
 	ON_CBN_SELCHANGE(IDC_TRK_OPER, &CVitalUtilsDlg::OnCbnSelchangeTrkOper)
@@ -105,7 +109,6 @@ void CVitalUtilsDlg::OnBnClickedRescan() {
 	CString str;
 	m_btnScan.GetWindowText(str);
 	if (str == "Scan") { // rescan
-		theApp.m_dtnames.clear();
 		theApp.m_path_trklist.clear();
 		theApp.m_parses.Clear();
 
@@ -168,26 +171,6 @@ void CVitalUtilsDlg::OnBnClickedCancel() {
 	theApp.m_bStopping = true;
 }
 
-typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
-LPFN_ISWOW64PROCESS fnIsWow64Process;
-
-BOOL IsWow64() {
-	BOOL bIsWow64 = FALSE;
-	auto fnIsWow64Process = (LPFN_ISWOW64PROCESS)GetProcAddress(GetModuleHandle(TEXT("Kernel32")), "IsWow64Process");
-	if (fnIsWow64Process != NULL) {
-		if (!fnIsWow64Process(GetCurrentProcess(), &bIsWow64)) {
-			// handle error
-		}
-	}
-
-	return bIsWow64;
-}
-
-bool DirExists(CString path) {
-	DWORD dwAttrib = GetFileAttributes(path);
-	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
-}
-
 BOOL CVitalUtilsDlg::OnInitDialog() {
 	CDialogEx::OnInitDialog();
 
@@ -218,14 +201,14 @@ BOOL CVitalUtilsDlg::OnInitDialog() {
 	m_ctrLog.HideSelection(FALSE, TRUE);
 
 	m_strIdir = theApp.GetProfileString(g_name, _T("idir"));
-	if (!DirExists(m_strIdir)) {
+	if (!filesystem::is_directory((LPCTSTR)m_strIdir)) {
 		char temp[MAX_PATH];
 		SHGetSpecialFolderPath(NULL, temp, CSIDL_MYDOCUMENTS, FALSE);
 		m_strIdir = temp;
 	}
 
 	m_strOdir = theApp.GetProfileString(g_name, _T("odir"));
-	if (!DirExists(m_strOdir)) {
+	if (!filesystem::is_directory((LPCTSTR)m_strOdir)) {
 		char temp[MAX_PATH];
 		SHGetSpecialFolderPath(NULL, temp, CSIDL_DESKTOPDIRECTORY, FALSE);
 		m_strOdir = temp;
@@ -268,8 +251,6 @@ BOOL CVitalUtilsDlg::OnInitDialog() {
 	// refresh timer
 	SetTimer(0, 1000, nullptr);
 	SetTimer(1, 1000, nullptr);
-
-	m_b64 = IsWow64();
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -488,7 +469,6 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 		}
 	} else if (m_ctrlSelRecs.GetCheck()) {
 		strTool = "\"" + GetModuleDir() + "utilities\\vital_recs.exe\"";
-		if (m_b64) strTool = "\"" + GetModuleDir() + "utilities\\vital_recs_x64.exe\"";
 
 		// 옵션 가져옴
 		m_dlgRecs.UpdateData();
@@ -500,6 +480,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 		if (m_dlgRecs.m_bPrintMean) strPre += _T("m");
 		if (m_dlgRecs.m_bPrintClosest) strPre += _T("n");
 		if (m_dlgRecs.m_bSkipBlank) strPre += _T("s");
+		if (m_dlgRecs.m_bPrintDname) strPre += _T("d");
 		if (!strPre.IsEmpty()) strPre = _T("-") + strPre;
 
 		strPost.Format(_T("%f "), m_dlgRecs.m_fInterval);
@@ -616,6 +597,12 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 		odir = idir;
 	}
 
+	// 최소한 출력 디렉토리는 존재해야
+	if (!filesystem::is_directory((LPCTSTR)odir)) {
+		filesystem::create_directories((LPCTSTR)odir);
+		theApp.WriteProfileString(g_name, _T("odir"), odir);
+	}
+
 	// recs 의 경우는 piped 이고 이 경우에는 tool strpre ifile strpost > ofile 형태가 된다.
 	// 그 외에는 tool strpre ifile ofile strpost 형태가 된다.
 	bool is_recs = (strTool.Find("vital_recs") >= 0);
@@ -671,10 +658,10 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 
 		// sub directory 생성이면?
 		CString subdir;
-		if (m_bMakeSubDir) {
+		if (m_bMakeSubDir && !m_dlgRecs.m_bLong) {
 			subdir = DirName(ifile).Mid(idir.GetLength());
 			subdir.Trim('\\');
-			CreateDir(odir + '\\' + subdir + '\\');
+			filesystem::create_directories((LPCTSTR)(odir + '\\' + subdir + '\\'));
 		}
 
 		CString ofile = BaseName(ifile);
@@ -692,7 +679,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 		}
 
 		// 파일 존재시 삭제이면?
-		if (m_bSkip) {
+		if (m_bSkip && !m_dlgRecs.m_bLong) {
 			if (FileExists(opath)) {
 				theApp.Log(opath + " already exists.");
 				continue;
@@ -860,21 +847,33 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 					m_btnIdir.EnableWindow(TRUE);
 
 					// 모든 파일들은 theApp.m_path_trklist에 존재
-					// 모든 트랙 종류를 합침
-					set<CString> tempset;
+					// 파싱 된 모든 트랙 종류를 합침
+					set<CString> alldtnames;
 					for (const auto& it : theApp.m_path_trklist) {
 						auto dtnames = Explode(it.second.second, ',');
 						for (auto& dtname : dtnames) {
 							if (dtname.Left(1) != "#")
-								tempset.insert(dtname);
+								alldtnames.insert(dtname);
 						}
 					}
 
-					// 트랙 목록을 업데이트
-					EnterCriticalSection(&theApp.m_csTrk);
-					theApp.m_dtnames.clear();
-					theApp.m_dtnames.insert(tempset.begin(), tempset.end());
-					LeaveCriticalSection(&theApp.m_csTrk);
+					// 파싱이 새로 됨
+					// 트랙 리스트를 완전히 새로 만든다
+					m_ctrlTrkList.SetRedraw(FALSE);
+					auto nscr = m_ctrlTrkList.GetTopIndex();
+					m_ctrlTrkList.ResetContent();
+					for (const auto& s : alldtnames) {
+						auto f = fopen("d:\\trklist.txt", "at");
+						fputs(s + "\n", f);
+						fclose(f);
+						m_ctrlTrkList.AddString(s);
+					}
+					m_ctrlTrkList.SetTopIndex(nscr);
+					m_ctrlTrkList.SetRedraw(TRUE);
+					m_ctrlTrkList.Invalidate();
+
+					// 파일 시간이 업데이트 되었으므로 파일 리스트도 새로 그려야 함
+					m_ctrlFileList.Invalidate();
 
 					m_btnRun.EnableWindow(TRUE);
 					m_btnStop.EnableWindow(FALSE);
@@ -956,29 +955,6 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 		if (m_ctrlTrkList.IsWindowEnabled() == bparsing)
 			m_ctrlTrkList.EnableWindow(bparsing ? FALSE : TRUE);
 
-		// parsing이 추가로 되었을 때
-		if (m_ctrlTrkList.GetCount() != theApp.m_dtnames.size()) {
-			TRACE("Updating track list %d,%d\n", m_ctrlTrkList.GetCount(), theApp.m_dtnames.size());
-
-			EnterCriticalSection(&theApp.m_csTrk);
-			vector<CString> copy(theApp.m_dtnames.begin(), theApp.m_dtnames.end());
-			LeaveCriticalSection(&theApp.m_csTrk);
-			
-			// 트랙 리스트를 완전히 새로 만든다
-			m_ctrlTrkList.SetRedraw(FALSE);
-			auto nscr = m_ctrlTrkList.GetTopIndex();
-			m_ctrlTrkList.ResetContent();
-			for (const auto& s : copy) {
-				m_ctrlTrkList.AddString(s);
-			}
-			m_ctrlTrkList.SetTopIndex(nscr);
-			m_ctrlTrkList.SetRedraw(TRUE);
-			m_ctrlTrkList.Invalidate();
-
-			// 파일 시간이 업데이트 되었으므로 파일 리스트도 새로 그려야 함
-			m_ctrlFileList.Invalidate();
-		}
-
 		CString oldstr, newstr;
 		m_ctrlFileCnt.GetWindowText(oldstr);
 		newstr.Format("%d/%d", m_ctrlFileList.GetSelectedCount(), m_shown.size());
@@ -987,7 +963,7 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 		}
 
 		m_ctrlTrkCnt.GetWindowText(oldstr);
-		newstr.Format("%d/%d", m_ctrlTrkList.GetSelCount(), theApp.m_dtnames.size());
+		newstr.Format("%d/%d", m_ctrlTrkList.GetSelCount(), m_ctrlTrkList.GetCount());
 		if (oldstr != newstr) {
 			m_ctrlTrkCnt.SetWindowText(newstr);
 		}
@@ -1352,7 +1328,11 @@ void CVitalUtilsDlg::OnBnClickedSaveList() {
 	theApp.Log("Saving list");
 
 	auto showns = m_shown;
-	auto dtnames = theApp.m_dtnames;
+	vector<CString> dtnames;
+	for (int i = 0; i < m_ctrlTrkList.GetCount(); i++) {
+		CString s; m_ctrlTrkList.GetText(i, s);
+		dtnames.push_back(s);
+	}
 
 	auto filepath = dlg.GetPathName();
 	FILE* fo = fopen(filepath, "wt");
@@ -1670,7 +1650,7 @@ void CVitalUtilsDlg::OnEnKillfocusIdir() {
 	auto olddir = m_strIdir;
 	UpdateData();
 	if (olddir == m_strIdir) return;
-	if (!DirExists(m_strIdir)) {
+	if (!filesystem::is_directory((LPCTSTR)m_strIdir)) {
 		AfxMessageBox("Folder not exists!");
 		m_ctrIdir.SetFocus();
 		m_ctrIdir.SetSel(0, -1);
@@ -1685,7 +1665,7 @@ void CVitalUtilsDlg::OnEnKillfocusOdir() {
 	auto olddir = m_strIdir;
 	UpdateData();
 	if (olddir == m_strIdir) return;
-	if (!DirExists(m_strOdir)) {
+	if (!filesystem::is_directory((LPCTSTR)m_strOdir)) {
 		AfxMessageBox("Folder not exists!");
 		m_ctrOdir.SetFocus();
 		m_ctrOdir.SetSel(0, -1);

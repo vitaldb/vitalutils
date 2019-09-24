@@ -109,17 +109,17 @@ int main(int argc, char* argv[]) {
 
 	fw.write(&header[0], header.size());
 	
-	map<unsigned long, string> did_dname;
-	map<unsigned long, BUF> did_di;
+	map<unsigned int, string> did_dname;
+	map<unsigned int, BUF> did_di;
 	map<unsigned short, string> tid_tname;
 	map<unsigned short, BUF> tid_ti;
-	map<unsigned short, unsigned long> tid_did;
+	map<unsigned short, unsigned int> tid_did;
 	map<unsigned short, BUF> tid_recs;
 
 	// 한 번에 읽으면서 쓴다.
 	while (!fr.eof()) { // body는 패킷의 연속이다.
 		unsigned char packet_type; if (!fr.read(&packet_type, 1)) break;
-		unsigned long packet_len; if (!fr.read(&packet_len, 4)) break;
+		unsigned int packet_len; if (!fr.read(&packet_len, 4)) break;
 		if(packet_len > 1000000) break; // 1MB 이상의 패킷은 버림
 
 		BUF packet_header(5);
@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
 		BUF buf(packet_len);
 		if (!fr.read(&buf[0], packet_len)) break;
 		if (packet_type == 9) { // devinfo
-			unsigned long did = 0; if (!buf.fetch(did)) continue;
+			unsigned int did = 0; if (!buf.fetch(did)) continue;
 			string dtype; if (!buf.fetch(dtype)) continue;
 			string dname; if (!buf.fetch(dname)) continue;
 			if (dname.empty()) dname = dtype;
@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
 			string tname; if (!buf.fetch(tname)) continue;
 			string tunit; buf.fetch(tunit);
 			buf.skip(33);
-			unsigned long did = 0; buf.fetch(did);
+			unsigned int did = 0; buf.fetch(did);
 
 			tid_did[tid] = did;
 			tid_tname[tid] = tname;

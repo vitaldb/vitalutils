@@ -2,6 +2,7 @@
 #include "VitalUtils.h"
 #include "OptRecsDlg.h"
 #include "afxdialogex.h"
+#include "VitalUtilsDlg.h"
 
 IMPLEMENT_DYNAMIC(COptRecsDlg, CDialogEx)
 
@@ -25,6 +26,7 @@ void COptRecsDlg::DoDataExchange(CDataExchange* pDX) {
 	DDX_Control(pDX, IDC_OUTPUT_FILE, m_ctrlOutputFile);
 	DDX_Check(pDX, IDC_LONGITUDINAL, m_bLong);
 	DDX_Check(pDX, IDC_SKIP_BLANK, m_bSkipBlank);
+	DDX_Check(pDX, IDC_PRINT_DNAME, m_bPrintDname);
 	DDX_Check(pDX, IDC_PRINT_MEAN, m_bPrintMean);
 	DDX_Check(pDX, IDC_PRINT_CLOSEST, m_bPrintClosest);
 	DDX_Text(pDX, IDC_OUTPUT_FILE, m_strOutputFile);
@@ -51,14 +53,20 @@ void COptRecsDlg::OnEnKillfocusInterval() {
 void COptRecsDlg::OnBnClickedLong() {
 	UpdateData();
 	m_ctrlOutputFile.EnableWindow(m_bLong);
+	auto pdlg = (CVitalUtilsDlg*)GetParent();
 	if (m_bLong) {
 		m_ctrlPrintFilename.EnableWindow(FALSE);
 		m_ctrlHeader.EnableWindow(FALSE);
 		m_bPrintHeader = FALSE;
 		m_bPrintFilename = TRUE;
+		pdlg->m_ctrlMakeSubDir.EnableWindow(FALSE);
+		pdlg->m_ctrlSkip.EnableWindow(FALSE);
 		UpdateData(FALSE);
-	} else {
+	}
+	else {
 		m_ctrlPrintFilename.EnableWindow(TRUE);
 		m_ctrlHeader.EnableWindow(TRUE);
+		pdlg->m_ctrlMakeSubDir.EnableWindow(TRUE);
+		pdlg->m_ctrlSkip.EnableWindow(TRUE);
 	}
 }

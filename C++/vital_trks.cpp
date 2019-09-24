@@ -40,9 +40,9 @@ Usage : %s [-s] FILENAME \nOptions : -s Print comma seperated device name/track 
 	////////////////////////////////////////////////////////////
 	// header
 	////////////////////////////////////////////////////////////
-	map<unsigned long, string> did_dnames;
+	map<unsigned int, string> did_dnames;
 	map<unsigned short, string> tid_tnames;
-	map<unsigned short, unsigned long> tid_dids;
+	map<unsigned short, unsigned int> tid_dids;
 	map<unsigned short, string> tid_dnames;
 	map<unsigned short, unsigned char> tid_rectypes;
 	map<unsigned short, float> tid_srates;
@@ -50,7 +50,7 @@ Usage : %s [-s] FILENAME \nOptions : -s Print comma seperated device name/track 
 	map<unsigned short, double> tid_dtend;
 	map<unsigned short, float> tid_mins;
 	map<unsigned short, double> tid_sums;
-	map<unsigned short, unsigned long> tid_cnts;
+	map<unsigned short, unsigned int> tid_cnts;
 	map<unsigned short, float> tid_maxs;
 	map<unsigned short, string> tid_firstvals;
 	set<unsigned short> used_tids;
@@ -82,7 +82,7 @@ Usage : %s [-s] FILENAME \nOptions : -s Print comma seperated device name/track 
 	////////////////////////////////////////////////////////////
 	while (!gz.eof()) { // body는 패킷의 연속이다.
 		unsigned char type; if (!gz.read(&type, 1)) break;
-		unsigned long datalen; if (!gz.read(&datalen, 4)) break;
+		unsigned int datalen; if (!gz.read(&datalen, 4)) break;
 		if (datalen > 1000000) break;
 
 		// tname, tid, dname, did, type (NUM, STR, WAV), srate
@@ -94,12 +94,12 @@ Usage : %s [-s] FILENAME \nOptions : -s Print comma seperated device name/track 
 			string unit; 
 			float minval = 0.0f; 
 			float maxval = 0.0f;
-			unsigned long col = 0xFFFFFFFF;
+			unsigned int col = 0xFFFFFFFF;
 			float srate = 0.0f;
 			double adc_gain = 1.0;
 			double adc_offset = 0.0;
 			unsigned char montype = 0;
-			unsigned long did = 0;
+			unsigned int did = 0;
 			if (!gz.fetch(unit, datalen)) goto save_and_next_packet;
 			if (!gz.fetch(minval, datalen)) goto save_and_next_packet;
 			if (!gz.fetch(maxval, datalen)) goto save_and_next_packet;
@@ -121,7 +121,7 @@ save_and_next_packet:
 				tid_srates[tid] = srate;
 			}
 		} else if (type == 9) { // devinfo
-			unsigned long did; if (!gz.fetch(did, datalen)) goto next_packet;
+			unsigned int did; if (!gz.fetch(did, datalen)) goto next_packet;
 			string dtype; if (!gz.fetch(dtype, datalen)) goto next_packet;
 			string dname; if (!gz.fetch(dname, datalen)) goto next_packet;
 			if (dname.empty()) dname = dtype;
@@ -184,7 +184,7 @@ next_packet:
 	// finish
 	////////////////////////////////////////////////////////////
 	if (is_short) {
-		printf("#dtstart=%u,#dtend=%u", (unsigned long)dtstart, (unsigned long)dtend);
+		printf("#dtstart=%u,#dtend=%u", (unsigned int)dtstart, (unsigned int)dtend);
 		for (unsigned int i = 0; i < tids.size(); i++) {
 			unsigned short& tid = tids[i];
 			string tname = escape_csv(tid_tnames[tid]);

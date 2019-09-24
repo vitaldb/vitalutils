@@ -56,6 +56,7 @@
 #define IDC_INTERVAL                    1019
 #define IDC_LOG2                        1020
 #define IDC_RUN                         1020
+#define IDC_PRINT_DNAME                 1020
 #define IDC_TOOL_DESC4                  1021
 #define IDC_DEVTRK                      1022
 #define IDC_TOOL_DESC5                  1022

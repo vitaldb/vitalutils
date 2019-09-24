@@ -14,7 +14,7 @@ using namespace std;
 
 void print_usage(const char* progname) {
 	fprintf(stderr, "Usage : %s -OPTIONS INPUT_FILENAME INTERVAL [DNAME/TNAME]\n\n\
-OPTIONS : one or many of the followings. ex) -rl\n\
+OPTIONS : one or many of the followings. ex) -rlt\n\
   a : print absolute time (instead of relative time)\n\
   r : all tracks should be exists\n\
   l : replace blank value with the last value\n\
@@ -22,6 +22,7 @@ OPTIONS : one or many of the followings. ex) -rl\n\
   c : print filename at the first column\n\
   n : print the closest value from the start of the time interval as a representative\n\
   m : print mean value as a representative for numeric and wave tracks\n\
+  d : print device name\n\
   s : skip blank rows\n\n\
 INPUT_FILENAME : vital file name\n\n\
 INTERVAL : time interval of each row in sec. default = 1. ex) 1/100\n\n\
@@ -55,6 +56,7 @@ int main(int argc, char* argv[]) {
 	bool print_header = false;
 	bool print_filename = false;
 	bool print_mean = false;
+	bool print_dname = false;
 	bool print_closest = false;
 	bool skip_blank_row = false;
 	if (argc > 0) {
@@ -69,6 +71,7 @@ int main(int argc, char* argv[]) {
 			if (opts.find('m') != -1) print_mean = true;
 			if (opts.find('s') != -1) skip_blank_row = true;
 			if (opts.find('n') != -1) print_closest = true;
+			if (opts.find('d') != -1) print_dname = true;
 		}
 	}
 
@@ -156,7 +159,7 @@ int main(int argc, char* argv[]) {
 	// 전체 시작 시간 및 종료 시각 을 구함
 	map<unsigned short, double> tid_dtstart; // 트랙의 시작 시간
 	map<unsigned short, double> tid_dtend; // 트랙의 종료 시간
-	map<unsigned long, string> did_dnames;
+	map<unsigned int, string> did_dnames;
 	map<unsigned short, unsigned char> rectypes; // 1:wav,2:num,5:str
 	map<unsigned short, unsigned char> recfmts; // 
 	map<unsigned short, double> gains;
@@ -169,7 +172,7 @@ int main(int argc, char* argv[]) {
 
 	while (!gz.eof()) { // body는 패킷의 연속이다.
 		unsigned char type; if (!gz.read(&type, 1)) break;
-		unsigned long datalen; if (!gz.read(&datalen, 4)) break;
+		unsigned int datalen; if (!gz.read(&datalen, 4)) break;
 		if(datalen > 1000000) break;
 
 		// tname, tid, dname, did, type (NUM, STR, WAV), srate
@@ -179,7 +182,7 @@ int main(int argc, char* argv[]) {
 			unsigned char recfmt; if (!gz.fetch(recfmt, datalen)) goto next_packet;
 			string tname, unit; 
 			float minval, maxval, srate; 
-			unsigned long col, did;
+			unsigned int col, did;
 			double adc_gain, adc_offset;
 			unsigned char montype;
 			if (!gz.fetch(tname, datalen)) goto next_packet;
@@ -219,7 +222,7 @@ int main(int argc, char* argv[]) {
 				tid_col[tid] = col;
 			}
 		} else if (type == 9) { // devinfo
-			unsigned long did; if (!gz.fetch(did, datalen)) goto next_packet;
+			unsigned int did; if (!gz.fetch(did, datalen)) goto next_packet;
 			string dtype; if (!gz.fetch(dtype, datalen)) goto next_packet;
 			string dname; if (!gz.fetch(dname, datalen)) goto next_packet;
 			if (dname.empty()) dname = dtype;
@@ -233,7 +236,7 @@ int main(int argc, char* argv[]) {
 			// 트랙 속성을 가져옴
 			unsigned char rectype = rectypes[tid]; // 1:wav,2:num,3:str
 			float srate = srates[tid];
-			unsigned long nsamp = 0;
+			unsigned int nsamp = 0;
 			double dt_rec_end = dt_rec_start; // 해당 레코드 종료 시간
 			if (rectype == 1) { // wav
 				if (!gz.fetch(nsamp, datalen)) goto next_packet;
@@ -331,7 +334,7 @@ next_packet:
 	vector<bool> has_data_in_row(nrows);
 	while (!gz.eof()) {// body를 다시 parsing
 		unsigned char type; if (!gz.read(&type, 1)) break;
-		unsigned long datalen; if (!gz.read(&datalen, 4)) break;
+		unsigned int datalen; if (!gz.read(&datalen, 4)) break;
 		if(datalen > 1000000) break;
 		if (type != 1) { goto next_packet2; } // 이번에는 레코드만 읽음
 
@@ -345,7 +348,7 @@ next_packet:
 		// 트랙 속성을 가져옴
 		unsigned char rectype = rectypes[tid]; // 1:wav,2:num,3:str
 		float srate = srates[tid];
-		unsigned long nsamp = 0;
+		unsigned int nsamp = 0;
 		if (rectype == 1) if (!gz.fetch(nsamp, datalen)) { goto next_packet2; }
 		unsigned char recfmt = recfmts[tid]; // 1:flt,2:dbl,3:ch,4:byte,5:short,6:word,7:long,8:dword
 		unsigned int fmtsize = 4;
@@ -425,14 +428,14 @@ next_packet:
 					sval = string_format("%f", fval);
 					break;
 				}
-				case 7: { // long
-					long v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
+				case 7: { // int
+					int v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
 					fval = v * gain + offset;
 					sval = string_format("%f", fval);
 					break;
 				}
 				case 8: { // dword
-					unsigned long v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
+					unsigned int v; if (!gz.fetch(v, datalen)) { goto next_packet2; }
 					fval = v * gain + offset;
 					sval = string_format("%f", fval);
 					break;
@@ -539,7 +542,7 @@ next_packet2:
 		printf("Time"); // 트랙명을 출력
 		for (int j = 0; j < ncols; j++) {
 			string str = tnames[j];
-			if (!dnames[j].empty()) str = dnames[j] + "/" + str;
+			if (print_dname && !dnames[j].empty()) str = dnames[j] + "/" + str;
 			putchar(',');
 			printf(str.c_str());
 		}

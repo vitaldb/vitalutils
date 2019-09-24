@@ -25,14 +25,6 @@ CVitalUtilsApp::CVitalUtilsApp() {
 CVitalUtilsApp theApp;
 
 // create dir recursively
-void CreateDir(CString path) {
-	for (unsigned int pos = 0; pos != -1; pos = path.Find('\\', pos + 1)) {
-		if (!pos) continue;
-		auto subdir = path.Left(pos);
-		HRESULT hres = CreateDirectory(subdir, NULL);
-	}
-}
-
 CString GetModulePath() {
 	TCHAR temp_path[MAX_PATH];
 	GetModuleFileName(AfxGetInstanceHandle(), temp_path, sizeof(temp_path));
@@ -382,7 +374,7 @@ UINT WINAPI WorkThread(void* p) {
 			static time_t tlast = 0;
 			time_t tnow = time(nullptr);
 			if (!theApp.m_cache_updated.empty() && tlast + 30 < tnow) { // 마지막으로 저장할 캐쉬 파일이 있고, 30초 지났으면
-				tlast = tnow;
+				tlast = tnow; // 한개 쓰레드만 들어오게 함
 				theApp.SaveCaches();
 			}
 
@@ -721,6 +713,8 @@ void CVitalUtilsApp::SaveCaches() {
 	LeaveCriticalSection(&m_csCache);
 
 	for (auto dirname : need_updated) {
+		Log("Saving tmp file: " + dirname);
+
 		CString str;
 		int num = 0;
 		for (const auto& it : copyed) { // 다른 스레드에서 계속 추가중이다
@@ -731,6 +725,8 @@ void CVitalUtilsApp::SaveCaches() {
 			str += s + '\t' + it.second.second + '\n';
 			num++;
 		}
+
+		EnterCriticalSection(&m_csCache); // 실수로 두개 쓰레드가 들어오더라도 한번만 실행되게 함
 
 		auto cachefile = dirname + "trks.tsv.tmp";
 		FILE* fo = fopen(cachefile, "wb");
@@ -744,6 +740,11 @@ void CVitalUtilsApp::SaveCaches() {
 			auto newfile = cachefile.Left(cachefile.GetLength() - 4);
 			SetFileAttributes(cachefile, GetFileAttributes(cachefile) | FILE_ATTRIBUTE_HIDDEN);
 			MoveFileEx(cachefile, newfile, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+		} else {
+			CString s; s.Format("Cache file open failed: %s (%d records)", dirname, num);
+			Log(s);
 		}
+
+		LeaveCriticalSection(&m_csCache);
 	}
 }
