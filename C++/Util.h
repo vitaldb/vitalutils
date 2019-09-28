@@ -6,6 +6,10 @@
 #include <time.h>
 using namespace std;
 
+inline unsigned int str_to_uint(const string& s) {
+	return strtoul(s.c_str(), nullptr, 10);
+}
+
 string to_lower(string strToConvert) {
 	transform(strToConvert.begin(), strToConvert.end(), strToConvert.begin(), ::tolower);
 	return strToConvert;
@@ -41,8 +45,15 @@ std::string string_format(const std::string fmt_str, ...) {
 string escape_csv(string s) {
 	int qpos = s.find('"');
 	if (qpos > -1) s.insert(s.begin() + qpos, '"');
-	int cpos = s.find(',');
-	if (cpos > -1) s = '"' + s + '"';
+	
+	bool need_quote = false;
+	
+	if (s.find(',') > -1) need_quote = true;
+	if (s.find('\n') > -1) need_quote = true;
+	if (s.find('\r') > -1) need_quote = true;
+
+	if (need_quote) s = '"' + s + '"';
+
 	return s;
 }
 
@@ -111,3 +122,4 @@ double parse_dt(string str) {
 
 	return (double)mktime(&st) + second - (int)(second);
 }
+

@@ -3,7 +3,9 @@ Release
 x64
 *.user
 .vs
-/Win32/VitalUtils/VitalUtils_x64.pdb
-/Win32/VitalUtils/VitalUtils_x64.ipdb
-/Win32/VitalUtils/VitalUtils_x64.iobj
-/Win32/VitalUtils/VitalUtils_x64.exe
+__pycache__
+credential*.py
+*.pdb
+*.ipdb
+*.iobj
+*.exe

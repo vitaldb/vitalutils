@@ -3,7 +3,8 @@ import os
 import csv
 import subprocess
 import pandas as pd
-rootdir = r"//Vitalnew/vital_data/Monthly_Confirmed/SNUH_OR"
+
+rootdir = r"SNUH_OR"
 for dir, dirs, files in os.walk(rootdir):
     for file in files:
         ipath = '{}/{}'.format(dir, file)

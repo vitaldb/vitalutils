@@ -47,8 +47,7 @@ hbis = []
 ppgas = []
 
 import os
-idir = r'C:\Users\lucid80\Desktop\SPI_PLETH'
-#odir = r'C:\Users\lucid80\Desktop\SPI_PLETH'
+idir = r'SPI_PLETH'
 filenames = os.listdir(idir)
 for filename in filenames:
     print(filename)
