@@ -328,7 +328,7 @@ int main(int argc, char* argv[]) {
 		else if (rectype == 2) type = 'n';
 		else if (rectype == 5) type = 's';
 		else continue;
-		fprintf(f, "%llu, \"%s\",%c,\"%s/%s\",%f,%f,%f,%f,%f\n", tid_dbtid[tid], caseid.c_str(), type, tid_dnames[tid].c_str(), tid_tnames[tid].c_str(), tid_dtstart[tid], tid_dtend[tid], tid_srates[tid], tid_gains[tid], tid_offsets[tid]);
+		fprintf(f, "%llu,\"%s\",%c,\"%s/%s\",%f,%f,%f,%f,%f\n", tid_dbtid[tid], caseid.c_str(), type, tid_dnames[tid].c_str(), tid_tnames[tid].c_str(), tid_dtstart[tid], tid_dtend[tid], tid_srates[tid], tid_gains[tid], tid_offsets[tid]);
 	}
 	::fclose(f);
 
