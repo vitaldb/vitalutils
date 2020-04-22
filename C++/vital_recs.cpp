@@ -23,7 +23,7 @@ OPTIONS : one or many of the followings. ex) -rlt\n\
   n : print the closest value from the start of the time interval as a representative\n\
   m : print mean value as a representative for numeric and wave tracks\n\
   d : print device name\n\
-  s : skip blank rows\n\n\
+  s : skip blank vals\n\n\
 INPUT_FILENAME : vital file name\n\n\
 INTERVAL : time interval of each row in sec. default = 1. ex) 1/100\n\n\
 DEVNAME/TRKNAME : comma seperated device and track name list. ex) BIS/BIS,BIS/SEF\n\
@@ -43,6 +43,17 @@ double maxval(vector<double>& v) {
 	for (int i = 0; i < v.size(); i++)
 		if (v[i] > ret)
 			ret = v[i];
+	return ret;
+}
+
+// c++의 string 객체는 늘어날 것을 대비해 메모리를 충분히 할당한다.
+// 그러나 이는 매우 큰 vital 파일 데이터를 추출할 때 메모리 부족 문제를 일으킴
+// visual c++의 shrink_to_fit 함수도 제대로 동작 안함
+// 따라서 C 표준 문자열로 바꿈
+char* cstr(const string& s) {
+	auto ret = new char[s.size() + 1];
+	copy(s.begin(), s.end(), ret);
+	ret[s.size()] = '\0';
 	return ret;
 }
 
@@ -303,28 +314,21 @@ next_packet:
 
 	// 모든 값들을 메모리로 올릴 준비
 	// 파일의 맨 뒤라도 가장 빠른 시간의 데이터가 올 수 있기 때문에 전체를 메모리로 올려야 한다.
-	vector<vector<string*>> rows(nrows);
-	for (int i = 0; i < nrows; i++) rows[i].resize(ncols); // 각 트랙의 출력 결과를 담고 있는 테이블 // 이정도 메모리는 되어야 실행된다.
+	vector<char*> vals(ncols * nrows);
 
 	// 평균 출력할 때만 사용
-	vector<vector<double>> sums(nrows);
-	vector<vector<int>> cnts(nrows);
+	vector<double> sums;
+	vector<int> cnts;
 	if (print_mean) {
-		for (int i = 0; i < nrows; i++) {
-			sums[i].resize(ncols); // 0으로 초기화
-			cnts[i].resize(ncols);
-		}
+		sums.resize(ncols * nrows);
+		cnts.resize(ncols * nrows);
 	}
 
 	// 가장 가까운 값 출력할 때만 사용
-	vector<vector<double>> dists(nrows);
+	vector<double> dists;
 	if (print_closest) {
-		for (int i = 0; i < nrows; i++) {
-			dists[i].resize(ncols);
-			for (int j = 0; j < ncols; j++) {
-				dists[i][j] = DBL_MAX;
-			}
-		}
+		dists.resize(ncols * nrows);
+		fill(dists.begin(), dists.end(), DBL_MAX);
 	}
 
 	///////////////////////////////////////////
@@ -373,14 +377,14 @@ next_packet:
 				bool skip_this_sample = true;
 				if (print_closest) { // closest 인 경우에는 이전 distance 보다 가까운 경우만 처리
 					double fdist = fabs(frow - irow);
-					if (fdist < dists[irow][icol]) {
-						dists[irow][icol] = fdist;
+					if (fdist < dists[irow * ncols + icol]) {
+						dists[irow * ncols + icol] = fdist;
 						skip_this_sample = false;
 					}
 				} else if (print_mean) { // 평균일 경우에는 모든 샘플을 처리
 					skip_this_sample = false;
 				} else { // 그 외의 경우에는 이전 값이 없는 경우만 처리
-					skip_this_sample = rows[irow][icol];
+					skip_this_sample = vals[irow * ncols + icol];
 				}
 
 				// 이번 샘플을 건너 뜀
@@ -443,10 +447,10 @@ next_packet:
 				}
 				
 				if (print_mean) {
-					sums[irow][icol] += fval;
-					cnts[irow][icol] ++;
+					sums[irow * ncols + icol] += fval;
+					cnts[irow * ncols + icol] ++;
 				} else {
-					rows[irow][icol] = new string(sval);
+					vals[irow * ncols + icol] = cstr(sval);
 				}
 				has_data_in_col[icol] = true;
 				has_data_in_row[irow] = true;
@@ -461,24 +465,24 @@ next_packet:
 			bool skip_this_sample = true;
 			if (print_closest) { // closest 인 경우에는 이전 distance 보다 가까운 경우만 처리
 				double fdist = fabs(frow - irow);
-				if (fdist < dists[irow][icol]) {
-					dists[irow][icol] = fdist;
+				if (fdist < dists[irow * ncols + icol]) {
+					dists[irow * ncols + icol] = fdist;
 					skip_this_sample = false;
 				}
 			} else if (print_mean) { // 평균일 경우에는 모든 샘플을 처리
 				skip_this_sample = false;
 			} else { // 그 외의 경우에는 이전 값이 없는 경우만 처리
-				skip_this_sample = rows[irow][icol];
+				skip_this_sample = vals[irow * ncols + icol] != nullptr;
 			}
 
 			if (skip_this_sample) { goto next_packet2; }
 
 			float fval; if (!gz.fetch(fval, datalen)) { goto next_packet2; }
 			if (print_mean) {
-				sums[irow][icol] += fval;
-				cnts[irow][icol] ++;
+				sums[irow * ncols + icol] += fval;
+				cnts[irow * ncols + icol] ++;
 			} else {
-				rows[irow][icol] = new string(string_format("%f", fval));
+				vals[irow * ncols + icol] = cstr(string_format("%f", fval));
 			}
 			
 			has_data_in_col[icol] = true;
@@ -493,19 +497,19 @@ next_packet:
 			bool skip_this_sample = true;
 			if (print_closest) { // closest 인 경우에는 이전 distance 보다 가까운 경우만 처리
 				double fdist = fabs(frow - irow);
-				if (fdist < dists[irow][icol]) {
-					dists[irow][icol] = fdist;
+				if (fdist < dists[irow * ncols + icol]) {
+					dists[irow * ncols + icol] = fdist;
 					skip_this_sample = false;
 				}
 			} else { // 그 외의 경우에는 이전 값이 없는 경우만 처리
-				skip_this_sample = rows[irow][icol];
+				skip_this_sample = vals[irow * ncols + icol] != nullptr;
 			}
 
 			if (skip_this_sample) { goto next_packet2; }
 
 			if (!gz.skip(4, datalen)) { goto next_packet2; }
 			string sval; if (!gz.fetch(sval, datalen)) { goto next_packet2; }
-			rows[irow][icol] = new string(escape_csv(sval));
+			vals[irow * ncols + icol] = cstr(escape_csv(sval));
 			has_data_in_col[icol] = true;
 			has_data_in_row[irow] = true;
 		}
@@ -528,9 +532,9 @@ next_packet2:
 	if (print_mean) {
 		for (int i = 0; i < nrows; i++) {
 			for (int j = 0; j < ncols; j++) {
-				if (cnts[i][j]) {
-					double m = sums[i][j] / cnts[i][j];
-					rows[i][j] = new string(string_format("%f", m));
+				if (cnts[i * ncols + j]) {
+					double m = sums[i * ncols + j] / cnts[i * ncols + j];
+					vals[i * ncols + j] = cstr(string_format("%f", m));
 				}
 			}
 		}
@@ -549,7 +553,7 @@ next_packet2:
 		putchar('\n');
 	}
 
-	vector<string> lastval(ncols); // 각 컬럼의 마지막 값
+	vector<char*> lastval(ncols); // 각 컬럼의 마지막 값
 	for (int i = 0; i < nrows; i++) { // 각 행의 데이터를 출력
 		if (skip_blank_row) {
 			if (!has_data_in_row[i]) continue;
@@ -573,22 +577,20 @@ next_packet2:
 
 		// 값을 출력
 		for (int j = 0; j < ncols; j++) {
-			string val;
-			if (rows[i][j]) val = *rows[i][j];
+			auto val = vals[i * ncols + j];
 			if (fill_last) {
-				if (val.empty()) val = lastval[j]; // 값이 없으면 마지막 값을 출력
+				if (!val) val = lastval[j]; // 값이 없으면 마지막 값을 출력
 				else lastval[j] = val; // 값이 있으면 그 값을 마지막 값으로 캐쉬
 			}
-			printf(",%s", val.c_str());
+			if (val) printf(",%s", val);
+			else putchar(',');
 		}
 
-		printf("\n");
+		putchar('\n');
 	}
 
-	for (int i = 0; i < nrows; i++)
-		for (int j = 0; j < ncols; j++)
-			if (rows[i][j])
-				delete rows[i][j];
+	for (auto p : vals)
+		if(p) delete [] p;
 
 	return 0;
 }

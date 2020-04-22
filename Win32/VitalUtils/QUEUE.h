@@ -1,4 +1,5 @@
 #pragma once
+#include <mutex>
 #include <list>
 #include <functional>
 
@@ -14,7 +15,7 @@ template <typename T>
 class Queue {
 private:
 	list<T> m_list;
-	CCriticalSection m_cs;
+	mutex m_mutex;
 
 public:
 	Queue() = default;
@@ -26,24 +27,21 @@ private:
 
 public:
 	void Clear() {
-		m_cs.Lock();
+		lock_guard<mutex> lk(m_mutex);
 		m_list.clear();
-		m_cs.Unlock();
 	}
 
 	// Enqueue
 	void Push(const T& newval) {
-		m_cs.Lock();
+		lock_guard<mutex> lk(m_mutex);
 		m_list.push_back(newval);
-		m_cs.Unlock();
 	}
 
 	void RemoveIf(std::function<bool (const T&)> tester) {
 		for (auto i = m_list.begin(); i != m_list.end(); ) {
 			if (tester(*i)) {
-				m_cs.Lock();
+				lock_guard<mutex> lk(m_mutex);
 				i = m_list.erase(i);
-				m_cs.Unlock();
 			} else {
 				++i;
 			}
@@ -52,21 +50,17 @@ public:
 
 	// Dequeue, pass a pointer by reference
 	bool Pop(T& val) {
-		m_cs.Lock();
-		if (m_list.empty()) {
-			m_cs.Unlock();
-			return false;
-		}
+		lock_guard<mutex> lk(m_mutex);
+		if (m_list.empty()) return false;
 		
 		auto it = m_list.begin();
 		val = *it;
 		m_list.pop_front();
-		m_cs.Unlock();
 
 		return true;
 	}
 
 	// for accurate sizes change the code to use the Interlocked functions calls
-	long GetSize() { return m_list.size(); }
+	size_t GetSize() { return m_list.size(); }
 	bool IsEmpty() { return m_list.empty(); }
 };

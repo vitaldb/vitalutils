@@ -20,16 +20,8 @@ bool Http::Open() {
 CString GetLastInetErrorString() {
 	HMODULE hInet = GetModuleHandle("wininet.dll");
 	LPVOID lpMsgBuf;
-	int i = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-						  FORMAT_MESSAGE_FROM_SYSTEM |
-						  FORMAT_MESSAGE_IGNORE_INSERTS |
-						  FORMAT_MESSAGE_FROM_HMODULE,
-						  hInet,
-						  12029,
-						  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-						  (LPTSTR)&lpMsgBuf,
-						  0,
-						  NULL);
+	int i = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_FROM_HMODULE,
+						  hInet, 12029, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
 	CString str((LPCTSTR)lpMsgBuf);
 	LocalFree(lpMsgBuf);
 	return str;
@@ -92,7 +84,7 @@ bool Http::Download(LPCTSTR strRemotePath, LPCTSTR strLocalPath, function<bool(D
 		HttpQueryInfo(hRequest, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, (LPVOID)&dwTotalSize, &dwBufLen, 0);
 	}
 
-	FILE* f = fopen(strLocalPath, "wb");
+	auto f = fopen(strLocalPath, "wb");
 	if (!f) return false;
 
 	// open object

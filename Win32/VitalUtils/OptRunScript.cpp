@@ -6,7 +6,7 @@
 IMPLEMENT_DYNAMIC(COptRunScriptDlg, CDialogEx)
 
 COptRunScriptDlg::COptRunScriptDlg(CWnd* pParent /*=NULL*/)
-: CDialogEx(COptRunScriptDlg::IDD, pParent), m_strScript(_T("")) {
+: CDialogEx(COptRunScriptDlg::IDD, pParent) {
 }
 
 COptRunScriptDlg::~COptRunScriptDlg() {
@@ -28,7 +28,7 @@ BOOL COptRunScriptDlg::OnInitDialog() {
 	WIN32_FIND_DATA fd;
 	ZeroMemory(&fd, sizeof(WIN32_FIND_DATA));
 
-	HANDLE hFind = FindFirstFile(GetModuleDir() + "scripts\\*.py", &fd);
+	HANDLE hFind = FindFirstFile((get_module_dir() + "scripts\\*.py").c_str(), &fd);
 	for (BOOL ret = (hFind != INVALID_HANDLE_VALUE); ret; ret = FindNextFile(hFind, &fd)) {
 		if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
 		m_ctrlScript.AddString(fd.cFileName);
@@ -42,5 +42,5 @@ BOOL COptRunScriptDlg::OnInitDialog() {
 
 void COptRunScriptDlg::OnBnClickedSetupPython() {
 	theApp.InstallPython();
-	theApp.Log("Python installed");
+	theApp.log("Python installed");
 }

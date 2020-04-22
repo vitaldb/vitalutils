@@ -11,32 +11,44 @@
 #include <vector>
 #include "QUEUE.h"
 #include <thread>
+#include <mutex>
+
 using namespace std;
 
-struct VITAL_FILE_INFO {
-	CString filename;
-	CString dirname;
-	CString path;
-	DWORD mtime = 0;
-	size_t size = 0;
-	DWORD dtstart = 0;
-	DWORD dtend = 0;
-	DWORD dtlen = 0;
-};
+bool exec_cmd(string cmdLine, string ofile);
+string exec_cmd_get_error(string cmd);
+string exec_cmd_get_output(string cmd);
+string get_last_error_string();
+string make_lower(string s);
+string substr(const string& s, size_t pos = 0, size_t len = -1);
+vector<string> explode(string str, string sep);
+vector<string> explode(const string& str, const char sep);
+string extname(string path);
+string dirname(string path);
+string basename(string path);
+time_t filetime_to_unixtime(const FILETIME& ft);
+string get_module_path();
+string get_module_dir();
+bool file_exists(string path);
+string replace_all(string message, const string& pattern, const string& replace);
+string ltrim(string s, const char* c = " \r\n\v\t");
+string rtrim(string s, const char* c = " \r\n\v\t");
+string trim(string s, const char* c = " \r\n\v\t");
+string ltrim(string s, char c);
+string rtrim(string s, char c);
+string trim(string s, char c);
+string dt_to_str(time_t t);
+bool get_file_contents(LPCTSTR path, vector<BYTE>& ret);
 
-CString GetLastErrorString();
-vector<CString> Explode(CString str, TCHAR sep);
-CString ExtName(CString path);
-CString DirName(CString path);
-void ListFiles(LPCTSTR path, vector<CString>& files, CString ext);
-CString BaseName(CString path);
-CString GetModulePath();
-CString GetModuleDir();
-DWORD FileTimeToUnixTime(const FILETIME &ft);
-bool FileExists(CString path);
-void CreateDir(CString path);
+template <typename... Args>
+inline string str_format(const char* format, Args... args) {
+	size_t size = snprintf(nullptr, 0, format, args...) + 1;  // Extra space for '\0'
+	auto buf = make_unique<char[]>(size);
+	snprintf(buf.get(), size, format, args...);
+	return string(buf.get(), buf.get() + size - 1);  // We don't want the '\0' inside
+}
 
-typedef pair<DWORD, CString> DWORD_CString;
+typedef pair<time_t, string> timet_string;
 
 class CVitalUtilsApp : public CWinApp {
 public:
@@ -51,59 +63,11 @@ public:
 
 public:
 	CString m_ver;
-	bool m_bStopping = false;
-	enum {JOB_NONE, JOB_SCANNING, JOB_PARSING, JOB_RUNNING} m_nJob = JOB_NONE; // 현재 진행 중인 작업 종류
-	time_t m_dtstart = 0; // 현재 진행중인 작업 시작 시각
-	int m_ntotal = 0; // 현재 진행중인 작업의 총 수
 	
-	struct ThreadCounter {
-		ThreadCounter() {
-			InitializeCriticalSection(&cs);
-		}
-		~ThreadCounter() {
-			DeleteCriticalSection(&cs);
-		}
-		void Inc() {
-			EnterCriticalSection(&cs);
-			cnt++;
-			LeaveCriticalSection(&cs);
-		}
-		void Dec() {
-			EnterCriticalSection(&cs);
-			cnt--;
-			LeaveCriticalSection(&cs);
-		}
-		int Get() {
-			EnterCriticalSection(&cs);
-			int ret = cnt;
-			LeaveCriticalSection(&cs);
-			return ret;
-		}
-		CRITICAL_SECTION cs;
-		int cnt = 0;
-	} m_nrunning; // 현재 진행중인 쓰레드의 총 수
-	
-	vector<VITAL_FILE_INFO*> m_files;
-	set<CString> m_dtnames; // 모든 장치트랙명 다 모음
-	Queue<pair<DWORD, CString>> m_msgs;
-	Queue<CString> m_jobs;
-	
-	set<CString> m_cache_updated;
-	Queue<CString> m_scans;
-	Queue<DWORD_CString> m_parses;
+	Queue<pair<time_t, string>> m_msgs;
 
-	map<CString, DWORD_CString> m_path_trklist; // 여기에 트랙 데이터가 들어간다
-	
-	CRITICAL_SECTION m_csCache;
-	CRITICAL_SECTION m_csTrk;
-	CRITICAL_SECTION m_csFile;
-	CRITICAL_SECTION m_csLong;
-
-	void Log(CString msg);
-	virtual int ExitInstance();
+	void log(string msg);
 	void InstallPython();
-	void LoadCache(CString dirname);
-	void SaveCaches();
 };
 
 extern CVitalUtilsApp theApp;

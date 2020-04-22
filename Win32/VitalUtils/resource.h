@@ -118,6 +118,7 @@
 #define IDC_TRK_FILTER                  1065
 #define IDC_TO13                        1066
 #define IDC_SCRIPT                      1066
+#define IDC_SELECTED_TRKS               1066
 #define IDC_TO14                        1067
 #define IDC_TO15                        1068
 #define IDC_TO16                        1069

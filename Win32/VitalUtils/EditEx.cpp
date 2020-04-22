@@ -3,20 +3,10 @@
 
 IMPLEMENT_DYNAMIC(CEditEx, CEdit)
 
-CEditEx::CEditEx()
-{
-
-}
-
-CEditEx::~CEditEx()
-{
-}
-
 BEGIN_MESSAGE_MAP(CEditEx, CEdit)
 END_MESSAGE_MAP()
 
-BOOL CEditEx::PreTranslateMessage(MSG* pMsg)
-{
+BOOL CEditEx::PreTranslateMessage(MSG* pMsg) {
 	if (pMsg->message == WM_KEYDOWN && ::GetKeyState(VK_CONTROL) < 0)
 	switch (pMsg->wParam)
 	{

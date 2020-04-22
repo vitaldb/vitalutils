@@ -6,17 +6,24 @@
 using namespace std;
 
 class GZBuffer {
-public:
-	vector<unsigned char> m_comp;
+private:
 	unsigned char buf_in[BUFLEN];
 	unsigned int buf_in_pos = 0;
 	unsigned char buf_out[BUFLEN];
 	z_stream strm = { 0, };
+public:
+	vector<unsigned char> m_comp; // 압축된 결과
 
+public:
 	GZBuffer() {
 		deflateInit2(&strm, Z_BEST_SPEED, Z_DEFLATED, MAX_WBITS + 16, 8, Z_DEFAULT_STRATEGY);
 	}
 	virtual ~GZBuffer() {
+		deflateEnd(&strm);
+	}
+
+public:
+	void flush() {
 		// 남은 버퍼를 저장
 		if (buf_in_pos) {
 			strm.next_in = (Bytef*)buf_in;
@@ -31,11 +38,23 @@ public:
 			auto have = BUFLEN - strm.avail_out;
 			m_comp.insert(m_comp.end(), buf_out, buf_out + have);
 		}
-
-		deflateEnd(&strm);
 	}
 
-public:
+	size_t size() const {
+		return m_comp.size();
+	}
+
+	bool save(const string& path) {
+		flush();
+
+		if (m_comp.empty()) return false;
+		auto f = ::fopen(path.c_str(), "wb");
+		if (!f) return false;
+		bool ret = (fwrite(&m_comp[0], m_comp.size(), 1, f) > 0);
+		fclose(f);
+		return ret;
+	}
+
 	bool write(const void* buf, unsigned int len) { 
 		unsigned int bufpos = 0;
 		while (bufpos < len) {
@@ -87,20 +106,34 @@ public:
 
 class GZWriter {
 public:
-	GZWriter(const char* path) {
-		fi = gzopen(path, "w1b");
+	GZWriter(const char* path, const char* mode = "w1b") {
+		m_fi = gzopen(path, mode);
 	}
 
 	virtual ~GZWriter() {
-		if (fi) gzclose(fi);
+		close();
+	}
+
+public:
+	size_t get_datasize() const {
+		return gztell(m_fi);
+	}
+	size_t get_compsize() const {
+		gzflush(m_fi, Z_FINISH);
+		return gzoffset(m_fi) + 20; // 20바이트 헤더
+	}
+
+	void close() {
+		if (m_fi) gzclose(m_fi);
+		m_fi = nullptr;
 	}
 
 protected:
-	gzFile fi;
+	gzFile m_fi;
 
 public:
 	bool write(const void* buf, unsigned int len) {
-		return gzwrite(fi, buf, len) > 0;
+		return gzwrite(m_fi, buf, len) > 0;
 	}
 	bool write(const double& f) {
 		return write(&f, sizeof(f));
@@ -117,22 +150,22 @@ public:
 		return write(&s[0], len);
 	}
 	bool opened() const {
-		return fi != 0;
+		return m_fi != 0;
 	}
 };
 
 class GZReader {
 public:
 	GZReader(const char* path) {
-		fi = gzopen(path, "rb");
+		m_fi = gzopen(path, "rb");
 	}
 
 	virtual ~GZReader() {
-		if(fi) gzclose(fi);
+		if(m_fi) gzclose(m_fi);
 	}
 
 protected:
-	gzFile fi;
+	gzFile m_fi;
 	unsigned int fi_remain = 0; // 읽은게 없으므로
 	unsigned char fi_buf[BUFLEN]; // 현재 남은 데이터
 	const unsigned char* fi_ptr = fi_buf; // fi_buf에서 현재 읽을 포인터
@@ -155,7 +188,7 @@ public:
 				buf += fi_remain;
 				nread += fi_remain;
 			}
-			unsigned int unzippedBytes = gzread(fi, fi_buf, BUFLEN); // 추가로 읽어들임
+			unsigned int unzippedBytes = gzread(m_fi, fi_buf, BUFLEN); // 추가로 읽어들임
 			if (!unzippedBytes) return nread; // 더이상 읽을게 없으면
 			fi_remain = unzippedBytes;
 			fi_ptr = fi_buf;
@@ -172,7 +205,7 @@ public:
 			len -= fi_remain;
 			fi_remain = 0;
 		}
-		return -1 != gzseek(fi, len, SEEK_CUR);
+		return -1 != gzseek(m_fi, len, SEEK_CUR);
 	}
 
 	bool skip(unsigned int len, unsigned int& remain) {
@@ -188,7 +221,7 @@ public:
 			fi_remain = 0;
 		}
 		
-		z_off_t nskip = gzseek(fi, len, SEEK_CUR);
+		z_off_t nskip = gzseek(m_fi, len, SEEK_CUR);
 		if (-1 == nskip) return false;
 		remain -= len;
 		return true;
@@ -264,15 +297,15 @@ public:
 	}
 
 	bool opened() const {
-		return fi != 0;
+		return m_fi != 0;
 	}
 
 	bool eof() const {
-		return gzeof(fi) && !fi_remain;
+		return gzeof(m_fi) && !fi_remain;
 	}
 
 	void rewind() {
-		gzrewind(fi);
+		gzrewind(m_fi);
 		fi_remain = 0;
 		fi_ptr = fi_buf;
 	}

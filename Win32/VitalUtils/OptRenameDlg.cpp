@@ -157,11 +157,11 @@ void COptRenameDlg::UpdateForm() {
 		for (int i = 0; i < pdlg->m_ctrlTrkList.GetCount(); i++) {
 			if (pdlg->m_ctrlTrkList.GetSelCount() > 0) if (!pdlg->m_ctrlTrkList.GetSel(i)) continue;
 			CString s; pdlg->m_ctrlTrkList.GetText(i, s);
-			auto dtname = Explode(s, '/');
+			auto dtname = explode((LPCTSTR)s, '/');
 			if (dtname.size() < 2) continue;
 			auto dname = dtname[0];
-			if (dname.IsEmpty()) continue;
-			m_strFrom[0] = m_strTo[0] = dname;
+			if (dname.empty()) continue;
+			m_strFrom[0] = m_strTo[0] = dname.c_str();
 			nchanged = 1;
 			break; // 하나만 설정하면 끝이다
 		}
@@ -170,12 +170,12 @@ void COptRenameDlg::UpdateForm() {
 			if (pdlg->m_ctrlTrkList.GetSelCount() > 0) if (!pdlg->m_ctrlTrkList.GetSel(i)) continue;
 			CString s; pdlg->m_ctrlTrkList.GetText(i, s);
 			if (s == "/EVENT") continue;
-			auto dtname = Explode(s, '/');
+			auto dtname = explode((LPCTSTR)s, '/');
 			if (dtname.size() < 2) continue;
 			auto dname = dtname[0];
 			auto tname = dtname[1];
 			m_strFrom[nchanged] = s;
-			m_strTo[nchanged] = tname;
+			m_strTo[nchanged] = tname.c_str();
 			nchanged++;
 			if (nchanged >= 30) break; // 최대 30개 까지 설정하면 끝이다
 		}

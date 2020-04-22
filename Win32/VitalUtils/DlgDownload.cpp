@@ -108,7 +108,7 @@ void CDlgDownload::OnProgress(DWORD dwRead, DWORD dwTotal) {
 }
 
 void CDlgDownload::DownloadThreadFunc() {
-	// theApp.Log("DownloadThread started");
+	// theApp.log("DownloadThread started");
 
 	CString str = m_strUrl.Mid(8);
 	
@@ -125,6 +125,5 @@ void CDlgDownload::DownloadThreadFunc() {
 
 	// 자기 자신을 종료 시킨다
 	PostMessage(WM_COMMAND, IDOK);
-	theApp.Log("Download completed");
+	theApp.log("Download completed");
 }
-
