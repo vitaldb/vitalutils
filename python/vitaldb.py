@@ -376,16 +376,3 @@ def load_vital(ipath, dtnames, interval):
         ret.append(vf.get_samples(dtname, interval))
 
     return np.transpose(ret)
-
-
-vals = load_vital("00001.vital", 'SNUADC/ECG_II,Solar 8000M/ST_I', 0.01)
-vals = vals[:2000, :]
-print(vals)
-hrs = vals[:,1]
-hrs = hrs[~np.isnan(hrs)]
-print(hrs)
-
-import matplotlib.pyplot as plt
-plt.plot(np.arange(0, len(vals)), vals[:,0])
-plt.plot(np.arange(0, len(vals)), vals[:,1])
-plt.show()
