@@ -248,7 +248,7 @@ class VitalFile:
                             continue
                     self.trks[tid] = {'name': name, 'type': type, 'fmt': fmt, 'unit': unit, 'srate': srate,
                                       'mindisp': mindisp, 'maxdisp': maxdisp, 'col': col, 'montype': montype,
-                                      'gain': gain, 'offset': offset, 'did': did, 'recs': vector('list')}
+                                      'gain': gain, 'offset': offset, 'did': did, 'recs': []}
                 elif type == 1:  # rec
                     infolen = unpack_w(buf, pos)[0]; pos += 2
                     dt = unpack_d(buf, pos)[0]; pos += 8
