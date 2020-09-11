@@ -396,5 +396,14 @@ def vital_recs(ipath, dtnames, interval=1):
 
 def vital_trks(ipath):
     # 트랙 목록만 읽어옴
+    ret = []
     vf = VitalFile(ipath)
-    return vf.trks
+    for trk in vf.trks.values():
+        tname = trk['name']
+        dname = ''
+        did = trk['did']
+        if did in vf.devs:
+            dev = vf.devs[did]
+            dname = dev['name']
+        ret.append(dname + '/' + tname)
+    return ret
