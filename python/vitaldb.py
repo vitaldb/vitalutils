@@ -58,6 +58,9 @@ class VitalFile:
     def crop(self, ):
         pass
 
+    def get_tracks(self):
+        return ret
+
     def get_samples(self, dtname, interval=1):
         if not interval:
             return None
@@ -184,6 +187,7 @@ class VitalFile:
         return True
 
     def load_vital(self, ipath, sels=None):
+        # sels: 로딩을 원하는 dtname 의 리스트. sels가 None 이면 트랙 목록만 읽혀짐
         f = gzip.GzipFile(ipath, 'rb')
 
         # parse header
@@ -269,11 +273,14 @@ class VitalFile:
                         dname = self.devs[did]['name']
                     dtname = dname + '/' + tname
 
-                    if sels and dtname not in sels:
-                        continue
-                    
-                    sel_tids.add(tid)
+                    if sels:
+                        if dtname in sels:
+                            # 앞으로는 sel_tids 에서 체크한다
+                            sel_tids.add(tid)
+                        else:
+                            continue
 
+                    # sels가 None 이거나 사용자가 원하는 sel 일 때
                     self.trks[tid] = {'name': tname, 'type': type, 'fmt': fmt, 'unit': unit, 'srate': srate,
                                       'mindisp': mindisp, 'maxdisp': maxdisp, 'col': col, 'montype': montype,
                                       'gain': gain, 'offset': offset, 'did': did, 'recs': []}
@@ -285,16 +292,20 @@ class VitalFile:
 
                     if dt < self.dtstart:
                         self.dtstart = dt
-
+                    
+                    # TODO: dtrec end 는 다를 수 있음 wav 읽어서 nsamp 로딩해야함
                     if dt > self.dtend:
                         self.dtend = dt
 
-                    if tid not in self.trks:
+                    if not sels:  # sels 가 None 이면 트랙 목록만 읽혀짐
                         continue
 
-                    trk = self.trks[tid]
-                    if tid not in sel_tids:
+                    if tid not in self.trks:  # 이전 정보가 없는 트랙이거나
                         continue
+                    if tid not in sel_tids:  # 사용자가 트랙 지정을 한 경우
+                        continue
+
+                    trk = self.trks[tid]  
 
                     fmtlen = 4
                     # gain, offset 변환은 하지 않은 raw data 상태로만 로딩한다.
@@ -365,7 +376,7 @@ def load_trks(tids, interval=1):
     return ret
 
 
-def load_vital(ipath, dtnames, interval):
+def vital_recs(ipath, dtnames, interval=1):
     # 만일 SNUADC/ECG_II,Solar8000
     if dtnames.find(',') != -1:
         dtnames = dtnames.split(',')
@@ -376,3 +387,9 @@ def load_vital(ipath, dtnames, interval):
         ret.append(vf.get_samples(dtname, interval))
 
     return np.transpose(ret)
+
+
+def vital_trks(ipath):
+    # 트랙 목록만 읽어옴
+    vf = VitalFile(ipath)
+    return vf.trks
