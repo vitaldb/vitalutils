@@ -58,9 +58,6 @@ class VitalFile:
     def crop(self, ):
         pass
 
-    def get_tracks(self):
-        return ret
-
     def get_samples(self, dtname, interval=1):
         if not interval:
             return None
@@ -346,17 +343,25 @@ class VitalFile:
 
 def load_trk(tid, interval=1):
     try:
-        url = 'https://api.vitaldb.net/' + tid
-        dtvals = pd.read_csv(url).values
+        dtvals = pd.read_csv('https://api.vitaldb.net/' + tid).values
     except:
         return np.empty(0)
     if len(dtvals) == 0:
         return np.empty(0)
+    
     dtvals[:,0] /= interval  # convert time to row
     nsamp = int(np.nanmax(dtvals[:,0])) + 1  # find maximum index (array length)
     ret = np.full(nsamp, np.nan)  # create a dense array
-    for idx, val in dtvals:  # copy values
-        ret[int(idx)] = val
+    
+    if np.isnan(dtvals[:,0]).any():  # wave track
+        if nsamp != len(dtvals):  # resample
+            ret = np.take(dtvals[:,1], np.linspace(0, len(dtvals) - 1, nsamp).astype(np.int64))
+        else:
+            ret = dtvals[:,1]
+    else:  # numeric track
+        for idx, val in dtvals:  # copy values
+            ret[int(idx)] = val
+
     return ret
 
 
