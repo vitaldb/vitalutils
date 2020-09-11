@@ -1,6 +1,7 @@
 import gzip
 import scipy.signal
 import numpy as np
+import pandas as pd
 from struct import pack, unpack_from, Struct
 
 unpack_b = Struct('<b').unpack_from
@@ -344,9 +345,11 @@ class VitalFile:
 
 def load_trk(tid, interval=1):
     try:
-        dtvals = pd.read_csv('https://api.vitaldb.net/' + tid).values
+        url = 'https://api.vitaldb.net/' + tid
+        dtvals = pd.read_csv(url).values
     except:
         return np.empty(0)
+
     if len(dtvals) == 0:
         return np.empty(0)
     
@@ -409,3 +412,12 @@ def vital_trks(ipath):
                 dname = dev['name']
         ret.append(dname + '/' + tname)
     return ret
+
+
+if __name__ == '__main__':
+    vals = load_trks([
+        'eb1e6d9a963d7caab8f00993cd85bf31931b7a32',
+        '29cef7b8fe2cc84e69fd143da510949b3c271314',
+        '829134dd331e867598f17d81c1b31f5be85dddec'
+    ], 60)
+    print(vals)
