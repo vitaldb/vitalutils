@@ -126,7 +126,8 @@ class VitalFile:
                 if did == 0 and not dname:
                     return trk
                 if did in self.devs:
-                    if dname == self.devs[trk['did']]['name']:
+                    dev = self.devs[did]
+                    if 'name' in dev and dname == dev['name']:
                         return trk
 
         return None
@@ -404,6 +405,7 @@ def vital_trks(ipath):
         did = trk['did']
         if did in vf.devs:
             dev = vf.devs[did]
-            dname = dev['name']
+            if 'name' in dev:
+                dname = dev['name']
         ret.append(dname + '/' + tname)
     return ret
