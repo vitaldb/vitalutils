@@ -204,7 +204,7 @@ class VitalFile:
         # parse body
         self.devs = {0: {}}  # device names. did = 0 represents the vital recorder
         self.trks = {}
-        self.dtstart = 4000000000  # 2100
+        self.dtstart = 0
         self.dtend = 0
         try:
             sel_tids = set()
@@ -289,7 +289,7 @@ class VitalFile:
                     tid = unpack_w(buf, pos)[0]; pos += 2
                     pos = 2 + infolen
 
-                    if dt < self.dtstart:
+                    if self.dtstart == 0 or dt < self.dtstart:
                         self.dtstart = dt
                     
                     # TODO: dtrec end 는 다를 수 있음 wav 읽어서 nsamp 로딩해야함
