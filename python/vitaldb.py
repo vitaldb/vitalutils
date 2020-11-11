@@ -56,9 +56,6 @@ class VitalFile:
     def __init__(self, ipath, sels=None):
         self.load_vital(ipath, sels)
 
-    def crop(self, ):
-        pass
-
     def get_samples(self, dtname, interval=1):
         if not interval:
             return None
@@ -204,7 +201,7 @@ class VitalFile:
         # parse body
         self.devs = {0: {}}  # device names. did = 0 represents the vital recorder
         self.trks = {}
-        self.dtstart = 0
+        self.dtstart = 4000000000  # 2100
         self.dtend = 0
         try:
             sel_tids = set()
@@ -289,7 +286,7 @@ class VitalFile:
                     tid = unpack_w(buf, pos)[0]; pos += 2
                     pos = 2 + infolen
 
-                    if self.dtstart == 0 or dt < self.dtstart:
+                    if dt < self.dtstart:
                         self.dtstart = dt
                     
                     # TODO: dtrec end 는 다를 수 있음 wav 읽어서 nsamp 로딩해야함
@@ -386,9 +383,12 @@ def load_trks(tids, interval=1):
 
 
 def vital_recs(ipath, dtnames, interval=1):
-    # 만일 SNUADC/ECG_II,Solar8000
-    if dtnames.find(',') != -1:
-        dtnames = dtnames.split(',')
+    # 만일 SNUADC/ECG_II,Solar8000 형태의 문자열이면?
+    if isinstance(dtnames, str):
+        if dtnames.find(',') != -1:
+            dtnames = dtnames.split(',')
+        else:
+            dtnames = [dtnames]
 
     vf = VitalFile(ipath, dtnames)
     ret = []
