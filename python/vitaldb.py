@@ -67,8 +67,7 @@ class VitalFile:
         # 리턴 할 길이
         nret = int(np.ceil((self.dtend - self.dtstart) / interval))
 
-        srate = trk['srate']
-        if srate == 0:  # numeric track
+        if trk['type'] == 2:  # numeric track
             ret = np.full(nret, np.nan)  # create a dense array
             for rec in trk['recs']:  # copy values
                 idx = int((rec['dt'] - self.dtstart) / interval)
@@ -78,7 +77,8 @@ class VitalFile:
                     idx = nret
                 ret[idx] = rec['val']
             return ret
-        else:  # wave track
+        elif trk['type'] == 1:  # wave track
+            srate = trk['srate']
             recs = trk['recs']
 
             # 자신의 srate 만큼 공간을 미리 확보
@@ -211,53 +211,55 @@ class VitalFile:
                     break
                 pos = 0
 
-                type = unpack_b(buf, pos)[0]; pos += 1
-                datalen = unpack_dw(buf, pos)[0]; pos += 4
+                packet_type = unpack_b(buf, pos)[0]; pos += 1
+                packet_len = unpack_dw(buf, pos)[0]; pos += 4
 
-                buf = f.read(datalen)
+                buf = f.read(packet_len)
                 if buf == b'':
                     break
                 pos = 0
 
-                if type == 9:  # devinfo
+                if packet_type == 9:  # devinfo
                     did = unpack_dw(buf, pos)[0]; pos += 4
-                    type, pos = unpack_str(buf, pos)
+                    devtype, pos = unpack_str(buf, pos)
                     name, pos = unpack_str(buf, pos)
                     port, pos = unpack_str(buf, pos)
-                    self.devs[did] = {'name': name, 'type': type, 'port': port}
-                elif type == 0:  # trkinfo
+                    if not name:
+                        name = devtype
+                    self.devs[did] = {'name': name, 'type': devtype, 'port': port}
+                elif packet_type == 0:  # trkinfo
                     did = col = 0
                     montype = unit = ''
                     gain = offset = srate = mindisp = maxdisp = 0.0
                     tid = unpack_w(buf, pos)[0]; pos += 2
-                    type = unpack_b(buf, pos)[0]; pos += 1
+                    trktype = unpack_b(buf, pos)[0]; pos += 1
                     fmt = unpack_b(buf, pos)[0]; pos += 1
                     tname, pos = unpack_str(buf, pos)
 
-                    if datalen > pos:
+                    if packet_len > pos:
                         unit, pos = unpack_str(buf, pos)
-                    if datalen > pos:
+                    if packet_len > pos:
                         mindisp = unpack_f(buf, pos)[0]
                         pos += 4
-                    if datalen > pos:
+                    if packet_len > pos:
                         maxdisp = unpack_f(buf, pos)[0]
                         pos += 4
-                    if datalen > pos:
+                    if packet_len > pos:
                         col = unpack_dw(buf, pos)[0]
                         pos += 4
-                    if datalen > pos:
+                    if packet_len > pos:
                         srate = unpack_f(buf, pos)[0]
                         pos += 4
-                    if datalen > pos:
+                    if packet_len > pos:
                         gain = unpack_d(buf, pos)[0]
                         pos += 8
-                    if datalen > pos:
+                    if packet_len > pos:
                         offset = unpack_d(buf, pos)[0]
                         pos += 8
-                    if datalen > pos:
+                    if packet_len > pos:
                         montype = unpack_b(buf, pos)[0]
                         pos += 1
-                    if datalen > pos:
+                    if packet_len > pos:
                         did = unpack_dw(buf, pos)[0]
                         pos += 4
 
@@ -277,10 +279,10 @@ class VitalFile:
                             continue
 
                     # sels가 None 이거나 사용자가 원하는 sel 일 때
-                    self.trks[tid] = {'name': tname, 'type': type, 'fmt': fmt, 'unit': unit, 'srate': srate,
+                    self.trks[tid] = {'name': tname, 'type': trktype, 'fmt': fmt, 'unit': unit, 'srate': srate,
                                       'mindisp': mindisp, 'maxdisp': maxdisp, 'col': col, 'montype': montype,
                                       'gain': gain, 'offset': offset, 'did': did, 'recs': []}
-                elif type == 1:  # rec
+                elif packet_type == 1:  # rec
                     infolen = unpack_w(buf, pos)[0]; pos += 2
                     dt = unpack_d(buf, pos)[0]; pos += 8
                     tid = unpack_w(buf, pos)[0]; pos += 2
@@ -319,7 +321,7 @@ class VitalFile:
                         pos += 4  # skip
                         str, pos = unpack_str(buf, pos)
                         trk['recs'].append({'dt': dt, 'val': str})
-                elif type == 6:  # cmd
+                elif packet_type == 6:  # cmd
                     cmd = unpack_b(buf, pos)[0]; pos += 1
                     if cmd == 6:  # reset events
                         evt_trk = self.find_track('/EVENT')
@@ -415,6 +417,8 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
+    vals = vital_recs(r"\\Vitalnew\vital_data\Monthly_2_Merged_Cleaned\SNUH_OR\Pediatric\201901\P1\190112\P1_190112_115705.vital", 'Solar8000/PLETH_SPO2')
+
     vals = load_trks([
         'eb1e6d9a963d7caab8f00993cd85bf31931b7a32',
         '29cef7b8fe2cc84e69fd143da510949b3c271314',
