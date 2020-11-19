@@ -53,8 +53,8 @@ def parse_fmt(fmt):
 
 
 class VitalFile:
-    def __init__(self, ipath, sels=None):
-        self.load_vital(ipath, sels)
+    def __init__(self, ipath, dtnames=None):
+        self.load_vital(ipath, dtnames)
 
     def get_samples(self, dtname, interval=1):
         if not interval:
@@ -182,8 +182,8 @@ class VitalFile:
         f.close()
         return True
 
-    def load_vital(self, ipath, sels=None):
-        # sels: 로딩을 원하는 dtname 의 리스트. sels가 None 이면 트랙 목록만 읽혀짐
+    def load_vital(self, ipath, dtnames=None):
+        # dtnames: 로딩을 원하는 dtname 의 리스트. dtnames가 None 이면 트랙 목록만 읽혀짐
         f = gzip.GzipFile(ipath, 'rb')
 
         # parse header
@@ -271,14 +271,14 @@ class VitalFile:
                         dname = self.devs[did]['name']
                     dtname = dname + '/' + tname
 
-                    if sels:
-                        if dtname in sels:
+                    if dtnames:
+                        if dtname in dtnames:
                             # 앞으로는 sel_tids 에서 체크한다
                             sel_tids.add(tid)
                         else:
                             continue
 
-                    # sels가 None 이거나 사용자가 원하는 sel 일 때
+                    # dtnames가 None 이거나 사용자가 원하는 sel 일 때
                     self.trks[tid] = {'name': tname, 'type': trktype, 'fmt': fmt, 'unit': unit, 'srate': srate,
                                       'mindisp': mindisp, 'maxdisp': maxdisp, 'col': col, 'montype': montype,
                                       'gain': gain, 'offset': offset, 'did': did, 'recs': []}
@@ -295,7 +295,7 @@ class VitalFile:
                     if dt > self.dtend:
                         self.dtend = dt
 
-                    if not sels:  # sels 가 None 이면 트랙 목록만 읽혀짐
+                    if not dtnames:  # dtnames 가 None 이면 트랙 목록만 읽혀짐
                         continue
 
                     if tid not in self.trks:  # 이전 정보가 없는 트랙이거나
@@ -319,8 +319,8 @@ class VitalFile:
                         trk['recs'].append({'dt': dt, 'val': val})
                     elif trk['type'] == 5:  # str
                         pos += 4  # skip
-                        str, pos = unpack_str(buf, pos)
-                        trk['recs'].append({'dt': dt, 'val': str})
+                        s, pos = unpack_str(buf, pos)
+                        trk['recs'].append({'dt': dt, 'val': s})
                 elif packet_type == 6:  # cmd
                     cmd = unpack_b(buf, pos)[0]; pos += 1
                     if cmd == 6:  # reset events
@@ -396,7 +396,6 @@ def vital_recs(ipath, dtnames, interval=1):
     ret = []
     for dtname in dtnames:
         ret.append(vf.get_samples(dtname, interval))
-
     return np.transpose(ret)
 
 
@@ -417,7 +416,8 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
-    vals = vital_recs(r"\\Vitalnew\vital_data\Monthly_2_Merged_Cleaned\SNUH_OR\Pediatric\201901\P1\190112\P1_190112_115705.vital", 'Solar8000/PLETH_SPO2')
+    #vals = vital_recs(r"PACU1_4_200121_210536.vital", 'SNUADCW/PLETH')
+    #print(vals)
 
     vals = load_trks([
         'eb1e6d9a963d7caab8f00993cd85bf31931b7a32',
