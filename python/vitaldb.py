@@ -345,7 +345,7 @@ class VitalFile:
 def load_trk(tid, interval=1):
     try:
         url = 'https://api.vitaldb.net/' + tid
-        dtvals = pd.read_csv(url).values
+        dtvals = pd.read_csv(url, na_values='-nan(ind)').values
     except:
         return np.empty(0)
 
