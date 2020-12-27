@@ -100,8 +100,9 @@ class VitalFile:
                 ret[sidx:eidx] = rec['val'][srecidx:erecidx]
 
             # gain offset 변환
-            ret *= trk['gain']
-            ret += trk['offset']
+            if trk['fmt'] > 2:  # 1: float, 2: double
+                ret *= trk['gain']
+                ret += trk['offset']
 
             # 리샘플 변환
             if srate != int(1 / interval + 0.5):
@@ -416,8 +417,9 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
-    #vals = vital_recs(r"PACU1_4_200121_210536.vital", 'SNUADCW/PLETH')
-    #print(vals)
+    vals = vital_recs(r"PACU1_2_190828_105401.vital", 'SNUADCW/ECG_II')
+    print(vals)
+    quit()
 
     vals = load_trks([
         'eb1e6d9a963d7caab8f00993cd85bf31931b7a32',
