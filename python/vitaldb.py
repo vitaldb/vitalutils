@@ -2,15 +2,18 @@ import gzip
 import scipy.signal
 import numpy as np
 import pandas as pd
+import datetime
 from struct import pack, unpack_from, Struct
 
 unpack_b = Struct('<b').unpack_from
 unpack_w = Struct('<H').unpack_from
+unpack_s = Struct('<h').unpack_from
 unpack_f = Struct('<f').unpack_from
 unpack_d = Struct('<d').unpack_from
 unpack_dw = Struct('<L').unpack_from
 pack_b = Struct('<b').pack
 pack_w = Struct('<H').pack
+pack_s = Struct('<h').pack
 pack_f = Struct('<f').pack
 pack_d = Struct('<d').pack
 pack_dw = Struct('<L').pack
@@ -68,8 +71,8 @@ class VitalFile:
         nret = int(np.ceil((self.dtend - self.dtstart) / interval))
 
         if trk['type'] == 2:  # numeric track
-            ret = np.full(nret, np.nan)  # create a dense array
-            for rec in trk['recs']:  # copy values
+            ret = np.full(nret, np.nan)  # create a dense array
+            for rec in trk['recs']:  # copy values
                 idx = int((rec['dt'] - self.dtstart) / interval)
                 if idx < 0:
                     idx = 0
@@ -112,18 +115,17 @@ class VitalFile:
 
         return None
 
-
     def find_track(self, dtname):
         dname = None
         tname = dtname
         if dtname.find('/') != -1:
             dname, tname = dtname.split('/')
 
-        for trk in self.trks.values():  # find event track
+        for trk in self.trks.values():  # find track
             if trk['name'] == tname:
                 did = trk['did']
-                if did == 0 and not dname:
-                    return trk
+                if did == 0 or not dname:
+                    return trk                    
                 if did in self.devs:
                     dev = self.devs[did]
                     if 'name' in dev and dname == dev['name']:
@@ -191,19 +193,22 @@ class VitalFile:
         if f.read(4) != b'VITA':  # check sign
             return False
 
-        f.read(4)  # version
+        f.read(4)  # file version
+
         buf = f.read(2)
         if buf == b'':
             return False
 
         headerlen = unpack_w(buf, 0)[0]
         self.header = f.read(headerlen)  # skip header
+        self.dgmt = unpack_s(self.header, 0)[0]  # ut - dgmt = localtime
 
         # parse body
         self.devs = {0: {}}  # device names. did = 0 represents the vital recorder
         self.trks = {}
         self.dtstart = 0
         self.dtend = 0
+
         try:
             sel_tids = set()
             while True:
@@ -264,20 +269,27 @@ class VitalFile:
                         did = unpack_dw(buf, pos)[0]
                         pos += 4
 
-                    if not did and did not in self.devs:
-                        continue
-
-                    dname = ''
                     if did and did in self.devs:
-                        dname = self.devs[did]['name']
-                    dtname = dname + '/' + tname
+                        dname = ''
+                        if did and did in self.devs:
+                            dname = self.devs[did]['name']
+                        dtname = dname + '/' + tname
+                    else:
+                        dtname = tname
 
-                    if dtnames:
+                    if dtnames:  # 사용자가 특정 트랙만 읽으라고 했을 때
+                        matched = False
                         if dtname in dtnames:
-                            # 앞으로는 sel_tids 에서 체크한다
-                            sel_tids.add(tid)
+                            matched = True
                         else:
+                            for sel_dtname in dtnames:
+                                if dtname.endswith('/' + sel_dtname): # 트랙명만 지정일 때
+                                    matched = True
+                                    sel_tids.add(tid)
+                                    break
+                        if not matched:
                             continue
+                        sel_tids.add(tid)  # 앞으로는 sel_tids 에서 체크한다
 
                     # dtnames가 None 이거나 사용자가 원하는 sel 일 때
                     self.trks[tid] = {'name': tname, 'type': trktype, 'fmt': fmt, 'unit': unit, 'srate': srate,
@@ -353,9 +365,9 @@ def load_trk(tid, interval=1):
     if len(dtvals) == 0:
         return np.empty(0)
     
-    dtvals[:,0] /= interval  # convert time to row
+    dtvals[:,0] /= interval  # convert time to row
     nsamp = int(np.nanmax(dtvals[:,0])) + 1  # find maximum index (array length)
-    ret = np.full(nsamp, np.nan)  # create a dense array
+    ret = np.full(nsamp, np.nan)  # create a dense array
     
     if np.isnan(dtvals[:,0]).any():  # wave track
         if nsamp != len(dtvals):  # resample
@@ -363,7 +375,7 @@ def load_trk(tid, interval=1):
         else:
             ret = dtvals[:,1]
     else:  # numeric track
-        for idx, val in dtvals:  # copy values
+        for idx, val in dtvals:  # copy values
             ret[int(idx)] = val
 
     return ret
@@ -379,13 +391,16 @@ def load_trks(tids, interval=1):
             maxlen = len(trk)
     if maxlen == 0:
         return np.empty(0)
-    ret = np.full((maxlen, len(tids)), np.nan)  # create a dense array
-    for i in range(len(tids)):  # copy values
+    ret = np.full((maxlen, len(tids)), np.nan)  # create a dense array
+    for i in range(len(tids)):  # copy values
         ret[:len(trks[i]), i] = trks[i]
     return ret
 
 
-def vital_recs(ipath, dtnames, interval=1):
+def vital_recs(ipath, dtnames, interval=1, return_timestamp=False, return_datetime=False):
+    if not dtnames:
+        return []
+
     # 만일 SNUADC/ECG_II,Solar8000 형태의 문자열이면?
     if isinstance(dtnames, str):
         if dtnames.find(',') != -1:
@@ -397,7 +412,24 @@ def vital_recs(ipath, dtnames, interval=1):
     ret = []
     for dtname in dtnames:
         ret.append(vf.get_samples(dtname, interval))
-    return np.transpose(ret)
+    if not ret:
+        return []
+
+    # return time column
+    if return_datetime:
+        # in this case, numpy array with object type will be returned
+        tzi = datetime.timezone(-datetime.timedelta(minutes=vf.dgmt))
+        datetime.datetime.fromtimestamp(vf.dtstart + i, tzi)
+        dtrows = []
+        for i in range(len(ret[0])):
+            dtrows.append()
+        ret.insert(0, [dtrows])
+    elif return_timestamp:
+        ret.insert(0, np.arange(vf.dtstart, vf.dtstart + len(ret[0])))
+
+    ret = np.transpose(ret)
+
+    return ret
 
 
 def vital_trks(ipath):
@@ -417,7 +449,7 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
-    vals = vital_recs(r"PACU1_2_190828_105401.vital", 'SNUADCW/ECG_II')
+    vals = vital_recs("1.vital", 'ART_MBP', return_timestamp=True)
     print(vals)
     quit()
 
