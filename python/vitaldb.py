@@ -409,9 +409,17 @@ def vital_recs(ipath, dtnames, interval=1, return_timestamp=False, return_dateti
             dtnames = [dtnames]
 
     vf = VitalFile(ipath, dtnames)
+
+    nrows = int(np.ceil((vf.dtend - vf.dtstart) / interval))
+    if not nrows:
+        return []
+
     ret = []
     for dtname in dtnames:
-        ret.append(vf.get_samples(dtname, interval))
+        col = vf.get_samples(dtname, interval)
+        if col is None:
+            col = np.full(nrows, np.nan)
+        ret.append(col)
     if not ret:
         return []
 
