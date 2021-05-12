@@ -439,7 +439,6 @@ def vital_recs(ipath, dtnames, interval=1, return_timestamp=False, return_dateti
 
     return ret
 
-
 def vital_trks(ipath):
     # 트랙 목록만 읽어옴
     ret = []
@@ -454,6 +453,65 @@ def vital_trks(ipath):
                 dname = dev['name']
         ret.append(dname + '/' + tname)
     return ret
+
+
+# api files
+dftrks = None
+
+def load_case(tnames, caseid=None, interval=1):
+    global dftrks
+
+    if not caseid:
+        return None
+    if dftrks is None:
+        dftrks = pd.read_csv("https://api.vitaldb.net/trks")
+
+    tids = []
+    for tname in tnames:
+        tid = dftrks[(dftrks['caseid'] == caseid) & (dftrks['tname'] == tname)]['tid'].values[0]
+        tids.append(tid)
+    
+    return load_trks(tids, interval)
+
+
+def load_cases(tnames, caseids=None, interval=1, maxcases=1):
+    global dftrks
+
+    # find the caseids which contains tnames
+    if not isinstance(tnames, list):
+        if isinstance(tnames, str):
+            tnames = tnames.split(',')
+        else:
+            return None
+
+    if interval == 0:
+        return None
+
+    if not caseids:
+        if dftrks is None:
+            dftrks = pd.read_csv("https://api.vitaldb.net/trks")
+
+        # filter cases which don't have all tnames
+        caseids = None
+        for tname in tnames:
+            matched = set(dftrks[dftrks['tname'] == tname]['caseid'])
+            if caseids is None:
+                caseids = matched
+            else:
+                caseids = caseids & matched
+        
+    cases = {}
+    for caseid in caseids:
+        case = load_case(tnames, caseid, interval)
+        if case is None:
+            continue
+        if len(case) == 0:
+            continue
+        cases[caseid] = case
+        if len(cases) >= maxcases:
+            break
+
+    return cases
 
 
 if __name__ == '__main__':
