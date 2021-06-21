@@ -186,6 +186,12 @@ class VitalFile:
         return True
 
     def load_vital(self, ipath, dtnames=None):
+        if isinstance(dtnames, str):
+            if dtnames.find(','):
+                dtnames = dtnames.split(',')
+            else:
+                dtnames = [dtnames]
+
         # dtnames: 로딩을 원하는 dtname 의 리스트. dtnames가 None 이면 트랙 목록만 읽혀짐
         f = gzip.GzipFile(ipath, 'rb')
 
@@ -229,7 +235,8 @@ class VitalFile:
                     did = unpack_dw(buf, pos)[0]; pos += 4
                     devtype, pos = unpack_str(buf, pos)
                     name, pos = unpack_str(buf, pos)
-                    port, pos = unpack_str(buf, pos)
+                    if len(buf) > pos + 4:  # port는 없을 수 있다
+                        port, pos = unpack_str(buf, pos)
                     if not name:
                         name = devtype
                     self.devs[did] = {'name': name, 'type': devtype, 'port': port}
@@ -269,8 +276,8 @@ class VitalFile:
                         did = unpack_dw(buf, pos)[0]
                         pos += 4
 
+                    dname = ''
                     if did and did in self.devs:
-                        dname = ''
                         if did and did in self.devs:
                             dname = self.devs[did]['name']
                         dtname = dname + '/' + tname
@@ -279,20 +286,21 @@ class VitalFile:
 
                     if dtnames:  # 사용자가 특정 트랙만 읽으라고 했을 때
                         matched = False
-                        if dtname in dtnames:
+                        if dtname in dtnames:  # dtname (현재 읽고 있는 트랙명)이 dtnames에 지정된 것과 정확히 일치할 때
                             matched = True
                         else:
                             for sel_dtname in dtnames:
-                                if dtname.endswith('/' + sel_dtname): # 트랙명만 지정일 때
+                                if dtname.endswith('/' + sel_dtname) or (dname + '/*' == sel_dtname): # 트랙명만 지정 or 특정 장비의 모든 트랙일 때
                                     matched = True
                                     sel_tids.add(tid)
                                     break
+                                    
                         if not matched:
                             continue
                         sel_tids.add(tid)  # 앞으로는 sel_tids 에서 체크한다
 
                     # dtnames가 None 이거나 사용자가 원하는 sel 일 때
-                    self.trks[tid] = {'name': tname, 'type': trktype, 'fmt': fmt, 'unit': unit, 'srate': srate,
+                    self.trks[tid] = {'name': tname, 'dtname': dtname, 'type': trktype, 'fmt': fmt, 'unit': unit, 'srate': srate,
                                       'mindisp': mindisp, 'maxdisp': maxdisp, 'col': col, 'montype': montype,
                                       'gain': gain, 'offset': offset, 'did': did, 'recs': []}
                 elif packet_type == 1:  # rec
@@ -396,8 +404,7 @@ def load_trks(tids, interval=1):
         ret[:len(trks[i]), i] = trks[i]
     return ret
 
-
-def vital_recs(ipath, dtnames, interval=1, return_timestamp=False, return_datetime=False):
+def vital_recs(ipath, dtnames, interval=0.3, return_timestamp=False, return_datetime=False):
     if not dtnames:
         return []
 
@@ -424,16 +431,13 @@ def vital_recs(ipath, dtnames, interval=1, return_timestamp=False, return_dateti
         return []
 
     # return time column
-    if return_datetime:
-        # in this case, numpy array with object type will be returned
-        tzi = datetime.timezone(-datetime.timedelta(minutes=vf.dgmt))
-        datetime.datetime.fromtimestamp(vf.dtstart + i, tzi)
-        dtrows = []
-        for i in range(len(ret[0])):
-            dtrows.append()
-        ret.insert(0, [dtrows])
+    if return_datetime: # in this case, numpy array with object type will be returned
+        tzi = datetime.timezone(datetime.timedelta(minutes=-vf.dgmt))
+        dts = datetime.datetime.fromtimestamp(vf.dtstart, tzi)
+        dte = dts + datetime.timedelta(seconds=len(ret[0]))
+        ret.insert(0, [dts + datetime.timedelta(seconds=i*interval) for i in range(len(ret[0]))])
     elif return_timestamp:
-        ret.insert(0, np.arange(vf.dtstart, vf.dtstart + len(ret[0])))
+        ret.insert(0, np.arange(vf.dtstart, vf.dtstart + len(ret[0], interval)))
 
     ret = np.transpose(ret)
 
@@ -515,7 +519,7 @@ def load_cases(tnames, caseids=None, interval=1, maxcases=1):
 
 
 if __name__ == '__main__':
-    vals = vital_recs("1.vital", 'ART_MBP', return_timestamp=True)
+    vals = vital_recs("1.vital", 'ART_MBP', return_datetime=True)
     print(vals)
     quit()
 
