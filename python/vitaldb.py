@@ -437,7 +437,7 @@ def vital_recs(ipath, dtnames, interval=0.3, return_timestamp=False, return_date
         dte = dts + datetime.timedelta(seconds=len(ret[0]))
         ret.insert(0, [dts + datetime.timedelta(seconds=i*interval) for i in range(len(ret[0]))])
     elif return_timestamp:
-        ret.insert(0, np.arange(vf.dtstart, vf.dtstart + len(ret[0], interval)))
+        ret.insert(0, np.arange(vf.dtstart, vf.dtend, interval))
 
     ret = np.transpose(ret)
 
@@ -519,7 +519,7 @@ def load_cases(tnames, caseids=None, interval=1, maxcases=1):
 
 
 if __name__ == '__main__':
-    vals = vital_recs("1.vital", 'ART_MBP', return_datetime=True)
+    vals = vital_recs("1.vital", 'ART_MBP', return_timestamp=True)
     print(vals)
     quit()
 
