@@ -364,6 +364,9 @@ class VitalFile:
 
 
 def load_trk(tid, interval=1):
+    if isinstance(tid, list) or isinstance(tid, set) or isinstance(tid, tuple):
+        return load_trks(tid, interval)
+
     try:
         url = 'https://api.vitaldb.net/' + tid
         dtvals = pd.read_csv(url, na_values='-nan(ind)').values
@@ -465,6 +468,9 @@ dftrks = None
 def load_case(tnames, caseid=None, interval=1):
     global dftrks
 
+    if isinstance(caseid, list) or isinstance(caseid, set) or isinstance(caseid, tuple):
+        return load_cases(tnames, caseid, interval, 9999)
+
     if not caseid:
         return None
     if dftrks is None:
@@ -478,7 +484,7 @@ def load_case(tnames, caseid=None, interval=1):
     return load_trks(tids, interval)
 
 
-def load_cases(tnames, caseids=None, interval=1, maxcases=1):
+def load_cases(tnames, caseids=None, interval=1, maxcases=100):
     global dftrks
 
     # find the caseids which contains tnames
