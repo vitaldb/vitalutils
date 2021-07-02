@@ -57,6 +57,8 @@ def parse_fmt(fmt):
 
 class VitalFile:
     def __init__(self, ipath, dtnames=None):
+        if ipath[-6:] != '.vital':
+            return
         self.load_vital(ipath, dtnames)
 
     def get_samples(self, dtname, interval=1):
@@ -419,7 +421,6 @@ def vital_recs(ipath, dtnames, interval=0.3, return_timestamp=False, return_date
             dtnames = [dtnames]
 
     vf = VitalFile(ipath, dtnames)
-
     nrows = int(np.ceil((vf.dtend - vf.dtstart) / interval))
     if not nrows:
         return []
