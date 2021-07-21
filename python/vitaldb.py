@@ -57,8 +57,6 @@ def parse_fmt(fmt):
 
 class VitalFile:
     def __init__(self, ipath, dtnames=None):
-        if ipath[-6:] != '.vital':
-            return
         self.load_vital(ipath, dtnames)
 
     def get_samples(self, dtname, interval=1):
@@ -409,7 +407,7 @@ def load_trks(tids, interval=1):
         ret[:len(trks[i]), i] = trks[i]
     return ret
 
-def vital_recs(ipath, dtnames, interval=0.3, return_timestamp=False, return_datetime=False):
+def vital_recs(ipath, dtnames, interval=0.3, return_timestamp=False, return_datetime=False, return_dtstart=False):
     if not dtnames:
         return []
 
@@ -421,6 +419,7 @@ def vital_recs(ipath, dtnames, interval=0.3, return_timestamp=False, return_date
             dtnames = [dtnames]
 
     vf = VitalFile(ipath, dtnames)
+
     nrows = int(np.ceil((vf.dtend - vf.dtstart) / interval))
     if not nrows:
         return []
@@ -445,6 +444,9 @@ def vital_recs(ipath, dtnames, interval=0.3, return_timestamp=False, return_date
 
     ret = np.transpose(ret)
 
+    if return_dtstart:
+        return ret, vf.dtstart
+        
     return ret
 
 def vital_trks(ipath):
