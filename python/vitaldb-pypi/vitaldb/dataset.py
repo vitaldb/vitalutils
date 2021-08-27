@@ -49,7 +49,7 @@ def load_trks(tids, interval=1):
 # open dataset trks
 dftrks = None
 
-def load_case(tnames, caseid=None, interval=1):
+def load_case(caseid=None, tnames=None, interval=1):
     global dftrks
 
     if isinstance(caseid, list) or isinstance(caseid, set) or isinstance(caseid, tuple):
@@ -68,7 +68,7 @@ def load_case(tnames, caseid=None, interval=1):
     return load_trks(tids, interval)
 
 
-def load_cases(tnames, caseids=None, interval=1, maxcases=100):
+def load_cases(caseids=None, tnames=None, interval=1, maxcases=100):
     global dftrks
 
     # find the caseids which contains tnames
