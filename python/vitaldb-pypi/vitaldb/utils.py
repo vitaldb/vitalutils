@@ -408,7 +408,7 @@ def vital_recs(ipath, dtnames, interval=0.3, return_timestamp=False, return_date
         dte = dts + datetime.timedelta(seconds=len(ret[0]))
         ret.insert(0, [dts + datetime.timedelta(seconds=i*interval) for i in range(len(ret[0]))])
     elif return_timestamp:
-        ret.insert(0, np.arange(vf.dtstart, vf.dtend, interval))
+        ret.insert(0, vf.dtstart + np.arange(len(ret[0])) * interval)
 
     ret = np.transpose(ret)
 
