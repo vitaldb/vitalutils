@@ -49,11 +49,8 @@ def load_trks(tids, interval=1):
 # open dataset trks
 dftrks = None
 
-def load_case(caseid=None, tnames=None, interval=1):
+def load_case(caseid, tnames, interval=1):
     global dftrks
-
-    if isinstance(caseid, list) or isinstance(caseid, set) or isinstance(caseid, tuple):
-        return load_cases(tnames, caseid, interval, 9999)
 
     if not caseid:
         return None
@@ -66,46 +63,6 @@ def load_case(caseid=None, tnames=None, interval=1):
         tids.append(tid)
     
     return load_trks(tids, interval)
-
-
-def load_cases(caseids=None, tnames=None, interval=1, maxcases=100):
-    global dftrks
-
-    # find the caseids which contains tnames
-    if not isinstance(tnames, list):
-        if isinstance(tnames, str):
-            tnames = tnames.split(',')
-        else:
-            return None
-
-    if interval == 0:
-        return None
-
-    if not caseids:
-        if dftrks is None:
-            dftrks = pd.read_csv("https://api.vitaldb.net/trks")
-
-        # filter cases which don't have all tnames
-        caseids = None
-        for tname in tnames:
-            matched = set(dftrks[dftrks['tname'] == tname]['caseid'])
-            if caseids is None:
-                caseids = matched
-            else:
-                caseids = caseids & matched
-        
-    cases = {}
-    for caseid in caseids:
-        case = load_case(tnames, caseid, interval)
-        if case is None:
-            continue
-        if len(case) == 0:
-            continue
-        cases[caseid] = case
-        if len(cases) >= maxcases:
-            break
-
-    return cases
 
 
 if __name__ == '__main__':

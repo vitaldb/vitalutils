@@ -2,5 +2,3 @@ version up in codes\setup.py
 
 python setup.py bdist_wheel
 twine upload dist\vitaldb-0.0.1-py3-none-any.whl
-
-lucid80/v2

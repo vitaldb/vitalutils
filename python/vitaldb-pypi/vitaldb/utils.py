@@ -3,6 +3,7 @@ import numpy as np
 import datetime
 import tempfile
 import shutil
+import pandas as pd
 from urllib import parse, request
 from struct import pack, unpack_from, Struct
 
@@ -57,8 +58,8 @@ def parse_fmt(fmt):
 
 
 class VitalFile:
-    def __init__(self, ipath, dtnames=None):
-        self.load_vital(ipath, dtnames)
+    def __init__(self, ipath, track_names=None, track_names_only=False, exclude=[]):
+        self.load_vital(ipath, track_names, track_names_only, exclude)
 
     def get_samples(self, dtname, interval=1):
         if not interval:
@@ -77,8 +78,8 @@ class VitalFile:
                 idx = int((rec['dt'] - self.dtstart) / interval)
                 if idx < 0:
                     idx = 0
-                elif idx > nret:
-                    idx = nret
+                elif idx >= nret:
+                    idx = nret - 1
                 ret[idx] = rec['val']
             return ret
         elif trk['type'] == 1:  # wave track
@@ -186,13 +187,24 @@ class VitalFile:
         f.close()
         return True
 
-    # dtnames: 로딩을 원하는 dtname 의 리스트. dtnames가 None 이면 트랙 목록만 읽혀짐
-    def load_vital(self, ipath, dtnames=None):
-        if isinstance(dtnames, str):
-            if dtnames.find(','):
-                dtnames = dtnames.split(',')
+    # track_names: 로딩을 원하는 dtname 의 리스트. track_names가 None 이면 모든 트랙이 읽혀짐
+    # track_names_only: 트랙명만 읽고 싶을 때
+    # exclude: 제외할 트랙
+    def load_vital(self, ipath, track_names=None, track_names_only=False, exclude=[]):
+        self.devs = {0: {}}  # device names. did = 0 represents the vital recorder
+        self.trks = {}
+        self.dtstart = 0
+        self.dtend = 0
+        self.max_srate = 0
+
+        # 제외할 트랙
+        exclude = set(exclude)
+
+        if isinstance(track_names, str):
+            if track_names.find(','):
+                track_names = track_names.split(',')
             else:
-                dtnames = [dtnames]
+                track_names = [track_names]
 
         # check if ipath is url
         iurl = parse.urlparse(ipath)
@@ -222,11 +234,6 @@ class VitalFile:
         self.dgmt = unpack_s(self.header, 0)[0]  # ut - dgmt = localtime
 
         # parse body
-        self.devs = {0: {}}  # device names. did = 0 represents the vital recorder
-        self.trks = {}
-        self.dtstart = 0
-        self.dtend = 0
-
         try:
             sel_tids = set()
             while True:
@@ -296,22 +303,33 @@ class VitalFile:
                     else:
                         dtname = tname
 
-                    if dtnames:  # 사용자가 특정 트랙만 읽으라고 했을 때
-                        matched = False
-                        if dtname in dtnames:  # dtname (현재 읽고 있는 트랙명)이 dtnames에 지정된 것과 정확히 일치할 때
-                            matched = True
-                        else:
-                            for sel_dtname in dtnames:
-                                if dtname.endswith('/' + sel_dtname) or (dname + '/*' == sel_dtname): # 트랙명만 지정 or 특정 장비의 모든 트랙일 때
-                                    matched = True
-                                    sel_tids.add(tid)
-                                    break
-                                    
-                        if not matched:
-                            continue
-                        sel_tids.add(tid)  # 앞으로는 sel_tids 에서 체크한다
+                    matched = False
+                    if not track_names:  # 사용자가 특정 트랙만 읽으라고 했을 때
+                        matched = True
+                    elif dtname in track_names:  # dtname (현재 읽고 있는 트랙명)이 track_names에 지정된 것과 정확히 일치할 때
+                        matched = True
+                    else:  # 정확히 일치하지는 않을 때
+                        for sel_dtname in track_names:
+                            if dtname.endswith('/' + sel_dtname) or (dname + '/*' == sel_dtname): # 트랙명만 지정 or 특정 장비의 모든 트랙일 때
+                                matched = True
+                                break
 
-                    # dtnames가 None 이거나 사용자가 원하는 sel 일 때
+                    if exclude and matched:  # 제외해야할 트랙이 있을 때
+                        if dtname in exclude:  # 제외해야할 트랙명과 정확히 일치할 때
+                            matched = False
+                        else:  # 정확히 일치하지는 않을 때
+                            for sel_dtname in exclude:
+                                if dtname.endswith('/' + sel_dtname) or (dname + '/*' == sel_dtname): # 트랙명만 지정 or 특정 장비의 모든 트랙일 때
+                                    matched = False
+                                    break
+                    
+                    if not matched:
+                        continue
+                    
+                    if srate and self.max_srate < srate:
+                        self.max_srate = srate
+
+                    sel_tids.add(tid)  # sel_tids 는 무조건 존재하고 앞으로는 sel_tids의 트랙만 로딩한다
                     self.trks[tid] = {'name': tname, 'dtname': dtname, 'type': trktype, 'fmt': fmt, 'unit': unit, 'srate': srate,
                                       'mindisp': mindisp, 'maxdisp': maxdisp, 'col': col, 'montype': montype,
                                       'gain': gain, 'offset': offset, 'did': did, 'recs': []}
@@ -328,15 +346,16 @@ class VitalFile:
                     if dt > self.dtend:
                         self.dtend = dt
 
-                    if not dtnames:  # dtnames 가 None 이면 트랙 목록만 읽혀짐
+                    if track_names_only:  # track_name 만 읽을 때
                         continue
 
                     if tid not in self.trks:  # 이전 정보가 없는 트랙이거나
                         continue
-                    if tid not in sel_tids:  # 사용자가 트랙 지정을 한 경우
+
+                    if tid not in sel_tids:  # 사용자가 트랙 지정을 했는데 그 트랙이 아니면
                         continue
 
-                    trk = self.trks[tid]  
+                    trk = self.trks[tid]
 
                     fmtlen = 4
                     # gain, offset 변환은 하지 않은 raw data 상태로만 로딩한다.
@@ -375,25 +394,36 @@ class VitalFile:
         return True
 
 
-def vital_recs(ipath, dtnames, interval=0.3, return_timestamp=False, return_datetime=False):
-    if not dtnames:
-        return []
-
+def vital_recs(ipath, track_names=None, interval=None, return_timestamp=False, return_datetime=False, return_pandas=False, exclude=[]):
+    '''
+    interval: 데이터 추출 간격, None 이면 최대 해상도. wave 트랙이 없으면 0.002 초 (500Hz)
+    '''
     # 만일 SNUADC/ECG_II,Solar8000 형태의 문자열이면?
-    if isinstance(dtnames, str):
-        if dtnames.find(',') != -1:
-            dtnames = dtnames.split(',')
+    if isinstance(track_names, str):
+        if track_names.find(',') != -1:
+            track_names = track_names.split(',')
         else:
-            dtnames = [dtnames]
+            track_names = [track_names]
 
-    vf = VitalFile(ipath, dtnames)
+    vf = VitalFile(ipath, track_names, exclude=exclude)
+    if not track_names:
+        track_names = [trk['dtname'] for trk in vf.trks.values()]
+    
+    # remove duplicates
+    track_names = list(dict.fromkeys(track_names))
+    
+    # 안전을 위한 체크
+    if not interval:
+        interval = vf.max_srate
+    if not interval:  # 500 Hz
+        interval = 0.002
 
     nrows = int(np.ceil((vf.dtend - vf.dtstart) / interval))
     if not nrows:
         return []
 
     ret = []
-    for dtname in dtnames:
+    for dtname in track_names:
         col = vf.get_samples(dtname, interval)
         if col is None:
             col = np.full(nrows, np.nan)
@@ -404,20 +434,23 @@ def vital_recs(ipath, dtnames, interval=0.3, return_timestamp=False, return_date
     # return time column
     if return_datetime: # in this case, numpy array with object type will be returned
         tzi = datetime.timezone(datetime.timedelta(minutes=-vf.dgmt))
-        dts = datetime.datetime.fromtimestamp(vf.dtstart, tzi)
-        dte = dts + datetime.timedelta(seconds=len(ret[0]))
-        ret.insert(0, [dts + datetime.timedelta(seconds=i*interval) for i in range(len(ret[0]))])
+        ret.insert(0, datetime.datetime.fromtimestamp(vf.dtstart, tzi) + np.arange(len(ret[0])) * datetime.timedelta(seconds=interval))
+        track_names = ['Time'] + track_names
     elif return_timestamp:
         ret.insert(0, vf.dtstart + np.arange(len(ret[0])) * interval)
+        track_names = ['Time'] + track_names
 
     ret = np.transpose(ret)
+
+    if return_pandas:
+        return pd.DataFrame(ret, columns=track_names)
 
     return ret
 
 def vital_trks(ipath):
     # 트랙 목록만 읽어옴
     ret = []
-    vf = VitalFile(ipath)
+    vf = VitalFile(ipath, track_names_only=True)
     for trk in vf.trks.values():
         tname = trk['name']
         dname = ''
@@ -431,7 +464,5 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
-    trks = vital_trks("00001.vital")
-    print(trks)
-    vals = vital_recs("https://vitaldb.net/samples/00001.vital", 'ART_MBP', return_timestamp=True)
+    vals = vital_recs("https://vitaldb.net/samples/00001.vital", return_datetime=True, return_pandas=True)
     print(vals)
