@@ -6,6 +6,7 @@ import shutil
 import pandas as pd
 from urllib import parse, request
 from struct import pack, unpack_from, Struct
+import s3fs
 
 unpack_b = Struct('<b').unpack_from
 unpack_w = Struct('<H').unpack_from
@@ -73,7 +74,17 @@ class VitalFile:
         nret = int(np.ceil((self.dtend - self.dtstart) / interval))
 
         if trk['type'] == 2:  # numeric track
-            ret = np.full(nret, np.nan)  # create a dense array
+            ret = np.full(nret, np.nan, dtype=float)  # create a dense array
+            for rec in trk['recs']:  # copy values
+                idx = int((rec['dt'] - self.dtstart) / interval)
+                if idx < 0:
+                    idx = 0
+                elif idx >= nret:
+                    idx = nret - 1
+                ret[idx] = rec['val']
+            return ret
+        elif trk['type'] == 5:  # str track
+            ret = np.full(nret, np.nan, dtype='object')  # create a dense array
             for rec in trk['recs']:  # copy values
                 idx = int((rec['dt'] - self.dtstart) / interval)
                 if idx < 0:
@@ -209,10 +220,14 @@ class VitalFile:
         # check if ipath is url
         iurl = parse.urlparse(ipath)
         if iurl.scheme and iurl.netloc:
-            response = request.urlopen(ipath)
-            f = tempfile.NamedTemporaryFile(delete=True)
-            shutil.copyfileobj(response, f)
-            f.seek(0)
+            if iurl.scheme == 's3':
+                fs = s3fs.S3FileSystem(anon=False)
+                f = fs.open(iurl.netloc + iurl.path, 'rb')
+            else:
+                response = request.urlopen(ipath)
+                f = tempfile.NamedTemporaryFile(delete=True)
+                shutil.copyfileobj(response, f)
+                f.seek(0)
         else:
             f = open(ipath, 'rb')
 
@@ -440,11 +455,13 @@ def vital_recs(ipath, track_names=None, interval=None, return_timestamp=False, r
         ret.insert(0, vf.dtstart + np.arange(len(ret[0])) * interval)
         track_names = ['Time'] + track_names
 
-    ret = np.transpose(ret)
-
     if return_pandas:
+        # ret = np.transpose(ret)
+        # return pd.DataFrame(ret, columns=track_names)
+        ret = {track_names[i] : ret[i] for i in range(len(track_names))}
         return pd.DataFrame(ret, columns=track_names)
 
+    ret = np.transpose(ret)
     return ret
 
 def vital_trks(ipath):
@@ -464,5 +481,5 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
-    vals = vital_recs("https://vitaldb.net/samples/00001.vital", return_datetime=True, return_pandas=True)
+    vals = vital_recs("https://vitaldb.net/samples/00001.vital", return_timestamp=True, return_pandas=True)
     print(vals)

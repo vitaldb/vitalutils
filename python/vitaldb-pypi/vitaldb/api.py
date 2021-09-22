@@ -52,9 +52,11 @@ if __name__ == '__main__':
     DOWNLOAD_DIR = "Download"
     if not os.path.exists(DOWNLOAD_DIR):
         os.mkdir(DOWNLOAD_DIR)
+
     # issue access token
     if login(id="vitaldb_test", pw="vitaldb_test"):
-        for f in filelist():
+        files = filelist()
+        for f in files:
             print("Downloading: " + f['filename'], end='...', flush=True)
             opath = DOWNLOAD_DIR + '/' + f['filename']
             if os.path.isfile(opath): # check if file exists

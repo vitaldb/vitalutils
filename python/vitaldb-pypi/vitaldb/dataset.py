@@ -34,15 +34,23 @@ def load_trks(tids, interval=1):
     trks = []
     maxlen = 0
     for tid in tids:
-        trk = load_trk(tid, interval)
-        trks.append(trk)
-        if len(trk) > maxlen:
-            maxlen = len(trk)
+        if tid:
+            trk = load_trk(tid, interval)
+            trks.append(trk)
+            if len(trk) > maxlen:
+                maxlen = len(trk)
+        else:
+            trks.append(None)
+
     if maxlen == 0:
         return np.empty(0)
+
     ret = np.full((maxlen, len(tids)), np.nan)  # create a dense array
+
     for i in range(len(tids)):  # copy values
-        ret[:len(trks[i]), i] = trks[i]
+        if trks[i] is not None:
+            ret[:len(trks[i]), i] = trks[i]
+
     return ret
 
 
@@ -57,10 +65,19 @@ def load_case(caseid, tnames, interval=1):
     if dftrks is None:
         dftrks = pd.read_csv("https://api.vitaldb.net/trks")
 
+    if isinstance(tnames, str):
+        if tnames.find(','):
+            tnames = tnames.split(',')
+        else:
+            tnames = [tnames]
+
     tids = []
     for tname in tnames:
-        tid = dftrks[(dftrks['caseid'] == caseid) & (dftrks['tname'] == tname)]['tid'].values[0]
-        tids.append(tid)
+        tid_values = dftrks.loc[(dftrks['caseid'] == caseid) & (dftrks['tname'] == tname), 'tid'].values
+        if len(tid_values):
+            tids.append(tid_values[0])
+        else:
+            tids.append(None)
     
     return load_trks(tids, interval)
 
