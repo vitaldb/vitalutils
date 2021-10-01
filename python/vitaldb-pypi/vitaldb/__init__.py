@@ -1,6 +1,8 @@
 from .utils import vital_recs
 from .utils import vital_trks
+from .utils import VitalFile
 from .dataset import load_case
+from .dataset import find_cases
 
 # tname = 'BIS/BIS'
 # caseids = set()

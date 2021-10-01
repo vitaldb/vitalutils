@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 
+# open dataset trks
+dftrks = None
+
 def load_trk(tid, interval=1):
     if isinstance(tid, list) or isinstance(tid, set) or isinstance(tid, tuple):
         return load_trks(tid, interval)
@@ -54,14 +57,19 @@ def load_trks(tids, interval=1):
     return ret
 
 
-# open dataset trks
-dftrks = None
+def find_cases(track_names):
+    global dftrks
+    if dftrks is None:  # 여러번 실행 시 한번만 로딩 되면 됨
+        dftrks = pd.read_csv("https://api.vitaldb.net/trks")
+
+    return set(dftrks.loc[dftrks['tname'].isin(track_names), 'caseid'])
 
 def load_case(caseid, tnames, interval=1):
     global dftrks
 
     if not caseid:
         return None
+
     if dftrks is None:
         dftrks = pd.read_csv("https://api.vitaldb.net/trks")
 
