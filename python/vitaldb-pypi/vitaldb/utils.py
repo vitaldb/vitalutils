@@ -5,6 +5,8 @@ import datetime
 import tempfile
 import shutil
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 from urllib import parse, request
 from struct import pack, unpack_from, Struct
 import s3fs
@@ -275,6 +277,14 @@ dftrks = None
 
 
 class VitalFile:
+    """A VitalFile class.
+    :param dict devs: device info
+    :param dict trks: track info & recs
+    :param double dtstart: file start time
+    :param double dtend: flie end time
+    :param float dgmt: dgmt = ut - localtime in minutes. For KST, it is -540.
+    """
+    
     def __init__(self, ipath, track_names=None, track_names_only=False, exclude=[]):
         # 아래 5개 정보만 로딩하면 된다.
         self.devs = {0: {}}  # did -> devinfo (name, type, port). did = 0 represents the vital recorder
@@ -328,6 +338,81 @@ class VitalFile:
             track_names.insert(0, 'Time')
 
         return ret
+
+    def crop(self, dtfrom=None, dtend=None):
+        if dtfrom is None:
+            dtfrom = self.dtstart
+        elif dtfrom < 0:
+            dtfrom = self.dtend + dtfrom
+        elif dtfrom < 946684800:
+            dtfrom = self.dtstart + dtfrom
+
+        if dtend is None:
+            dtend = self.dtend
+        elif dtend < 0:
+            dtend = self.dtend + dtend
+        elif dtend < 946684800:
+            dtend = self.dtstart + dtend
+
+        if dtend < dtfrom:
+            return
+
+        for tid, trk in self.trks.items():
+            new_recs = []
+            for rec in trk['recs']:
+                if dtfrom <= rec['dt'] <= dtend:
+                    new_recs.append(rec)
+            self.trks[tid]['recs'] = new_recs
+        self.dtstart = dtfrom
+        self.dtend = dtend
+        return self
+        
+    def add_track(self, dtname, recs, srate=0, unit='', mindisp=0, maxdisp=0):
+        if len(recs) == 0:
+            return
+
+        if 'val' not in recs[0] or 'dt' not in recs[0]:
+            return
+
+        dname = ''
+        trkdid = 0
+        tname = dtname
+        if dtname.find('/') >= 0:
+            dname, tname = dtname.split('/')
+
+        for devdid in self.devs:
+            dev = self.devs[devdid]
+            if 'name' in dev and dname == dev['name']:
+                trkdid = devdid
+                break
+
+        # 장치 추가
+        if dname and not trkdid:
+            trkdid = max(self.devs.keys()) + 1
+            self.devs[trkdid] = {'name': dname, 'type': dname, 'port': ''}
+
+        # 트랙 종류 판정: wav=1, num=2, str=5
+        ntype = 2
+        if srate > 0:
+            ntype = 1
+        elif isinstance(recs[0]['val'], str):
+            ntype = 5
+
+        tid = max(self.trks.keys()) + 1
+        self.trks[tid] = {
+            'type': ntype, 
+            'fmt': 1, # float32
+            'name': tname,
+            'srate': srate,
+            'unit': unit,
+            'mindisp': mindisp,
+            'maxdisp': maxdisp,
+            'gain': 1,
+            'offset': 0,
+            'col': 0xffffff,
+            'montype': 0,
+            'did': trkdid,
+            'recs': recs}
 
     def get_track_samples(self, dtname, interval):
         if self.dtend <= self.dtstart:
@@ -482,7 +567,8 @@ class VitalFile:
 
     save_vital = to_vital
 
-    def to_parquet(self):
+    # 파케이 파일로 저장
+    def to_parquet(self, opath):
         rows = []
         for _, trk in self.trks.items():
             dtname = trk['name']
@@ -532,7 +618,8 @@ class VitalFile:
         df = pd.DataFrame(rows)
         if 'nval' in df:
             df['nval'] = df['nval'].astype(np.float32)
-        return df
+        
+        df.to_parquet(opath, compression='gzip')
 
     def load_opendata(self, caseid, track_names, exclude):
         global dftrks
@@ -637,7 +724,12 @@ class VitalFile:
     def load_parquet(self, ipath, track_names, exclude):
         dname_to_dids = {}
         dtname_to_tids = {}
-        df = pd.read_parquet(ipath)
+
+        df = pq.read_table(ipath, filters=[['tname', 'in', track_names]]).to_pandas()
+
+        # 아래 코드도 동일하지만 filters 지원이 안된다.
+        # df = pd.read_parquet(ipath)
+
         self.dtstart = df['dt'].min()
         self.dtend = df['dt'].max()
         for _, row in df.iterrows():
@@ -676,13 +768,13 @@ class VitalFile:
             else:  # 처음 나왔으면
                 tid = len(dtname_to_tids) + 1  # tid를 발급
                 dtname_to_tids[dtname] = tid
-                if row['wval'] is not None:
+                if 'wval' in row and row['wval'] is not None:
                     ntype = 1  # wav
                     srate = row['nval']
-                elif row['sval'] is not None:
+                elif 'sval' in row and row['sval'] is not None:
                     ntype = 5  # str
                     srate = 0
-                elif row['nval'] is not None:
+                elif 'nval' in row and row['nval'] is not None:
                     ntype = 2  # num
                     srate = 0
                 else:

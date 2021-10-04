@@ -1,16 +1,51 @@
 import vitaldb
+import boto3
+import os
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+from joblib import Parallel, delayed
 
-# 오픈 데이터셋에서 특정 트랙가진 모든 case에서 해당 트랙을 로딩하여 vital 파일로 저장
-import vitaldb
-track_names = ['SNUADC/ECG_II', 'Solar8000/HR']
-for caseid in vitaldb.find_cases(track_names):
-    vitaldb.VitalFile(caseid, track_names).to_vital('{}.vital'.format(caseid))
+# cpu core 갯수를 설정
+ncpu = pa.cpu_count()
+print('{} cpu core'.format(ncpu))
+pa.set_cpu_count(ncpu)
+pa.set_io_thread_count(ncpu)
+
+bucket_name = 'vitaldb-parquets'
+prefix = 'vitaldb2017/1608/D1'
+track_names = ['Solar8000/HR', 'SNUADC/ECG_II']
+
+odir = 'vital_files'
+if not os.path.exists(odir):
+    os.mkdir(odir)
+
+# 병렬 처리
+s3 = boto3.resource('s3')
+def save_file(uri, track_names):
+    opath = odir + '/' + os.path.splitext(os.path.basename(uri))[0] + '.vital'
+    vitaldb.VitalFile(uri, track_names).to_vital(opath)
+
+# 1개로 테스트
+for obj in s3.Bucket(bucket_name).objects.filter(Prefix=prefix):
+    save_file(f's3://{bucket_name}/{obj.key}', track_names)
     break
 quit()
 
+Parallel(ncpu)(delayed(save_file)(f's3://{bucket_name}/{obj.key}', track_names) for obj in s3.Bucket(bucket_name).objects.filter(Prefix=prefix))
+
+import vitaldb
+
 # 오픈 데이터셋을 그대로 vital 파일로 저장
 for caseid in range(1, 6389):
-    vitaldb.VitalFile(caseid).to_vital('{}.vital'.format(caseid))
+    vitaldb.VitalFile(caseid).crop(-1800, None).to_vital('crop{}.vital'.format(caseid))
+    break
+quit()
+
+# 오픈 데이터셋에서 특정 트랙가진 모든 case에서 해당 트랙을 로딩하여 vital 파일로 저장
+track_names = ['SNUADC/ECG_II', 'Solar8000/HR']
+for caseid in vitaldb.find_cases(track_names):
+    vitaldb.VitalFile(caseid, track_names).to_vital('{}.vital'.format(caseid))
     break
 quit()
 
@@ -44,16 +79,10 @@ quit()
 
 dtstart = time.time()
 print('reading', flush=True, end='...')
-
-df = vitaldb.VitalFile(ipath).to_pandas()
-
+vf = vitaldb.VitalFile(ipath)
 print('({:.3f} sec)'.format(time.time() - dtstart), flush=True, end='...')
 dtstart = time.time()
 print('saving', flush=True, end='...')
-
-df.to_parquet(opath, compression='gzip')
-
+vf.to_parquet(opath)
 print('({:.3f} sec)'.format(time.time() - dtstart), flush=True, end='...')
 print('done')
-
-df.info()
