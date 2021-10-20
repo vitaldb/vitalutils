@@ -39,7 +39,7 @@ def filelist(bedname=None, startdate=None, enddate=None):
 # request file download
 def download(fileid, localpath):
     global access_token
-    res = requests.get(API_URL + "download", params={"access_token":access_token, "fileid": fileid})
+    res = requests.get(API_URL + "download", params={"access_token":access_token, "filename": fileid})
     if 200 != res.status_code:
         return False
     with open(localpath, "wb") as f:

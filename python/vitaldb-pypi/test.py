@@ -1,6 +1,27 @@
-import vitaldb
-import boto3
 import os
+import vitaldb
+
+# path to save downloaded files
+DOWNLOAD_DIR = "Download"
+if not os.path.exists(DOWNLOAD_DIR):
+    os.mkdir(DOWNLOAD_DIR)
+
+# issue access token
+if vitaldb.api.login(id="vitaldb_test", pw="vitaldb_test"):
+    files = vitaldb.api.filelist()
+    print(f'{len(files)} files')
+
+    for f in files:
+        print("Downloading: " + f['filename'], end='...', flush=True)
+        opath = DOWNLOAD_DIR + '/' + f['filename']
+        if not vitaldb.api.download(f['filename'], opath):
+            print('failed')
+        else:
+            print('done')
+
+quit()
+
+import boto3
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq

@@ -69,6 +69,13 @@ dtname_tis = {
     'SNUADC/CVP': {'unit': 'cmH2O', 'srate': 500.0, 'maxdisp': 30.0, 'col': 4294944000}, 
     'SNUADC/FEM': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': 4294901760}, 
 
+    'SNUADCM/ART': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': 4294901760}, 
+    'SNUADCM/ECG_II': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': 4278255360}, 
+    'SNUADCM/ECG_V5': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': 4278255360}, 
+    'SNUADCM/PLETH': {'srate': 500.0, 'maxdisp': 100.0, 'col': 4287090426}, 
+    'SNUADCM/CVP': {'unit': 'cmH2O', 'srate': 500.0, 'maxdisp': 30.0, 'col': 4294944000}, 
+    'SNUADCM/FEM': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': 4294901760}, 
+
     'Solar8000/HR': {'unit': '/min', 'mindisp': 30.0, 'maxdisp': 150.0, 'col': 4278255360}, 
     'Solar8000/ST_I': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': 4278255360}, 
     'Solar8000/ST_II': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': 4278255360}, 
@@ -285,7 +292,7 @@ class VitalFile:
     :param float dgmt: dgmt = ut - localtime in minutes. For KST, it is -540.
     """
     
-    def __init__(self, ipath, track_names=None, track_names_only=False, exclude=[]):
+    def __init__(self, ipath, track_names=None, track_names_only=False, exclude=[], userid=None):
         # 아래 5개 정보만 로딩하면 된다.
         self.devs = {0: {}}  # did -> devinfo (name, type, port). did = 0 represents the vital recorder
         self.trks = {}  # tid -> trkinfo (name, type, fmt, unit, mindisp, maxdisp, col, srate, gain, offset, montype, did)
@@ -298,7 +305,18 @@ class VitalFile:
                 raise NotImplementedError
             self.load_opendata(ipath, track_names, exclude)
             return
+
         ext = os.path.splitext(ipath)[1]
+        if isinstance(userid, str):
+            if ext == '.parquet':
+                bedname = ipath[:-22]
+                month = ipath[-21:-17]
+                ipath = f's3://vitaldb-parquets/{userid}/{month}/{bedname}/{ipath}'
+            elif ext == '.vital':
+                bedname = ipath[:-20]
+                month = ipath[-19:-15]
+                ipath = f's3://vitaldb-myfiles/{userid}/{month}/{bedname}/{ipath}'
+
         if ext == '.vital':
             self.load_vital(ipath, track_names, track_names_only, exclude)
         elif ext == '.parquet':
@@ -316,6 +334,13 @@ class VitalFile:
 
         if not interval:  # 500 Hz
             interval = 0.002
+
+        # 포함할 트랙
+        if isinstance(track_names, str):
+            if track_names.find(','):
+                track_names = track_names.split(',')
+            else:
+                track_names = [track_names]
 
         # 순서를 유지하면서 중복을 없앰
         track_names = list(dict.fromkeys(track_names))
@@ -367,6 +392,23 @@ class VitalFile:
         self.dtend = dtend
         return self
         
+
+    def get_track_names(self):
+        dtnames = []
+        for tid, trk in self.trks.items():
+            if trk['dtname']:
+                dtnames.append(trk['dtname'])
+        return dtnames
+
+    def del_track(self, dtname):
+        """ delete track by name
+        """
+        for tid, trk in self.trks.items():
+            if trk['dtname'] == dtname:
+                del self.trks[tid]
+                break
+
+
     def add_track(self, dtname, recs, srate=0, unit='', mindisp=0, maxdisp=0):
         if len(recs) == 0:
             return
@@ -402,6 +444,7 @@ class VitalFile:
         self.trks[tid] = {
             'type': ntype, 
             'fmt': 1, # float32
+            'dtname': dtname,
             'name': tname,
             'srate': srate,
             'unit': unit,
@@ -413,6 +456,7 @@ class VitalFile:
             'montype': 0,
             'did': trkdid,
             'recs': recs}
+
 
     def get_track_samples(self, dtname, interval):
         if self.dtend <= self.dtstart:
@@ -483,6 +527,7 @@ class VitalFile:
         # 트랙을 찾을 수 없을 때
         return np.full(nret, np.nan)
 
+
     def find_track(self, dtname):
         dname = None
         tname = dtname
@@ -501,15 +546,20 @@ class VitalFile:
 
         return None
 
+
     def to_pandas(self, track_names, interval, return_datetime=False, return_timestamp=False):
         ret = self.get_samples(track_names, interval, return_datetime, return_timestamp)
         return pd.DataFrame(ret, columns=track_names)
     
+
     def to_numpy(self, track_names, interval, return_datetime=False, return_timestamp=False):
         ret = self.get_samples(track_names, interval, return_datetime, return_timestamp)
         return np.transpose(ret)
 
+
     def to_vital(self, opath, compresslevel=1):
+        """ save as vital file
+        """
         f = gzip.GzipFile(opath, 'wb', compresslevel=compresslevel)
 
         # save header
@@ -567,8 +617,9 @@ class VitalFile:
 
     save_vital = to_vital
 
-    # 파케이 파일로 저장
     def to_parquet(self, opath):
+        """ save as parquet file
+        """
         rows = []
         for _, trk in self.trks.items():
             dtname = trk['name']
@@ -620,6 +671,7 @@ class VitalFile:
             df['nval'] = df['nval'].astype(np.float32)
         
         df.to_parquet(opath, compression='gzip')
+
 
     def load_opendata(self, caseid, track_names, exclude):
         global dftrks
@@ -693,6 +745,7 @@ class VitalFile:
                 else:
                     trk = dict(default_ti)
 
+                trk['dtname'] = dtname
                 trk['name'] = tname
                 trk['type'] = ntype
                 trk['fmt'] = 1  # float32
@@ -725,7 +778,10 @@ class VitalFile:
         dname_to_dids = {}
         dtname_to_tids = {}
 
-        df = pq.read_table(ipath, filters=[['tname', 'in', track_names]]).to_pandas()
+        filts = None
+        if track_names:
+            filts = [['tname', 'in', track_names]]
+        df = pq.read_table(ipath, filters=filts).to_pandas()
 
         # 아래 코드도 동일하지만 filters 지원이 안된다.
         # df = pd.read_parquet(ipath)
@@ -787,6 +843,7 @@ class VitalFile:
                 else:
                     trk = dict(default_ti)
 
+                trk['dtname'] = dtname
                 trk['name'] = tname
                 trk['type'] = ntype
                 trk['fmt'] = 1  # float32
@@ -881,6 +938,7 @@ class VitalFile:
                     did = unpack_dw(buf, pos)[0]; pos += 4
                     devtype, pos = unpack_str(buf, pos)
                     name, pos = unpack_str(buf, pos)
+                    port = ''
                     if len(buf) > pos + 4:  # port는 없을 수 있다
                         port, pos = unpack_str(buf, pos)
                     if not name:
@@ -1042,8 +1100,8 @@ def vital_recs(ipath, track_names=None, interval=None, return_timestamp=False, r
 
     vf = VitalFile(ipath, track_names, exclude=exclude)
     if return_pandas:
-        return vf.to_pandas(track_names, return_datetime, return_timestamp)
-    return vf.to_numpy(track_names, return_datetime, return_timestamp)
+        return vf.to_pandas(track_names, interval, return_datetime, return_timestamp)
+    return vf.to_numpy(track_names, interval, return_datetime, return_timestamp)
 
 
 def vital_trks(ipath):
