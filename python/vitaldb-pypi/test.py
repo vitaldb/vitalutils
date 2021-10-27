@@ -1,5 +1,25 @@
+import pandas as pd
 import os
 import vitaldb
+import vitaldb
+import os
+
+OUTPUT_DIR = 'download'
+if not os.path.exists(OUTPUT_DIR):
+    os.mkdir(OUTPUT_DIR)
+    
+vitaldb.api.login('vitaldb_test', 'vitaldb_test')
+df = pd.read_excel('list.xlsx')
+for idx, row in df.iterrows():
+    filename = row['filename']
+    opath = OUTPUT_DIR + '/' + filename
+    if os.path.exists(opath):
+        continue
+    print('downloading ' + filename, end='...')
+    vitaldb.api.download(filename, opath)
+    print('done')
+
+quit()
 
 # path to save downloaded files
 DOWNLOAD_DIR = "Download"
@@ -8,6 +28,10 @@ if not os.path.exists(DOWNLOAD_DIR):
 
 # issue access token
 if vitaldb.api.login(id="vitaldb_test", pw="vitaldb_test"):
+    vf = vitaldb.VitalFile(vitaldb.api.download('TEST1_211020_142621.vital'))
+    print(vf.get_track_names())
+    quit()
+
     files = vitaldb.api.filelist()
     print(f'{len(files)} files')
 

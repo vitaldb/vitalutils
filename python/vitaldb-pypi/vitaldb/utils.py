@@ -5,7 +5,6 @@ import datetime
 import tempfile
 import shutil
 import pandas as pd
-import pyarrow as pa
 import pyarrow.parquet as pq
 from urllib import parse, request
 from struct import pack, unpack_from, Struct
@@ -306,7 +305,15 @@ class VitalFile:
             self.load_opendata(ipath, track_names, exclude)
             return
 
+        # url 형태인 경우, 파라미터 부분을 제거한다
         ext = os.path.splitext(ipath)[1]
+        ipos = ext.find('&')
+        if ipos > 0:
+            ext = ext[:ipos]
+        ipos = ext.find('?')
+        if ipos > 0:
+            ext = ext[:ipos]
+
         if isinstance(userid, str):
             if ext == '.parquet':
                 bedname = ipath[:-22]
@@ -650,6 +657,7 @@ class VitalFile:
                     newrecs.append(newrec)
                 trk['recs'] = newrecs
 
+            # 트랙별로 저장
             for rec in trk['recs']:
                 row = {'tname': dtname, 'dt': rec['dt']}
                 if trk['type'] == 1:  # wav
@@ -905,13 +913,12 @@ class VitalFile:
             return False
 
         f.read(4)  # file version
-
         buf = f.read(2)
         if buf == b'':
             return False
-
         headerlen = unpack_w(buf, 0)[0]
-        header = f.read(headerlen)  # skip header
+        header = f.read(headerlen)  # header 전체를 읽음
+
         self.dgmt = unpack_s(header, 0)[0]  # dgmt = ut - localtime
 
         # parse body
