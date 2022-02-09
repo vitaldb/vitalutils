@@ -40,6 +40,8 @@
 #define IDC_CASENAME                    1008
 #define IDC_CHECK2                      1009
 #define IDC_EXACT                       1009
+#define IDC_ABSTIME3                    1009
+#define IDC_UNIXTIME                    1009
 #define IDC_HEADER                      1010
 #define IDC_TOOL_DESC3                  1011
 #define IDC_CHECK3                      1012

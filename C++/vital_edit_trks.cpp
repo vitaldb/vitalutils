@@ -121,14 +121,14 @@ int main(int argc, char* argv[]) {
 		if (packet_type == 0) { // trkinfo
 			unsigned short tid; if (!buf.fetch(tid)) goto next_packet;
 			buf.skip(2);
-			string tname; if (!buf.fetch(tname)) goto next_packet;
+			string tname; if (!buf.fetch_with_len(tname)) goto next_packet;
 			
 			// 기존의 트랙 정보를 받아옴. 없으면 못받아온다
 			string unit; float mindisp = 0.0f, maxdisp = 100.0f, srate = 100.0f;
 			unsigned char color_a = 255, color_r = 255, color_g = 255, color_b = 255, montype = 0;
 			double gain = 1.0, offset = 0.0;
 
-			buf.fetch(unit);
+			buf.fetch_with_len(unit);
 			buf.fetch(mindisp);
 			buf.fetch(maxdisp);
 			buf.fetch(color_b);
@@ -204,10 +204,10 @@ int main(int argc, char* argv[]) {
 							// 새 트랙명을 씀
 							old_packet_written += 4 + tname.size();
 							if (newname.empty()) newname = tname; // 트랙 정보만 변경할 경우
-							fw.write(newname);
+							fw.write_with_len(newname);
 
 							old_packet_written += 4 + unit.size();
-							fw.write(newunit);
+							fw.write_with_len(newunit);
 
 							old_packet_written += 4;
 							fw.write(mindisp);
@@ -245,8 +245,8 @@ int main(int argc, char* argv[]) {
 			tid_need_to_delete[tid] = need_to_delete;
 		} else if (packet_type == 9) { // devinfo
 			unsigned long did; if (!buf.fetch(did)) goto next_packet;
-			string dtype; if (!buf.fetch(dtype)) goto next_packet;
-			string dname; if (!buf.fetch(dname)) goto next_packet;
+			string dtype; if (!buf.fetch_with_len(dtype)) goto next_packet;
+			string dname; if (!buf.fetch_with_len(dname)) goto next_packet;
 			if (dname.empty()) dname = dtype;
 			did_dnames[did] = dname;
 		} else if (packet_type == 1) { // rec

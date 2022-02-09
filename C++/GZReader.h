@@ -1,5 +1,5 @@
 #pragma once
-#define BUFLEN 16384
+#define BUFLEN 8192
 #include <string>
 #include <vector>
 #include <zlib.h>
@@ -55,8 +55,8 @@ public:
 		return ret;
 	}
 
-	bool write(const void* buf, unsigned int len) { 
-		unsigned int bufpos = 0;
+	bool write(const void* buf, unsigned long len) { 
+		unsigned long bufpos = 0;
 		while (bufpos < len) {
 			auto copy = BUFLEN - buf_in_pos; // 이번에 최대 복사할 수 있는 양
 			if (copy > len - bufpos) { // 남은 데이터가 그만큼 없으면
@@ -95,7 +95,7 @@ public:
 		return write(&b, sizeof(b));
 	}
 	bool write(const string& s) {
-		unsigned int len = s.size();
+		unsigned long len = s.size();
 		if (!write(&len, sizeof(len))) return false;
 		return write(&s[0], len);
 	}
@@ -132,7 +132,10 @@ protected:
 	gzFile m_fi;
 
 public:
-	bool write(const void* buf, unsigned int len) {
+	bool write(const string& s) {
+		return gzwrite(m_fi, &s[0], s.size()) > 0;
+	}
+	bool write(const void* buf, unsigned long len) {
 		return gzwrite(m_fi, buf, len) > 0;
 	}
 	bool write(const double& f) {
@@ -144,8 +147,23 @@ public:
 	bool write(unsigned char& b) {
 		return write(&b, sizeof(b));
 	}
-	bool write(const string& s) {
-		unsigned int len = s.size();
+	bool write(char& c) {
+		return write(&c, sizeof(c));
+	}
+	bool write(short& s) {
+		return write(&s, sizeof(s));
+	}
+	bool write(unsigned short& v) {
+		return write(&v, sizeof(v));
+	}
+	bool write(long& b) {
+		return write(&b, sizeof(b));
+	}
+	bool write(unsigned long& b) {
+		return write(&b, sizeof(b));
+	}
+	bool write_with_len(const string& s) {
+		unsigned long len = s.size();
 		if (!write(&len, sizeof(len))) return false;
 		return write(&s[0], len);
 	}
@@ -166,15 +184,15 @@ public:
 
 protected:
 	gzFile m_fi;
-	unsigned int fi_remain = 0; // 읽은게 없으므로
+	unsigned long fi_remain = 0; // 읽은게 없으므로
 	unsigned char fi_buf[BUFLEN]; // 현재 남은 데이터
 	const unsigned char* fi_ptr = fi_buf; // fi_buf에서 현재 읽을 포인터
 										  // 정확히 len byte를 읽음. 다 읽으면 true, 1바이트라도 못읽으면 false를 리턴
 public:
-	unsigned int read(void* dest, unsigned int len) {
+	unsigned long read(void* dest, unsigned long len) {
 		unsigned char* buf = (unsigned char*)dest;
 		if (!buf) return 0;
-		unsigned int nread = 0;
+		unsigned long nread = 0;
 		while (len > 0) {
 			if (len <= fi_remain) { // 남은것만 다 읽어도 충분하면?
 				memcpy(buf, fi_ptr, len); // 복사하고 리턴
@@ -188,7 +206,7 @@ public:
 				buf += fi_remain;
 				nread += fi_remain;
 			}
-			unsigned int unzippedBytes = gzread(m_fi, fi_buf, BUFLEN); // 추가로 읽어들임
+			unsigned long unzippedBytes = gzread(m_fi, fi_buf, BUFLEN); // 추가로 읽어들임
 			if (!unzippedBytes) return nread; // 더이상 읽을게 없으면
 			fi_remain = unzippedBytes;
 			fi_ptr = fi_buf;
@@ -196,7 +214,7 @@ public:
 		return nread;
 	}
 
-	bool skip(unsigned int len) {
+	bool skip(unsigned long len) {
 		if (len <= fi_remain) {
 			fi_remain -= len;
 			fi_ptr += len;
@@ -208,7 +226,7 @@ public:
 		return -1 != gzseek(m_fi, len, SEEK_CUR);
 	}
 
-	bool skip(unsigned int len, unsigned int& remain) {
+	bool skip(unsigned long len, unsigned long& remain) {
 		if (remain < len) return false;
 		if (len <= fi_remain) {
 			fi_remain -= len;
@@ -228,70 +246,70 @@ public:
 	}
 
 	// x를 읽고 remain을 감소시킴
-	bool fetch(int& x, unsigned int& remain) {
+	bool fetch(long& x, unsigned long& remain) {
 		if (remain < sizeof(x)) return false;
-		unsigned int nread = read(&x, sizeof(x));
+		unsigned long nread = read(&x, sizeof(x));
 		remain -= nread;
 		return (nread == sizeof(x));
 	}
 
-	bool fetch(unsigned int& x, unsigned int& remain) {
+	bool fetch(unsigned long& x, unsigned long& remain) {
 		if (remain < sizeof(x)) return false;
-		unsigned int nread = read(&x, sizeof(x));
+		unsigned long nread = read(&x, sizeof(x));
 		remain -= nread;
 		return (nread == sizeof(x));
 	}
 
-	bool fetch(float& x, unsigned int& remain) {
+	bool fetch(float& x, unsigned long& remain) {
 		if (remain < sizeof(x)) return false;
-		unsigned int nread = read(&x, sizeof(x));
+		unsigned long nread = read(&x, sizeof(x));
 		remain -= nread;
 		return (nread == sizeof(x));
 	}
 
-	bool fetch(double& x, unsigned int& remain) {
+	bool fetch(double& x, unsigned long& remain) {
 		if (remain < sizeof(x)) return false;
-		unsigned int nread = read(&x, sizeof(x));
+		unsigned long nread = read(&x, sizeof(x));
 		remain -= nread;
 		return (nread == sizeof(x));
 	}
 
-	bool fetch(short& x, unsigned int& remain) {
+	bool fetch(short& x, unsigned long& remain) {
 		if (remain < sizeof(x)) return false;
-		unsigned int nread = read(&x, sizeof(x));
+		unsigned long nread = read(&x, sizeof(x));
 		remain -= nread;
 		return (nread == sizeof(x));
 	}
 
-	bool fetch(unsigned short& x, unsigned int& remain) {
+	bool fetch(unsigned short& x, unsigned long& remain) {
 		if (remain < sizeof(x)) return false;
-		unsigned int nread = read(&x, sizeof(x));
+		unsigned long nread = read(&x, sizeof(x));
 		remain -= nread;
 		return (nread == sizeof(x));
 	}
 
-	bool fetch(char& x, unsigned int& remain) {
+	bool fetch(char& x, unsigned long& remain) {
 		if (remain < sizeof(x)) return false;
-		unsigned int nread = read(&x, sizeof(x));
+		unsigned long nread = read(&x, sizeof(x));
 		remain -= nread;
 		return (nread == sizeof(x));
 	}
 
-	bool fetch(unsigned char& x, unsigned int& remain) {
+	bool fetch(unsigned char& x, unsigned long& remain) {
 		if (remain < sizeof(x)) return false;
-		unsigned int nread = read(&x, sizeof(x));
+		unsigned long nread = read(&x, sizeof(x));
 		remain -= nread;
 		return (nread == sizeof(x));
 	}
 
-	bool fetch(string& x, unsigned int& remain) {
-		unsigned int strlen; 
+	bool fetch_with_len(string& x, unsigned long& remain) {
+		unsigned long strlen; 
 		if (!fetch(strlen, remain)) return false;
 		if (strlen >= 1048576) {// > 1MB
 			return false;
 		}
 		x.resize(strlen);
-		unsigned int nread = read(&x[0], strlen);
+		unsigned long nread = read(&x[0], strlen);
 		remain -= nread;
 		return (nread == strlen);
 	}
@@ -312,16 +330,25 @@ public:
 };
 
 class BUF : public vector<unsigned char> {
-	unsigned int pos = 0;
+	unsigned long pos = 0;
 public:
-	BUF(unsigned int len = 0) : vector<unsigned char>(len) { pos = 0; }
-	void skip(unsigned int len) {
+	BUF(unsigned long len = 0) : vector<unsigned char>(len) { pos = 0; }
+	void skip(unsigned long len) {
 		pos += len;
 	}
 	void skip_str() {
-		unsigned int strlen;
+		unsigned long strlen;
 		if (!fetch(strlen)) return;
 		pos += strlen;
+	}
+	bool fetch(void* p, unsigned long len) {
+		if (size() < pos + len) {
+			pos = size();
+			return false;
+		}
+		memcpy(p, &(*this)[pos], len); // 그 외에는 무조건 복사 가능
+		pos += len;
+		return true;
 	}
 	bool fetch(unsigned char& x) {
 		if (size() < pos + sizeof(x)) {
@@ -341,7 +368,7 @@ public:
 		pos += sizeof(x);
 		return true;
 	}
-	bool fetch(unsigned int& x) {
+	bool fetch(unsigned long& x) {
 		if (size() < pos + sizeof(x)) {
 			pos = size();
 			return false;
@@ -368,8 +395,8 @@ public:
 		pos += sizeof(x);
 		return true;
 	}
-	bool fetch(string& x) {
-		unsigned int strlen;
+	bool fetch_with_len(string& x) {
+		unsigned long strlen;
 		if (!fetch(strlen)) return false;
 		if (strlen >= 1048576) {// > 1MB
 			return false;

@@ -47,10 +47,10 @@ struct tar_file {
 		return n + (incr - n % incr) % incr;
 	}
 
-	unsigned int checksum(const tar_header* rh) {
-		unsigned int i;
+	unsigned long checksum(const tar_header* rh) {
+		unsigned long i;
 		unsigned char* p = (unsigned char*)rh;
-		unsigned int res = 256;
+		unsigned long res = 256;
 		for (i = 0; i < offsetof(tar_header, checksum); i++) {
 			res += p[i];
 		}
@@ -76,9 +76,9 @@ struct tar_file {
 	}
 
 private:
-	bool write_null_bytes(int n) {
+	bool write_null_bytes(long n) {
 		char c = 0;
-		for (int i = 0; i < n; i++) {
+		for (long i = 0; i < n; i++) {
 			if (!fwrite(&c, 1, 1, m_fd)) {
 				return false;
 			}
@@ -105,7 +105,7 @@ public:
 
 		// Write data
 		for (size_t pos = 0; pos < data.size(); pos += 512) {
-			int nwrite = 512;
+			long nwrite = 512;
 
 			// 마지막 write 크기 조정
 			if (pos + 512 > data.size()) nwrite = data.size() - pos;
@@ -141,10 +141,10 @@ int main(int argc, char* argv[]) {
 	set<unsigned short> tids; // 출력할 tid
 
 	tnames = explode(dtname, ',');
-	int ncols = tnames.size();
+	long ncols = tnames.size();
 	dnames.resize(ncols);
-	for (int j = 0; j < ncols; j++) {
-		int pos = tnames[j].find('/');
+	for (long j = 0; j < ncols; j++) {
+		long pos = tnames[j].find('/');
 		if (pos != -1) {// devname, tname으로 분리
 			dnames[j] = tnames[j].substr(0, pos);
 			tnames[j] = tnames[j].substr(pos + 1);
@@ -152,7 +152,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	tar_file tar; // 표준 출력 tar 압축
-	for (unsigned int ifile = 0; ifile < argc; ifile++) {
+	for (unsigned long ifile = 0; ifile < argc; ifile++) {
 		string ipath = argv[ifile];
 		
 		bool is_vital = true;
@@ -201,17 +201,17 @@ int main(int argc, char* argv[]) {
 
 		fw.write(&header[0], header.size());
 
-		map<unsigned int, string> did_dname;
-		map<unsigned int, BUF> did_di;
+		map<unsigned long, string> did_dname;
+		map<unsigned long, BUF> did_di;
 		map<unsigned short, string> tid_tname;
 		map<unsigned short, BUF> tid_ti;
-		map<unsigned short, unsigned int> tid_did;
+		map<unsigned short, unsigned long> tid_did;
 		map<unsigned short, BUF> tid_recs;
 
 		// 추출은 한 번에 읽으면서 쓴다.
 		while (!fr.eof()) { // body는 패킷의 연속이다.
 			unsigned char packet_type; if (!fr.read(&packet_type, 1)) break;
-			unsigned int packet_len; if (!fr.read(&packet_len, 4)) break;
+			unsigned long packet_len; if (!fr.read(&packet_len, 4)) break;
 			if (packet_len > 1000000) break; // 1MB 이상의 패킷은 버림
 
 			BUF packet_header(5);
@@ -222,26 +222,26 @@ int main(int argc, char* argv[]) {
 			BUF buf(packet_len);
 			if (!fr.read(&buf[0], packet_len)) break;
 			if (packet_type == 9) { // devinfo
-				unsigned int did = 0; if (!buf.fetch(did)) continue;
-				string dtype; if (!buf.fetch(dtype)) continue;
-				string dname; if (!buf.fetch(dname)) continue;
+				unsigned long did = 0; if (!buf.fetch(did)) continue;
+				string dtype; if (!buf.fetch_with_len(dtype)) continue;
+				string dname; if (!buf.fetch_with_len(dname)) continue;
 				if (dname.empty()) dname = dtype;
 				did_dname[did] = dname;
 			}
 			else if (packet_type == 0) { // trkinfo
 				unsigned short tid; if (!buf.fetch(tid)) continue;
 				buf.skip(2);
-				string tname; if (!buf.fetch(tname)) continue;
-				string tunit; buf.fetch(tunit);
+				string tname; if (!buf.fetch_with_len(tname)) continue;
+				string tunit; buf.fetch_with_len(tunit);
 				buf.skip(33);
-				unsigned int did = 0; buf.fetch(did);
+				unsigned long did = 0; buf.fetch(did);
 
 				tid_did[tid] = did;
 				tid_tname[tid] = tname;
 				auto dname = did_dname[did];
 
 				bool matched = false;
-				for (int i = 0; i < tnames.size(); i++) {
+				for (long i = 0; i < tnames.size(); i++) {
 					if (tnames[i] == "*" || tnames[i] == tname) {
 						if (dnames[i].empty() || dnames[i] == dname || dnames[i] == "*") {// 트랙명 매칭 됨
 							tids.insert(tid);

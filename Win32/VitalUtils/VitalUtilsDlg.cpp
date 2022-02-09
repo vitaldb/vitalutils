@@ -488,6 +488,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 
 		// 옵션 가져옴
 		m_dlgRecs.UpdateData();
+		if (m_dlgRecs.m_bUnixTime) spre += _T("u");
 		if (m_dlgRecs.m_bAbstime) spre += _T("a");
 		if (m_dlgRecs.m_bRestricted) spre += _T("r");
 		if (m_dlgRecs.m_bLast) spre += _T("l");
@@ -999,10 +1000,12 @@ void CVitalUtilsDlg::OnSize(UINT nType, int cx, int cy) {
 		ScreenToClient(rcw);
 		int splity = rcw.bottom;
 
+		// 파일 리스트 크기를 키움
 		m_ctrlFileList.SetWindowPos(nullptr, 0, 0, rcw.Width() + cx - m_nOldCx, rcw.Height() + cy - m_nOldCy, SWP_NOZORDER | SWP_NOMOVE);
 		
-		m_ctrlTrkList.GetWindowRect(rcw);
-		m_ctrlTrkList.SetWindowPos(nullptr, 0, 0, rcw.Width(), rcw.Height() + cy - m_nOldCy, SWP_NOZORDER | SWP_NOMOVE);
+		// 트랙 선택창 크기를 키움
+		m_ctrlSelTrks.GetWindowRect(rcw);
+		m_ctrlSelTrks.SetWindowPos(nullptr, 0, 0, rcw.Width(), rcw.Height() + cy - m_nOldCy, SWP_NOZORDER | SWP_NOMOVE);
 
 		// 세로로 위치 이동
 		vector<HWND> children;

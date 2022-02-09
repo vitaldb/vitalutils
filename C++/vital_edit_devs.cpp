@@ -70,8 +70,8 @@ int main(int argc, char* argv[]) {
 		if (!fr.read(&buf[0], packet_len)) break;
 		if (packet_type == 9) { // devinfo
 			unsigned long did; if (!buf.fetch(did)) continue;
-			string dtype; if (!buf.fetch(dtype)) continue;
-			string dname; if (!buf.fetch(dname)) continue;
+			string dtype; if (!buf.fetch_with_len(dtype)) continue;
+			string dname; if (!buf.fetch_with_len(dname)) continue;
 			if (dname.empty()) dname = dtype;
 			if (dname == devfrom) {
 				unsigned long new_packet_len = packet_len - devfrom.size() + devto.size();

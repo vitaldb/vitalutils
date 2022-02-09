@@ -91,8 +91,8 @@ int main(int argc, char* argv[]) {
 		if (!fr.read(&buf[0], packet_len)) break;
 		if (packet_type == 9) { // devinfo
 			unsigned long did = 0; if (!buf.fetch(did)) continue;
-			string dtype; if (!buf.fetch(dtype)) continue;
-			string dname; if (!buf.fetch(dname)) continue;
+			string dtype; if (!buf.fetch_with_len(dtype)) continue;
+			string dname; if (!buf.fetch_with_len(dname)) continue;
 			if (dname.empty()) dname = dtype;
 			did_dname[did] = dname;
 			
@@ -102,8 +102,8 @@ int main(int argc, char* argv[]) {
 		} else if (packet_type == 0) { // trkinfo
 			unsigned short tid; if (!buf.fetch(tid)) continue;
 			buf.skip(2);
-			string tname; if (!buf.fetch(tname)) continue;
-			string tunit; buf.fetch(tunit);
+			string tname; if (!buf.fetch_with_len(tname)) continue;
+			string tunit; buf.fetch_with_len(tunit);
 			buf.skip(33);
 			unsigned long did = 0; buf.fetch(did);
 

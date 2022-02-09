@@ -18,6 +18,7 @@ protected:
 	afx_msg void OnEnKillfocusInterval();
 	DECLARE_MESSAGE_MAP()
 public:
+	BOOL m_bUnixTime = FALSE;
 	BOOL m_bAbstime = FALSE;
 	BOOL m_bPrintHeader = TRUE;
 	BOOL m_bRestricted = FALSE;

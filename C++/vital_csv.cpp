@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
 	// 한 번 훑으면서 트랙 이름, 시작 시간, 종료 시각 구함
 	map<unsigned short, double> tid_dtstart; // 트랙의 시작 시간
 	map<unsigned short, double> tid_dtend; // 트랙의 종료 시간
-	map<unsigned int, string> did_dnames;
+	map<unsigned long, string> did_dnames;
 	map<unsigned short, unsigned char> tid_rectypes; // 1:wav,2:num,5:str
 	map<unsigned short, unsigned char> tid_recfmts;
 	map<unsigned short, double> tid_gains;
@@ -104,9 +104,9 @@ int main(int argc, char* argv[]) {
 	double dtend = 0;
 
 	unsigned char rectype = 0;
-	unsigned int nsamp;
+	unsigned long nsamp;
 	unsigned char recfmt;
-	unsigned int fmtsize;
+	unsigned long fmtsize;
 	double gain;
 	double offset;
 	unsigned short infolen = 0;
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
 	while (!gz.eof()) { // body는 패킷의 연속이다.
 		unsigned char type = 0;
 		if (!gz.read(&type, 1)) break;
-		unsigned int datalen = 0;
+		unsigned long datalen = 0;
 		if (!gz.read(&datalen, 4)) break;
 		if (datalen > 1000000) break;
 
@@ -124,17 +124,17 @@ int main(int argc, char* argv[]) {
 		if (type == 0) { // trkinfo
 			tid = 0; if (!gz.fetch(tid, datalen)) goto next_packet;
 			rectype = 0; if (!gz.fetch(rectype, datalen)) goto next_packet;
-			//cout << (int)rectype << endl;
+			//cout << (long)rectype << endl;
 			unsigned char recfmt; if (!gz.fetch(recfmt, datalen)) goto next_packet;
 			string tname, unit;
 			//float minval, maxval, srate;
 			float minval, maxval, srate = 0;
 			//cout << maxval << endl;
-			unsigned int col, did = 0;
+			unsigned long col, did = 0;
 			double adc_gain = 1, adc_offset = 0;
 			unsigned char montype;
-			if (!gz.fetch(tname, datalen)) goto save_and_next_packet; // !SSH Changed from next_packet
-			if (!gz.fetch(unit, datalen)) goto save_and_next_packet;
+			if (!gz.fetch_with_len(tname, datalen)) goto save_and_next_packet; // !SSH Changed from next_packet
+			if (!gz.fetch_with_len(unit, datalen)) goto save_and_next_packet;
 			if (!gz.fetch(minval, datalen)) goto save_and_next_packet;
 			if (!gz.fetch(maxval, datalen)) goto save_and_next_packet;
 			if (!gz.fetch(col, datalen)) goto save_and_next_packet;
@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
 			tid_dnames[tid] = dname;
 			tid_rectypes[tid] = rectype;
 			//cout << dname << endl;
-			//cout << (int)rectype << endl;
+			//cout << (long)rectype << endl;
 			tid_recfmts[tid] = recfmt;
 			tid_gains[tid] = adc_gain;
 			tid_offsets[tid] = adc_offset;
@@ -161,9 +161,9 @@ int main(int argc, char* argv[]) {
 		}
 
 		if (type == 9) { // devinfo
-			unsigned int did; if (!gz.fetch(did, datalen)) goto next_packet;
-			string dtype; if (!gz.fetch(dtype, datalen)) goto next_packet;
-			string dname; if (!gz.fetch(dname, datalen)) goto next_packet;
+			unsigned long did; if (!gz.fetch(did, datalen)) goto next_packet;
+			string dtype; if (!gz.fetch_with_len(dtype, datalen)) goto next_packet;
+			string dname; if (!gz.fetch_with_len(dname, datalen)) goto next_packet;
 			if (dname.empty()) dname = dtype;
 			did_dnames[did] = dname;
 			//cout << dname << endl;
@@ -178,7 +178,7 @@ int main(int argc, char* argv[]) {
 			// 트랙 속성을 가져옴
 			rectype = tid_rectypes[tid]; // 1:wav,2:num,3:str
 			auto srate = tid_srates[tid];
-			unsigned int nsamp = 0;
+			unsigned long nsamp = 0;
 			double dt_rec_end = dt_rec_start; // 해당 레코드 종료 시간
 			if (rectype == 1) { // wav
 				if (!gz.fetch(nsamp, datalen)) goto next_packet;
@@ -207,7 +207,7 @@ int main(int argc, char* argv[]) {
 	for (auto tid : tids) { // 미리 벡터를 생성하여 대규모 데이터의 이동을 방지한다.
 		auto rectype = tid_rectypes[tid];
 		if (rectype == 1) {
-			int wave_tid_size = ceil((tid_dtend[tid] - tid_dtstart[tid]) * tid_srates[tid]); //to make enough memory
+			long wave_tid_size = ceil((tid_dtend[tid] - tid_dtstart[tid]) * tid_srates[tid]); //to make enough memory
 			wavs[tid] = vector<short>(wave_tid_size);
 		}
 		else if (rectype == 2) {
@@ -219,7 +219,7 @@ int main(int argc, char* argv[]) {
 	}
 	while (!gz.eof()) {// body를 다시 parsing
 		unsigned char type = 0; if (!gz.read(&type, 1)) break;
-		unsigned int datalen = 0; if (!gz.read(&datalen, 4)) break;
+		unsigned long datalen = 0; if (!gz.read(&datalen, 4)) break;
 		if (datalen > 1000000) break;
 		if (type != 1) { goto next_packet2; } // 이번에는 레코드만 읽음
 
@@ -231,11 +231,11 @@ int main(int argc, char* argv[]) {
 
 		// 트랙 속성을 가져옴
 		rectype = tid_rectypes[tid]; // 1:wav,2:num,3:str
-								 //cout << "rectype :" << (int)rectype << ", tid :" << tid << endl;
+								 //cout << "rectype :" << (long)rectype << ", tid :" << tid << endl;
 		auto srate = tid_srates[tid];
 		nsamp = 0;
 		if (rectype == 1) if (!gz.fetch(nsamp, datalen)) { goto next_packet2; }
-		recfmt = tid_recfmts[tid]; // 1:flt,2:dbl,3:ch,4:byte,5:short,6:word,7:int,8:dword
+		recfmt = tid_recfmts[tid]; // 1:flt,2:dbl,3:ch,4:byte,5:short,6:word,7:long,8:dword
 		fmtsize = 4;
 		switch (recfmt) {
 		case 2: fmtsize = 8; break;
@@ -246,11 +246,11 @@ int main(int argc, char* argv[]) {
 		//offset = offsets[tid];
 
 		if (rectype == 1) { // wav
-			int idxrec = (dt_rec_start - dtstart) * srate;
+			long idxrec = (dt_rec_start - dtstart) * srate;
 			auto& v = wavs[tid];
 			if (idxrec < 0) { goto next_packet2; }
 			if (idxrec + nsamp >= v.size()) { goto next_packet2; }
-			for (int i = 0; i < nsamp; i++) { // 각 샘플에 대해
+			for (long i = 0; i < nsamp; i++) { // 각 샘플에 대해
 				auto idxrow = idxrec + i; // 현 sample의 인덱스
 
 				short cnt = 0; // 모든 샘플은 short 형 cnt 로 변환된다
@@ -286,12 +286,12 @@ int main(int argc, char* argv[]) {
 					break;
 				}
 				case 7: {
-					int ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
+					long ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
 					cnt = ival;
 					break;
 				}
 				case 8: {
-					unsigned int ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
+					unsigned long ival; if (!gz.fetch(ival, datalen)) { goto next_packet2; }
 					cnt = ival;
 					break;
 				}
@@ -303,7 +303,7 @@ int main(int argc, char* argv[]) {
 			nums[tid].push_back(make_pair(dt_rec_start, fval));
 		} else if (rectype == 5) { // str
 			if (!gz.skip(4, datalen)) { goto next_packet2; }
-			string sval; if (!gz.fetch(sval, datalen)) { goto next_packet2; }
+			string sval; if (!gz.fetch_with_len(sval, datalen)) { goto next_packet2; }
 			strs[tid].push_back(make_pair(dt_rec_start, sval));
 		}
 
@@ -312,7 +312,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// tid로부터 dbtid를 생성
-	map<unsigned int, unsigned long long> tid_dbtid;
+	map<unsigned long, unsigned long long> tid_dbtid;
 	for (auto tid : tids) {
 		if (tid_dbtid.find(tid) != tid_dbtid.end()) continue;
 		tid_dbtid[tid] = rnd();
@@ -361,11 +361,11 @@ int main(int argc, char* argv[]) {
 		auto srate = tid_srates[tid];
 		// 1초마다 행을 만든다
 		for (auto dt = 0.0; dt < v.size() / srate; dt += 1.0) {
-			int idx_start = dt * srate;
-			int idx_end = idx_start + ceil(srate);
+			long idx_start = dt * srate;
+			long idx_end = idx_start + ceil(srate);
 			if (idx_end > v.size()) idx_end = v.size();
 			fprintf(f, "%llu,%f", tid_dbtid[tid], dtstart + dt);
-			for (int idx = idx_start; idx < idx_end; idx++) {
+			for (long idx = idx_start; idx < idx_end; idx++) {
 				fprintf(f, ",%d", v[idx]);
 			}
 			fprintf(f, "\n");

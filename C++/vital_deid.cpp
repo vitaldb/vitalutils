@@ -69,15 +69,15 @@ int main(int argc, char* argv[]) {
 	double dtstart = DBL_MAX;
 	while (!gi.eof()) { // body is just a list of packet
 		unsigned char type; if (!gi.read(&type, 1)) break;
-		unsigned int datalen; if (!gi.read(&datalen, 4)) break;
+		unsigned long datalen; if (!gi.read(&datalen, 4)) break;
 		if(datalen > 1000000) break;
 		if (type == 0) { // trkinfo : tname, tid, dname, did, type (NUM, STR, WAV), srate
 			unsigned short tid; if (!gi.fetch(tid, datalen)) goto next_packet;
 			gi.skip(2, datalen);
-			string tname; if (!gi.fetch(tname, datalen)) goto next_packet;
-			string unit; gi.fetch(unit, datalen);
+			string tname; if (!gi.fetch_with_len(tname, datalen)) goto next_packet;
+			string unit; gi.fetch_with_len(unit, datalen);
 			gi.skip(4 + 4 + 4 + 4 + 8 + 8 + 1, datalen);
-			unsigned int did = 0; gi.fetch(did, datalen);
+			unsigned long did = 0; gi.fetch(did, datalen);
 			if (did == 0 && tname == "EVENT") {
 				tid_evt = tid;
 			}
@@ -105,7 +105,7 @@ next_packet:
 	if (!go.write(&buf[0], 10 + headerlen)) return -1; // write header
 	while (!gi.eof()) {
 		unsigned char type; if (!gi.read(&type, 1)) break;
-		unsigned int datalen; if (!gi.read(&datalen, 4)) break;
+		unsigned long datalen; if (!gi.read(&datalen, 4)) break;
 		if(datalen > 1000000) break;
 		if(buf.size() < datalen) buf.resize(datalen);
 		if (!gi.read(&buf[0], datalen)) break; // read packet

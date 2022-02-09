@@ -89,8 +89,8 @@ int main(int argc, char* argv[]) {
 			unsigned short tid; if (!gi.fetch(tid, datalen)) goto next_packet;
 			if (tid > tid_max) tid_max = tid;
 			gi.skip(2, datalen);
-			string tname; if (!gi.fetch(tname, datalen)) goto next_packet;
-			string unit; if (!gi.fetch(unit, datalen)) goto next_packet;
+			string tname; if (!gi.fetch_with_len(tname, datalen)) goto next_packet;
+			string unit; if (!gi.fetch_with_len(unit, datalen)) goto next_packet;
 			gi.skip(4 + 4 + 4 + 4 + 8 + 8 + 1, datalen);
 			unsigned long did; if (!gi.fetch(did, datalen)) goto next_packet;
 			if (did == 0 && tname == "EVENT") {

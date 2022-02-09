@@ -16,6 +16,7 @@ COptRecsDlg::~COptRecsDlg() {
 void COptRecsDlg::DoDataExchange(CDataExchange* pDX) {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Check(pDX, IDC_ABSTIME, m_bAbstime);
+	DDX_Check(pDX, IDC_UNIXTIME, m_bUnixTime);
 	DDX_Check(pDX, IDC_HEADER, m_bPrintHeader);
 	DDX_Check(pDX, IDC_RESTRICTED, m_bRestricted);
 	DDX_Check(pDX, IDC_LAST, m_bLast);
