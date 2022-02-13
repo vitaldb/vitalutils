@@ -5,6 +5,7 @@ import datetime
 import tempfile
 import shutil
 import pandas as pd
+import wave
 import pyarrow.parquet as pq
 from urllib import parse, request
 from struct import pack, unpack_from, Struct
@@ -292,8 +293,13 @@ class VitalFile:
     """
     
     def __init__(self, ipath, track_names=None, track_names_only=False, exclude=[], userid=None):
+        """Constructor of the VitalFile class.
+        :param ipath: file path, list of file path, or caseid of open dataset
+        :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
+        :param track_names_only: read track names only
+        """
         # 아래 5개 정보만 로딩하면 된다.
-        self.devs = {0: {}}  # did -> devinfo (name, type, port). did = 0 represents the vital recorder
+        self.devs = {}  # did -> devinfo (name, type, port). did = 0 represents the vital recorder
         self.trks = {}  # tid -> trkinfo (name, type, fmt, unit, mindisp, maxdisp, col, srate, gain, offset, montype, did)
         self.dtstart = 0
         self.dtend = 0
@@ -303,6 +309,54 @@ class VitalFile:
             if track_names_only:
                 raise NotImplementedError
             self.load_opendata(ipath, track_names, exclude)
+            return
+        elif isinstance(ipath, list):
+            dname_to_dids = {}  # 이번 파일에서의 dname -> did mapping
+            dtname_to_trks = {}  # 이번 파일에서의 dtname -> trk mapping
+            for path in ipath:
+                vf = VitalFile(path)
+                if self.dtstart == 0:  # 첫 파일은 무조건 여는거
+                    self.dtstart = vf.dtstart
+                    self.dtend = vf.dtend
+                    self.devs = vf.devs
+                    self.trks = vf.trks
+                    self.dgmt = vf.dgmt
+                    dname_to_dids = {dev['name']: did for did, dev in vf.devs.items()}
+                    dtname_to_trks = {trk['dtname']: trk for tid, trk in vf.trks.items()}
+                else:  # 그 다음 파일 부터는 합쳐야 함
+                    if abs(self.dtstart - vf.dtstart) > 48 * 3600:
+                        # 모든 파일은 48시간 범위 이내에 있어야 한다.
+                        continue
+                    
+                    self.dtstart = min(self.dtstart, vf.dtstart)
+                    self.dtend = max(self.dtend, vf.dtend)
+
+                    for did, dev in vf.devs.items():
+                        dname = dev['name']
+                        if dname in dname_to_dids:
+                            did = dname_to_dids[dname]
+                        else:  # 처음 나왔으면
+                            did = len(dname_to_dids) + 1
+                            dname_to_dids[dname] = did
+                    
+                    for tid, trk in vf.trks.items():
+                        dtname = trk['dtname']
+                        if dtname.find('/') != -1:
+                            dname, tname = dtname.split('/')
+                            if dname in dname_to_dids:
+                                trk['did'] = dname_to_dids[dname]
+                            else:
+                                continue  # did를 찾을 수 없는 장비이다
+                        if dtname in dtname_to_trks:
+                            selftrk = dtname_to_trks[dtname]
+                            selftrk['recs'].extend(trk['recs'])
+                            selftrk['tid'] = max(vf.trks.keys()) + 1
+                            selftrk['did'] = trk['did']
+
+            # sorting tracks -> VR에서 파일을 열 때 sorting을 하기 때문에 저장 시 sorting은 불필요하다.
+            #for trk in self.trks.values():
+            #    trk['recs'].sort(key=lambda r:r['dt'])
+            
             return
 
         # url 형태인 경우, 파라미터 부분을 제거한다
@@ -331,16 +385,22 @@ class VitalFile:
                 raise NotImplementedError
             self.load_parquet(ipath, track_names, exclude)
 
-    # 여러 트랙을 한번에 요청 -> [[트랙1 샘플들], [트랙2 샘플들]...]
+
     def get_samples(self, track_names, interval, return_datetime=False, return_timestamp=False):
-        # 안전을 위한 체크
-        if not interval:
-            # interval 이 지정되지 않으면 최대 해상도로 데이터 추출
+        """Get track samples.
+        :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
+        :param track_names_only: read track names only
+        :param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500
+        :return: [[samples of track1], [samples of track2]...]
+        """
+        if not interval:  # interval 이 지정되지 않으면 최대 해상도로 데이터 추출
             max_srate = max([trk['srate'] for trk in self.trks.values()])
             interval = 1 / max_srate
 
         if not interval:  # 500 Hz
             interval = 0.002
+
+        assert interval > 0
 
         # 포함할 트랙
         if isinstance(track_names, str):
@@ -370,6 +430,7 @@ class VitalFile:
             track_names.insert(0, 'Time')
 
         return ret
+
 
     def crop(self, dtfrom=None, dtend=None):
         if dtfrom is None:
@@ -409,6 +470,7 @@ class VitalFile:
 
     def del_track(self, dtname):
         """ delete track by name
+        :param dtname: device and track name. eg) SNUADC/ECG
         """
         for tid, trk in self.trks.items():
             if trk['dtname'] == dtname:
@@ -429,9 +491,8 @@ class VitalFile:
         if dtname.find('/') >= 0:
             dname, tname = dtname.split('/')
 
-        for devdid in self.devs:
-            dev = self.devs[devdid]
-            if 'name' in dev and dname == dev['name']:
+        for devdid, dev in self.devs.items():
+            if dname == dev['name']:
                 trkdid = devdid
                 break
 
@@ -457,8 +518,8 @@ class VitalFile:
             'unit': unit,
             'mindisp': mindisp,
             'maxdisp': maxdisp,
-            'gain': 1,
-            'offset': 0,
+            'gain': 1.0,
+            'offset': 0.0,
             'col': 0xffffff,
             'montype': 0,
             'did': trkdid,
@@ -466,6 +527,10 @@ class VitalFile:
 
 
     def get_track_samples(self, dtname, interval):
+        """Get samples of each track.
+        :param dtname: track name
+        :param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500
+        """
         if self.dtend <= self.dtstart:
             return []
 
@@ -536,6 +601,9 @@ class VitalFile:
 
 
     def find_track(self, dtname):
+        """Find track from dtname
+        :param dtname: device and track name. eg) SNUADC/ECG_II
+        """
         dname = None
         tname = dtname
         if dtname.find('/') != -1:
@@ -555,17 +623,50 @@ class VitalFile:
 
 
     def to_pandas(self, track_names, interval, return_datetime=False, return_timestamp=False):
+        """
+        :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
+        :param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500
+        """
         ret = self.get_samples(track_names, interval, return_datetime, return_timestamp)
         return pd.DataFrame(ret, columns=track_names)
     
 
     def to_numpy(self, track_names, interval, return_datetime=False, return_timestamp=False):
+        """
+        :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
+        :param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500
+        """
         ret = self.get_samples(track_names, interval, return_datetime, return_timestamp)
         return np.transpose(ret)
 
 
+    def to_wav(self, opath, track_names, srate=None):
+        """ Save as wave file
+        :param opath: file path to save.
+        :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
+        :param srate: sample frequency. eg) 500
+        """
+        assert srate > 0
+        vals = self.to_numpy(track_names, 1 / srate)
+
+        # fill nan
+        vals = pd.DataFrame(vals).interpolate(limit_direction='both').values
+
+        scale = np.abs(vals).max(axis=0)  # normalize tracks
+        scale[scale == 0] = 1  # not to divide by zero
+        vals *= (2 ** 15 - 1) / scale # scaling
+
+        vals = vals.astype("<h")  # Convert to little-endian short int
+        with wave.open(opath, "w") as f:
+            f.setnchannels(vals.shape[1])
+            f.setsampwidth(2)  # 2 bytes per sample
+            f.setframerate(srate)
+            f.writeframes(vals.tobytes())
+
+
     def to_vital(self, opath, compresslevel=1):
         """ save as vital file
+        :param opath: file path to save.
         """
         f = gzip.GzipFile(opath, 'wb', compresslevel=compresslevel)
 
@@ -585,7 +686,8 @@ class VitalFile:
 
         # save devinfos
         for did, dev in self.devs.items():
-            if did == 0: continue
+            if did == 0: 
+                continue
             ddata = pack_dw(did) + pack_str(dev['name']) + pack_str(dev['type']) + pack_str(dev['port'])
             if not f.write(pack_b(9) + pack_dw(len(ddata)) + ddata):
                 return False
@@ -657,7 +759,6 @@ class VitalFile:
                     newrecs.append(newrec)
                 trk['recs'] = newrecs
 
-            # 트랙별로 저장
             for rec in trk['recs']:
                 row = {'tname': dtname, 'dt': rec['dt']}
                 if trk['type'] == 1:  # wav
@@ -747,7 +848,7 @@ class VitalFile:
                     srate = 0
 
                 # 트랙명으로부터 가져온 기본 트랙 정보
-                default_ti = {'unit': '', 'mindisp': 0, 'maxdisp': 0, 'col': 0xffffff, 'gain': 1, 'offset': 0, 'montype': 0}
+                default_ti = {'unit': '', 'mindisp': 0, 'maxdisp': 0, 'col': 0xffffff, 'gain': 1.0, 'offset': 0.0, 'montype': 0}
                 if dtname in dtname_tis:
                     trk = {**default_ti, **dtname_tis[dtname]}
                 else:
@@ -845,7 +946,7 @@ class VitalFile:
                     continue
 
                 # 트랙명으로부터 가져온 기본 트랙 정보
-                default_ti = {'unit': '', 'mindisp': 0, 'maxdisp': 0, 'col': 0xffffff, 'gain': 1, 'offset': 0, 'montype': 0}
+                default_ti = {'unit': '', 'mindisp': 0, 'maxdisp': 0, 'col': 0xffffff, 'gain': 1.0, 'offset': 0.0, 'montype': 0}
                 if dtname in dtname_tis:
                     trk = {**default_ti, **dtname_tis[dtname]}
                 else:
@@ -953,7 +1054,8 @@ class VitalFile:
                     self.devs[did] = {'name': name, 'type': devtype, 'port': port}
                 elif packet_type == 0:  # trkinfo
                     did = col = 0
-                    montype = unit = ''
+                    montype = 0
+                    unit = ''
                     gain = offset = srate = mindisp = maxdisp = 0.0
                     tid = unpack_w(buf, pos)[0]; pos += 2
                     trktype = unpack_b(buf, pos)[0]; pos += 1
@@ -1095,9 +1197,14 @@ class VitalFile:
 
 
 def vital_recs(ipath, track_names=None, interval=None, return_timestamp=False, return_datetime=False, return_pandas=False, exclude=[]):
-    '''
-    interval: 데이터 추출 간격, None 이면 최대 해상도. wave 트랙이 없으면 0.002 초 (500Hz)
-    '''
+    """Constructor of the VitalFile class.
+    :param ipath: file path to read
+    :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
+    :param interval: interval of each samples. if None, maximum resolution. wave 트랙이 없으면 0.002 초 (500Hz)
+    :param return_timestamp: 
+    :param return_datetime: 
+    :param return_pandas: 
+    """
     # 만일 SNUADC/ECG_II,Solar8000 형태의 문자열이면?
     if isinstance(track_names, str):
         if track_names.find(',') != -1:
@@ -1128,5 +1235,9 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
-    vals = vital_recs("https://vitaldb.net/samples/00001.vital", return_timestamp=True, return_pandas=True)
-    print(vals)
+    # vf = VitalFile(['1-1.vital', '1-2.vital', '1-3.vital'])
+    # vf.to_vital('merged.vital')
+    #vals = vital_recs("https://vitaldb.net/samples/00001.vital", return_timestamp=True, return_pandas=True)
+    #print(vals)
+    vf = VitalFile("https://vitaldb.net/samples/00001.vital")
+    vf.to_wav('1.wav', ['SNUADC/ECG_II'], 500)
