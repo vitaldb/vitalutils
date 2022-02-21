@@ -324,8 +324,8 @@ class VitalFile:
                     dname_to_dids = {dev['name']: did for did, dev in vf.devs.items()}
                     dtname_to_trks = {trk['dtname']: trk for tid, trk in vf.trks.items()}
                 else:  # 그 다음 파일 부터는 합쳐야 함
-                    if abs(self.dtstart - vf.dtstart) > 48 * 3600:
-                        # 모든 파일은 48시간 범위 이내에 있어야 한다.
+                    if abs(self.dtstart - vf.dtstart) > 7 * 24 * 3600:
+                        # 모든 파일은 7일 이내에 있어야 한다
                         continue
                     
                     self.dtstart = min(self.dtstart, vf.dtstart)
@@ -1240,4 +1240,5 @@ if __name__ == '__main__':
     #vals = vital_recs("https://vitaldb.net/samples/00001.vital", return_timestamp=True, return_pandas=True)
     #print(vals)
     vf = VitalFile("https://vitaldb.net/samples/00001.vital")
-    vf.to_wav('1.wav', ['SNUADC/ECG_II'], 500)
+    vf.crop(300, 360)
+    vf.to_wav('1.wav', ['SNUADC/ECG_II'], 44100)
