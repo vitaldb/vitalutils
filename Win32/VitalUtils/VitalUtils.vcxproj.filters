@@ -33,9 +33,6 @@
     <ClInclude Include="Resource.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="EditEx.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="OptRecsDlg.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -63,6 +60,15 @@
     <ClInclude Include="Https.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="unzip.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="DlgUnzip.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Util.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VitalUtils.cpp">
@@ -72,9 +78,6 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="EditEx.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="OptRecsDlg.cpp">
@@ -99,6 +102,15 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Https.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="unzip.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgUnzip.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Util.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

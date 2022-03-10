@@ -4,6 +4,7 @@
 #include "VitalUtilsDlg.h"
 #include "afxdialogex.h"
 #include <filesystem>
+#include "util.h"
 
 #define LVIS_CHECKED 0x2000 
 #define LVIS_UNCHECKED 0x1000
@@ -443,30 +444,23 @@ void CVitalUtilsDlg::OnBnClickedBtnOdir() {
 #include <set>
 using namespace std;
 
-bool file_exists(string path) {
-	CFile fil;
-	if (fil.Open(path.c_str(), CFile::modeRead | CFile::shareDenyNone)) { // Open succeeded, file exists 
-		fil.Close();
-		return true;
-	}
-	if (ERROR_FILE_NOT_FOUND == ::GetLastError()) return false;
-	return false;
-}
-
 void CVitalUtilsDlg::OnBnClickedRun() {
 	UpdateData(TRUE);
 
 	// 툴 골라잡음
 	string stool, spre, spost;
 	if (m_ctrlSelRun.GetCheck()) { // 스크립트 실행
-		string python_exe = get_module_dir() + "python\\python.exe";
-		if (!file_exists(python_exe)) {
-			auto str = "Running Script requires python interpreter\nDownload and setup python?";
+		string python_path = get_python_path();
+		if (!fs::exists(python_path)) {
+			auto str = "Running Script requires python interpreter\nDo you want to install it?";
 			if (IDOK != AfxMessageBox(str, MB_OKCANCEL)) return;
-			theApp.InstallPython(); // 블록킹
+			if (!theApp.install_python()) return; // 블록킹
 		}
 		m_dlgRun.UpdateData(TRUE);
-		stool = "\"" + python_exe + "\" \"" + get_module_dir() + "scripts\\" + string(m_dlgRun.m_strScript) + "\"";
+		
+		// 스크립트를 실행하는 것과 필터를 실행하는 것으로 나눠야함
+		stool = "\"" + python_path + "\" \"" + get_module_dir() + "scripts\\" + string(m_dlgRun.m_strScript) + "\"";
+
 	} else if (m_ctrlSelCopyFiles.GetCheck()) { // export vital
 		stool = "\"" + get_module_dir() + "utilities\\vital_copy.exe\"";
 
@@ -619,7 +613,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 			return;
 		}
 		auto ofile = odir + "\\" + string(m_dlgRecs.m_strOutputFile);
-		if (file_exists(ofile)) {
+		if (fs::exists(ofile)) {
 			if (IDYES != AfxMessageBox("Are you sure to overwrite previous file?\n", MB_YESNO)) {
 				m_dlgRecs.m_ctrlOutputFile.SetFocus();
 				return;
@@ -683,7 +677,7 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 
 		// 파일 존재시 삭제이면?
 		if (m_bSkip && !m_dlgRecs.m_bLong) {
-			if (file_exists(opath)) {
+			if (fs::exists(opath)) {
 				theApp.log(opath + " already exists.");
 				continue;
 			}
@@ -755,12 +749,6 @@ CString SpanToStr(double dtSpan) {
 		else str.Format(_T("%.3f s"), dtSpan);
 	}
 	return str;
-}
-
-CString basename(CString path, bool withext) {
-	auto str = path.Mid(max(path.ReverseFind('/'), path.ReverseFind('\\')) + 1);
-	if (withext) return str;
-	return str.Left(str.ReverseFind('.'));
 }
 
 string format_number(__int64 dwNumber) {

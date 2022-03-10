@@ -1,6 +1,5 @@
 #pragma once
 #include "afxwin.h"
-#include "EditEx.h"
 
 class COptRunScriptDlg : public CDialogEx {
 	DECLARE_DYNAMIC(COptRunScriptDlg)
@@ -23,5 +22,4 @@ public:
 	virtual BOOL OnInitDialog();
 	CComboBox m_ctrlScript;
 	CString m_strScript;
-	afx_msg void OnBnClickedSetupPython();
 };

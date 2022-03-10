@@ -1,6 +1,5 @@
 #pragma once
 #include "afxwin.h"
-#include "EditEx.h"
 
 class COptRecsDlg : public CDialogEx {
 	DECLARE_DYNAMIC(COptRecsDlg)
@@ -28,9 +27,9 @@ public:
 	BOOL m_bPrintClosest = FALSE;
 	BOOL m_bPrintMean = FALSE;
 	double m_fInterval = 60.0;
-	CEditEx m_ctrInterval;
+	CEdit m_ctrInterval;
 	BOOL m_bPrintFilename;
-	CEditEx m_ctrlOutputFile;
+	CEdit m_ctrlOutputFile;
 	BOOL m_bLong;
 	CString m_strOutputFile = "output.csv";
 	CButton m_ctrlHeader;

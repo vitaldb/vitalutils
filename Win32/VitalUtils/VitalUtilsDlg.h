@@ -1,6 +1,5 @@
 #pragma once
 #include "afxwin.h"
-#include "EditEx.h"
 #include "afxcmn.h"
 #include "OptRunScript.h"
 #include "OptRecsDlg.h"
@@ -156,7 +155,7 @@ public:
 	CStatic m_ctrlOdirStatic;
 	CStatic m_ctrlIdirStatic;
 	CStatic m_ctrProgress;
-	CEditEx m_ctrlFilter;
+	CEdit m_ctrlFilter;
 	CComboBox m_ctrlSelOper;
 	CStatic m_ctrlTrkCnt;
 	CStatic m_ctrlFileCnt;
@@ -183,10 +182,10 @@ public:
 	int m_nSortItem = -1;
 	bool m_bSortAsc = true;
 	CListBox m_ctrlTrkList;
-	CEditEx m_ctrlTrkFilter;
-	CEditEx m_ctrIdir;
-	CEditEx m_ctrOdir;
-	CEditEx m_ctrlSelTrks;
+	CEdit m_ctrlTrkFilter;
+	CEdit m_ctrIdir;
+	CEdit m_ctrOdir;
+	CEdit m_ctrlSelTrks;
 
 public:
 	afx_msg void OnHdnItemclickFilelist(NMHDR *pNMHDR, LRESULT *pResult);

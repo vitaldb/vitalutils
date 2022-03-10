@@ -1,10 +1,125 @@
 #pragma once
+#include "VitalUtils.h"
 #include <string>
 #include <memory>
 #include <stdarg.h>
 #include <regex>
 #include <time.h>
 using namespace std;
+
+time_t filetime_to_unixtime(const FILETIME& ft);
+string replace_all(string message, const string& pattern, const string& replace);
+string replace_all(string s, const char from, const char to);
+
+string ltrim(string s, const char* c = " \r\n\v\t");
+string rtrim(string s, const char* c = " \r\n\v\t");
+string trim(string s, const char* c = " \r\n\v\t");
+string ltrim(string s, char c);
+string rtrim(string s, char c);
+string trim(string s, char c);
+bool get_file_contents(LPCTSTR path, vector<BYTE>& ret);
+string dt_to_str(time_t t);
+
+string get_module_path();
+string get_module_dir();
+
+string get_last_error_string();
+
+string exec_cmd_get_error(string cmd);
+
+string exec_cmd_get_output(string cmd);
+
+// pipe 된 실행을 하고 출력 결과를 ofile 에 저장함
+bool exec_cmd(string cmdLine, string ofile);
+
+template <typename... Args>
+inline string str_format(const char* format, Args... args) {
+	size_t size = snprintf(nullptr, 0, format, args...) + 1;  // Extra space for '\0'
+	auto buf = make_unique<char[]>(size);
+	snprintf(buf.get(), size, format, args...);
+	return string(buf.get(), buf.get() + size - 1);  // We don't want the '\0' inside
+}
+
+inline string substr(const string& s, size_t pos, size_t len = -1) {
+	try {
+		return s.substr(pos, len);
+	}
+	catch (...) {
+	}
+	return "";
+}
+
+inline string make_lower(std::string s) {
+	std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
+	return s;
+}
+
+inline string extname(string path) {
+	auto pos = path.find_last_of('.');
+	if (pos == string::npos) return "";
+	return make_lower(substr(path, pos + 1));
+}
+
+inline string dirname(string path) {
+	return substr(path, 0, path.find_last_of("/\\") + 1);
+}
+
+inline time_t filetime_to_unixtime(const FILETIME& ft) {
+	ULARGE_INTEGER ull;
+	ull.LowPart = ft.dwLowDateTime;
+	ull.HighPart = ft.dwHighDateTime;
+	return (time_t)(ull.QuadPart / 10000000ULL - 11644473600ULL);
+}
+
+inline string implode(const vector<string>& arr, string sep) {
+	string ret;
+	for (unsigned int i = 0; i < arr.size(); i++) {
+		if (i > 0) ret += sep;
+		ret += arr[i];
+	}
+	return ret;
+}
+
+string GetLastInetErrorString();
+
+template <typename... Args>
+inline string str_format(const string& format, Args... args) {
+	size_t size = snprintf(nullptr, 0, format.c_str(), args...) + 1;  // Extra space for '\0'
+	auto buf = make_unique<char[]>(size);
+	snprintf(buf.get(), size, format.c_str(), args...);
+	return string(buf.get(), buf.get() + size - 1);  // We don't want the '\0' inside
+}
+
+inline string num_to_str(int d) {
+	return str_format("%d", d);
+}
+
+inline string num_to_str(unsigned long long d) {
+	return str_format("%u", d);
+}
+
+inline string num_to_str(unsigned char d) {
+	return str_format("%u", d);
+}
+
+inline string num_to_str(unsigned int d) {
+	return str_format("%u", d);
+}
+
+inline string num_to_str(double f) {
+	auto str = str_format("%f", f);
+	if (str.find('.') != string::npos) str = rtrim(str, '0');
+	return rtrim(str, '.');
+}
+
+inline string num_to_str(double f, int prec) {
+	if (prec < 0) return num_to_str(f);
+	auto fmt = str_format("%%.%uf", prec);
+	auto str = str_format(fmt, f);
+	return str;
+	//if (str.find('.') != string::npos) str = rtrim(str, '0');
+	//return rtrim(str, '.');
+}
 
 inline unsigned int str_to_uint(const string& s) {
 	return strtoul(s.c_str(), nullptr, 10);
@@ -15,13 +130,7 @@ inline string to_lower(string strToConvert) {
 	return strToConvert;
 }
 
-inline string basename(string path) {
-	for (auto i = (int)path.size() - 1; i >= 0; i--) {
-		if (path[i] == '\\' || path[i] == '/') 
-			return path.substr(i+1);
-	}
-	return path;
-}
+string basename(string path, bool withext = true);
 
 inline string string_format(const std::string fmt_str, ...) {
 	int final_n, n = ((int)fmt_str.size()) * 2; // Reserve two times as much as the length of the fmt_str
@@ -42,20 +151,7 @@ inline string string_format(const std::string fmt_str, ...) {
 	return std::string(formatted.get());
 }
 
-inline string escape_csv(string s) {
-	int qpos = s.find('"');
-	if (qpos > -1) s.insert(s.begin() + qpos, '"');
-	
-	bool need_quote = false;
-	
-	if (s.find(',') > -1) need_quote = true;
-	if (s.find('\n') > -1) need_quote = true;
-	if (s.find('\r') > -1) need_quote = true;
-
-	if (need_quote) s = '"' + s + '"';
-
-	return s;
-}
+string escape_csv(string s);
 
 inline vector<string> explode(string str, string sep) {
 	vector<string> ret;
@@ -87,48 +183,11 @@ inline vector<string> explode(const string& s, const char c) {
 	return ret;
 }
 
-inline string replace_all(string str, const string &pattern, const string &replace) {
-	string::size_type pos = 0;
-	string::size_type offset = 0;
-	while ((pos = str.find(pattern, offset)) != string::npos) {
-		str.replace(str.begin() + pos, str.begin() + pos + pattern.size(), replace);
-		offset = pos + replace.size();
-	}
-	return str;
-}
-
 inline string ltrim(std::string s, const std::string& drop = " ") {
 	return s.erase(0, s.find_first_not_of(drop));
 }
 
-inline double parse_dt(string str) {
-	regex pattern("^(([0-9]{4})[\\/-]((1[0-2])|([0]?[1-9]))[\\/-]((3[0-1])|([1-2][0-9])|([0]?[1-9]))[ ])?(([0-4]?[0-9])):([0-5]?[0-9])(:(([0-5]?[0-9])([\\.][0-9]{1,3})?))?");
-	cmatch matches;
-	if (!regex_search(str.c_str(), matches, pattern)) return 0.0;
+double parse_dt(string str);
 
-	tm st;
-	string s = matches.str(2);
-	st.tm_year = atoi(ltrim(s.c_str(), "0").c_str()) - 1900;
-	s = matches.str(3).c_str();
-	st.tm_mon = atoi(ltrim(s.c_str(), "0").c_str()) - 1;
-	s = matches.str(6).c_str();
-	st.tm_mday = atoi(ltrim(s.c_str(), "0").c_str());
-	s = matches.str(10).c_str();
-	st.tm_hour = atoi(ltrim(s.c_str(), "0").c_str());
-	s = matches.str(12).c_str();
-	st.tm_min = atoi(ltrim(s.c_str(), "0").c_str());
-	s = matches.str(14).c_str();
-	double second = atof(ltrim(s.c_str(), "0").c_str());
-	st.tm_sec = second;
-
-	return (double)mktime(&st) + second - (int)(second);
-}
-
-inline size_t file_size(const string& path) {
-	auto f = fopen(path.c_str(), "rb");
-	if (!f) return -1;
-	fseek(f, 0, SEEK_END);
-	auto ret = ftell(f);
-	fclose(f);
-	return ret;
-}
+string get_conf_dir();
+string get_python_path();

@@ -1,67 +1,64 @@
 #pragma once
 #include "stdafx.h"
+#ifdef _WIN32
 #include <wininet.h>
+#pragma comment(lib, "WinInet")
+#else
+#include <curl/curl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#endif
+
 #include <vector>
 #include <map>
 #include <list>
 #include <functional>
 using namespace std;
 
-CString URLEncode(CString sIn);
-CString URLDecode(CString sIn);
-
-struct PTRLEN {
-	PTRLEN(void* p, size_t l) : pBuf(p), nLen(l) {}
-	void* pBuf;
-	size_t nLen;
-};
-
 struct Http {
 public:
 	Http() = default;
-	Http(LPCTSTR strHostName, int nPort = 80, LPCTSTR szUserName = nullptr, LPCTSTR szPassword = nullptr);
+	// 443일 때만 secure 이다
+	Http(const string& strHostName, int nPort = 80, const string& szUserName = "", const string& szPassword = "");
 	virtual ~Http();
 
 public:
 	bool m_bSecure = false;
-	HINTERNET m_hConnect = nullptr;
-	HINTERNET m_hSession = nullptr;
-	CString m_strHost;
-	CString m_szUserName;
-	CString m_szPassword;
-	int m_nPort = INTERNET_DEFAULT_HTTP_PORT; // 80
-	bool m_bOpened = false;
+	string m_strHost;
+	string m_szUserName;
+	string m_szPassword;
+	int m_nPort = 80; // 80
+	bool m_ctrlCutfile = false;
 protected:
-	CString m_strLastError;
+	string m_strLastError;
 	int m_nReturnCode = 0;
 public:
-	int GetReturnCode() { return m_nReturnCode; }
-	CString GetLastError() { return m_strLastError; }
-
-public:
-	virtual bool Open(); // 기존 접속 정보로 접속한다.
-	virtual bool Open(LPCTSTR strHostName, int nPort = 80, LPCTSTR szUserName = nullptr, LPCTSTR szPassword = nullptr);
-	void Close();
+	int get_return_code() { return m_nReturnCode; }
+	string get_last_error() { return m_strLastError; }
 	
 	// 파라미터
 public:
-	// callback function for progress notification
-	// if it return false --> cancel downloading
-	bool Download(LPCTSTR strRemotePath, LPCTSTR strLocalPath, function<bool(DWORD,DWORD)> pcb = nullptr);
-	// UTF8로 변환하여 전송한다.
-	bool SendGet(LPCTSTR strRemotePath, CString& ret);
-protected:
-	bool Send(CString strMethod, CString strPath, CString strPayload, CString& ret);
+	// 결국 모든 요청은 다 여기로 온다.
+	bool send_request(const string& strMethod, const string& strPath, const vector<string>& headers, const unsigned char* payload, size_t payload_len, vector<unsigned char>& ret, const string& strLocalPath = "", function<bool(size_t, size_t)> pcb = nullptr);
+
+	bool send_request(const string& strMethod, const string& strPath, const vector<string>& headers, const vector<unsigned char>& payload, vector<unsigned char>& ret, const string& strLocalPath = "", function<bool(size_t, size_t)> pcb = nullptr);
+	bool send_request(const string& strMethod, const string& strPath, const vector<string>& headers, const string& payload, vector<unsigned char>& ret, const string& strLocalPath = "", function<bool(size_t, size_t)> pcb = nullptr);
+
+	bool send_request(const string& strMethod, const string& strPath, const vector<string>& headers, const unsigned char* payload, size_t payload_len, string& ret, const string& strLocalPath = "", function<bool(size_t, size_t)> pcb = nullptr);
+	bool send_request(const string& strMethod, const string& strPath, const vector<string>& headers, const vector<unsigned char>& payload, string& ret, const string& strLocalPath = "", function<bool(size_t, size_t)> pcb = nullptr);
+	bool send_request(const string& strMethod, const string& strPath, const vector<string>& headers, const string& payload, string& ret, const string& strLocalPath = "", function<bool(size_t, size_t)> pcb = nullptr);
+
+	bool send_post(const string& strPath, const map<string, string>& posts, string& ret);
+	bool send_post(const string& strPath, const map<string, string>& posts, const map<string, string>& files, string& ret, function<bool(size_t, size_t)> pcb = nullptr);
+	bool send_post(const string& strPath, const map<string, string>& posts, const map<string, vector<unsigned char>>& files, string& ret);
+	bool download(const string& strPath, const string& strLocalPath = "", function<bool(size_t, size_t)> pcb = nullptr) {
+		string ret;
+		return send_request("GET", strPath, {}, "", ret, strLocalPath, pcb);
+	}
 };
 
 struct Https : public Http {
 public:
-	Https() {
-		m_bSecure = true;
-		m_nPort = INTERNET_DEFAULT_HTTPS_PORT;
-	};
-	Https(LPCTSTR strHostName, int nPort = INTERNET_DEFAULT_HTTPS_PORT, LPCTSTR szUserName = nullptr, LPCTSTR szPassword = nullptr) {
-		m_bSecure = true;
-		Open(strHostName, nPort, szUserName, szPassword);
-	};
+	Https(const string& strHostName, int nPort = 443) : Http (strHostName, nPort) {};
 };

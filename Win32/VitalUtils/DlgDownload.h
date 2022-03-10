@@ -1,14 +1,14 @@
 #pragma once
 #include "afxcmn.h"
+#include <thread>
+
 using namespace std;
 
-class CDlgDownload : public CDialogEx
-{
+class CDlgDownload : public CDialogEx {
 	DECLARE_DYNAMIC(CDlgDownload)
 
 public:
-	CDlgDownload(CWnd* pParent, LPCTSTR url, LPCTSTR localpath);
-	virtual ~CDlgDownload();
+	CDlgDownload(string host, string remotepath, string localpath);
 
 // Dialog Data
 	enum { IDD = IDD_DOWNLOAD };
@@ -19,15 +19,18 @@ protected:
 	DECLARE_MESSAGE_MAP()
 
 public:
-	CWinThread* m_pDownloadThread = nullptr;
-	void DownloadThreadFunc();
+	thread m_thread_download;
 	bool m_bCancelling = false;
+	string m_host;
+	string m_localpath;
+	string m_remotepath;
 	CString m_strStatus;
-	CString m_strUrl;
-	CString m_strLocalPath;
 	CProgressCtrl m_ctrlProgress;
+
+public:
+	void download_thread_func();
 	afx_msg void OnBnClickedCancel();
 	virtual BOOL OnInitDialog();
 	afx_msg void OnDestroy();
-	void OnProgress(DWORD dwRead, DWORD dwTotal);
+	void OnProgress(size_t dwRead, size_t dwTotal);
 };

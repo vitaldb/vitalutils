@@ -19,7 +19,6 @@ void COptRunScriptDlg::DoDataExchange(CDataExchange* pDX) {
 }
 
 BEGIN_MESSAGE_MAP(COptRunScriptDlg, CDialogEx)
-	ON_BN_CLICKED(IDC_SETUP_PYTHON, &COptRunScriptDlg::OnBnClickedSetupPython)
 END_MESSAGE_MAP()
 
 BOOL COptRunScriptDlg::OnInitDialog() {
@@ -38,9 +37,4 @@ BOOL COptRunScriptDlg::OnInitDialog() {
 	if (m_ctrlScript.GetCount() > 0) m_ctrlScript.SetCurSel(0);
 
 	return TRUE;
-}
-
-void COptRunScriptDlg::OnBnClickedSetupPython() {
-	theApp.InstallPython();
-	theApp.log("Python installed");
 }

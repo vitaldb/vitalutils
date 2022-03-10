@@ -1,6 +1,5 @@
 #pragma once
 #include "afxwin.h"
-#include "EditEx.h"
 
 class COptCopyFilesDlg : public CDialogEx {
 	DECLARE_DYNAMIC(COptCopyFilesDlg)
