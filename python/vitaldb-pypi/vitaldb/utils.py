@@ -378,6 +378,21 @@ class VitalFile:
                 month = ipath[-19:-15]
                 ipath = f's3://vitaldb-myfiles/{userid}/{month}/{bedname}/{ipath}'
 
+        # 포함할 트랙
+        if isinstance(track_names, str):
+            if track_names.find(','):
+                track_names = track_names.split(',')
+            else:
+                track_names = [track_names]
+
+        # 제외할 트랙
+        if isinstance(exclude, str):
+            if exclude.find(','):
+                exclude = exclude.split(',')
+            else:
+                exclude = [exclude]
+        exclude = set(exclude)
+
         if ext == '.vital':
             self.load_vital(ipath, track_names, track_names_only, exclude)
         elif ext == '.parquet':
@@ -664,7 +679,7 @@ class VitalFile:
             f.writeframes(vals.tobytes())
 
 
-    def to_vital(self, opath, compresslevel=1):
+    def to_vital(self, opath, compresslevel=9):
         """ save as vital file
         :param opath: file path to save.
         """
@@ -968,6 +983,8 @@ class VitalFile:
             if trk['type'] == 1:  # wav
                 rec['val'] = np.frombuffer(row['wval'], dtype=np.float32)
                 #rec['val'] = np.array(Struct('<{}f'.format(len(row['wval']) // 4)).unpack_from(row['wval'], 0), dtype=np.float32)
+                
+                # TODO: dtend가 부정확할 수 있으므로 조정 필요
             elif trk['type'] == 2:  # num
                 rec['val'] = row['nval']
             elif trk['type'] == 5:  # str
@@ -995,16 +1012,6 @@ class VitalFile:
                 f.seek(0)
         else:
             f = open(ipath, 'rb')
-
-        # 포함할 트랙
-        if isinstance(track_names, str):
-            if track_names.find(','):
-                track_names = track_names.split(',')
-            else:
-                track_names = [track_names]
-
-        # 제외할 트랙
-        exclude = set(exclude)
 
         # read file as gzip
         f = gzip.GzipFile(fileobj=f)
@@ -1136,7 +1143,6 @@ class VitalFile:
                     if self.dtstart == 0 or (dt > 0 and dt < self.dtstart):
                         self.dtstart = dt
                     
-                    # TODO: dtrec end 는 다를 수 있음 wav 읽어서 nsamp 로딩해야함
                     if dt > self.dtend:
                         self.dtend = dt
 
@@ -1154,6 +1160,7 @@ class VitalFile:
                     fmtlen = 4
                     # gain, offset 변환은 하지 않은 raw data 상태로만 로딩한다.
                     # 항상 이 변환이 필요하지 않기 때문에 변환은 나중에 한다.
+                    rec_dtend = dt
                     if trk['type'] == 1:  # wav
                         fmtcode, fmtlen = parse_fmt(trk['fmt'])
                         if len(buf) < pos + 4:
@@ -1163,6 +1170,11 @@ class VitalFile:
                             continue
                         samps = np.ndarray((nsamp,), buffer=buf, offset=pos, dtype=np.dtype(fmtcode)); pos += nsamp * fmtlen
                         trk['recs'].append({'dt': dt, 'val': samps})
+                        
+                        if trk['srate'] > 0:
+                            rec_dtend = dt + len(samps) / trk['srate']
+                            if rec_dtend > self.dtend:
+                                self.dtend = rec_dtend
                     elif trk['type'] == 2:  # num
                         fmtcode, fmtlen = parse_fmt(trk['fmt'])
                         if len(buf) < pos + fmtlen:
