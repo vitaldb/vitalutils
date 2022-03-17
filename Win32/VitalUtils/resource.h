@@ -125,7 +125,9 @@
 #define IDC_TO15                        1068
 #define IDC_TO16                        1069
 #define IDC_TO17                        1070
+#define IDC_INSTALL_PYTHON              1070
 #define IDC_TO18                        1071
+#define IDC_STATIC_PYTHON               1071
 #define IDC_TO19                        1072
 #define IDC_TO20                        1073
 #define IDC_FROM11                      1074
@@ -165,7 +167,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        146
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1067
+#define _APS_NEXT_CONTROL_VALUE         1072
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -248,8 +248,8 @@ string basename(string path, bool withext) {
 }
 
 string escape_csv(string s) {
-	int qpos = s.find('"');
-	if (qpos > -1) s.insert(s.begin() + qpos, '"');
+	auto qpos = s.find('"');
+	if (qpos != -1) s.insert(s.begin() + qpos, '"');
 
 	bool need_quote = false;
 
@@ -280,7 +280,7 @@ double parse_dt(string str) {
 	st.tm_min = atoi(ltrim(s.c_str(), "0").c_str());
 	s = matches.str(14).c_str();
 	double second = atof(ltrim(s.c_str(), "0").c_str());
-	st.tm_sec = second;
+	st.tm_sec = (int)second;
 
 	return (double)mktime(&st) + second - (int)(second);
 }
@@ -310,7 +310,121 @@ string get_conf_dir() {
 }
 
 string get_python_path() {
-	auto python_path = get_conf_dir() + "python\\python.exe";
-	if (fs::exists(python_path)) return python_path;
+	return get_conf_dir() + "python\\python.exe";
+}
+
+bool get_file_contents(LPCTSTR path, vector<BYTE>& ret) {
+	auto f = fopen(path, "rb");
+	if (!f) return false;
+	fseek(f, 0, SEEK_END);
+	auto len = ftell(f);
+	rewind(f);
+	ret.resize(len);
+	fread(&ret[0], 1, len, f);
+	fclose(f);
+	return true;
+}
+
+string ltrim(string s, char c) {
+	return s.erase(0, s.find_first_not_of(c));
+}
+
+// trim from end (in place)
+string rtrim(string s, char c) {
+	return s.erase(s.find_last_not_of(c) + 1);
+}
+
+// trim from both ends (in place)
+string trim(string s, char c) { return rtrim(ltrim(s, c), c); }
+
+string ltrim(string s, const char* c) {
+	return s.erase(0, s.find_first_not_of(c));
+}
+
+// trim from end (in place)
+string rtrim(string s, const char* c) {
+	return s.erase(s.find_last_not_of(c) + 1);
+}
+
+// trim from both ends (in place)
+string trim(string s, const char* c) { return rtrim(ltrim(s, c), c); }
+
+string substr(const string& s, size_t pos, size_t len) {
+	try {
+		return s.substr(pos, len);
+	}
+	catch (...) {
+	}
 	return "";
+}
+
+string make_lower(std::string s) {
+	std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
+	return s;
+}
+
+string extname(string path) {
+	auto pos = path.find_last_of('.');
+	if (pos == string::npos) return "";
+	return make_lower(substr(path, pos + 1));
+}
+
+string dirname(string path) {
+	return substr(path, 0, path.find_last_of("/\\") + 1);
+}
+
+time_t filetime_to_unixtime(const FILETIME& ft) {
+	ULARGE_INTEGER ull;
+	ull.LowPart = ft.dwLowDateTime;
+	ull.HighPart = ft.dwHighDateTime;
+	return (time_t)(ull.QuadPart / 10000000ULL - 11644473600ULL);
+}
+
+string implode(const vector<string>& arr, string sep) {
+	string ret;
+	for (unsigned int i = 0; i < arr.size(); i++) {
+		if (i > 0) ret += sep;
+		ret += arr[i];
+	}
+	return ret;
+}
+
+string num_to_str(int d) {
+	return str_format("%d", d);
+}
+
+string num_to_str(unsigned long long d) {
+	return str_format("%u", d);
+}
+
+string num_to_str(unsigned char d) {
+	return str_format("%u", d);
+}
+
+string num_to_str(unsigned int d) {
+	return str_format("%u", d);
+}
+
+string num_to_str(double f) {
+	auto str = str_format("%f", f);
+	if (str.find('.') != string::npos) str = rtrim(str, '0');
+	return rtrim(str, '.');
+}
+
+string num_to_str(double f, int prec) {
+	if (prec < 0) return num_to_str(f);
+	auto fmt = str_format("%%.%uf", prec);
+	auto str = str_format(fmt, f);
+	return str;
+	//if (str.find('.') != string::npos) str = rtrim(str, '0');
+	//return rtrim(str, '.');
+}
+
+unsigned int str_to_uint(const string& s) {
+	return strtoul(s.c_str(), nullptr, 10);
+}
+
+string to_lower(string strToConvert) {
+	transform(strToConvert.begin(), strToConvert.end(), strToConvert.begin(), ::tolower);
+	return strToConvert;
 }

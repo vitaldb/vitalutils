@@ -21,5 +21,9 @@ public:
 	virtual void OnCancel() {};
 	virtual BOOL OnInitDialog();
 	CComboBox m_ctrlScript;
-	CString m_strScript;
+	CString m_strArg;
+	afx_msg void OnDestroy();
+	CStatic m_ctrlStaticPython;
+	CButton m_ctrlInstallPython;
+	afx_msg void OnBnClickedInstallPython();
 };

@@ -104,6 +104,7 @@ void CVitalUtilsApp::log(string msg) {
 
 bool CVitalUtilsApp::install_python() {
 	auto python_path = get_python_path();
+	if (fs::exists(python_path)) return true;
 
 	// C:\Users\lucid\AppData\Roaming\VitalRecorder\python
 	string odir = dirname(python_path);
@@ -122,49 +123,12 @@ bool CVitalUtilsApp::install_python() {
 		return false;
 	}
 
-	//string localpath = "C:\\Users\\lucid\\OneDrive\\Desktop\\python_1646734847.zip";
+	// string localpath = "C:\\Users\\lucid\\OneDrive\\Desktop\\python_1646749112.zip";
 
 	// 기본 설치 폴더
 	CDlgUnzip dlg_unzip(localpath, odir);
 	if (IDOK != dlg_unzip.DoModal()) return false;
 
-	AfxMessageBox("filter server installed successfully!");
+	AfxMessageBox("python installed successfully!");
 	return true;
 }
-
-bool get_file_contents(LPCTSTR path, vector<BYTE>& ret) {
-	auto f = fopen(path, "rb");
-	if (!f) return false;
-	fseek(f, 0, SEEK_END);
-	auto len = ftell(f);
-	rewind(f);
-	ret.resize(len);
-	fread(&ret[0], 1, len, f);
-	fclose(f);
-	return true;
-}
-
-string ltrim(string s, char c) {
-	return s.erase(0, s.find_first_not_of(c));
-}
-
-// trim from end (in place)
-string rtrim(string s, char c) {
-	return s.erase(s.find_last_not_of(c) + 1);
-}
-
-// trim from both ends (in place)
-string trim(string s, char c) { return rtrim(ltrim(s, c), c); }
-
-string ltrim(string s, const char* c) {
-	return s.erase(0, s.find_first_not_of(c));
-}
-
-// trim from end (in place)
-string rtrim(string s, const char* c) {
-	return s.erase(s.find_last_not_of(c) + 1);
-}
-
-// trim from both ends (in place)
-string trim(string s, const char* c) { return rtrim(ltrim(s, c), c); }
-

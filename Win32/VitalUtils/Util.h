@@ -40,46 +40,12 @@ inline string str_format(const char* format, Args... args) {
 	return string(buf.get(), buf.get() + size - 1);  // We don't want the '\0' inside
 }
 
-inline string substr(const string& s, size_t pos, size_t len = -1) {
-	try {
-		return s.substr(pos, len);
-	}
-	catch (...) {
-	}
-	return "";
-}
-
-inline string make_lower(std::string s) {
-	std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
-	return s;
-}
-
-inline string extname(string path) {
-	auto pos = path.find_last_of('.');
-	if (pos == string::npos) return "";
-	return make_lower(substr(path, pos + 1));
-}
-
-inline string dirname(string path) {
-	return substr(path, 0, path.find_last_of("/\\") + 1);
-}
-
-inline time_t filetime_to_unixtime(const FILETIME& ft) {
-	ULARGE_INTEGER ull;
-	ull.LowPart = ft.dwLowDateTime;
-	ull.HighPart = ft.dwHighDateTime;
-	return (time_t)(ull.QuadPart / 10000000ULL - 11644473600ULL);
-}
-
-inline string implode(const vector<string>& arr, string sep) {
-	string ret;
-	for (unsigned int i = 0; i < arr.size(); i++) {
-		if (i > 0) ret += sep;
-		ret += arr[i];
-	}
-	return ret;
-}
-
+string substr(const string& s, size_t pos, size_t len = -1);
+string make_lower(std::string s);
+string extname(string path);
+string dirname(string path);
+time_t filetime_to_unixtime(const FILETIME& ft);
+string implode(const vector<string>& arr, string sep);
 string GetLastInetErrorString();
 
 template <typename... Args>
@@ -90,46 +56,14 @@ inline string str_format(const string& format, Args... args) {
 	return string(buf.get(), buf.get() + size - 1);  // We don't want the '\0' inside
 }
 
-inline string num_to_str(int d) {
-	return str_format("%d", d);
-}
-
-inline string num_to_str(unsigned long long d) {
-	return str_format("%u", d);
-}
-
-inline string num_to_str(unsigned char d) {
-	return str_format("%u", d);
-}
-
-inline string num_to_str(unsigned int d) {
-	return str_format("%u", d);
-}
-
-inline string num_to_str(double f) {
-	auto str = str_format("%f", f);
-	if (str.find('.') != string::npos) str = rtrim(str, '0');
-	return rtrim(str, '.');
-}
-
-inline string num_to_str(double f, int prec) {
-	if (prec < 0) return num_to_str(f);
-	auto fmt = str_format("%%.%uf", prec);
-	auto str = str_format(fmt, f);
-	return str;
-	//if (str.find('.') != string::npos) str = rtrim(str, '0');
-	//return rtrim(str, '.');
-}
-
-inline unsigned int str_to_uint(const string& s) {
-	return strtoul(s.c_str(), nullptr, 10);
-}
-
-inline string to_lower(string strToConvert) {
-	transform(strToConvert.begin(), strToConvert.end(), strToConvert.begin(), ::tolower);
-	return strToConvert;
-}
-
+string num_to_str(int d);
+string num_to_str(unsigned long long d);
+string num_to_str(unsigned char d);
+string num_to_str(unsigned int d);
+string num_to_str(double f);
+string num_to_str(double f, int prec);
+unsigned int str_to_uint(const string& s);
+string to_lower(string strToConvert);
 string basename(string path, bool withext = true);
 
 inline string string_format(const std::string fmt_str, ...) {

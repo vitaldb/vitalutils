@@ -703,7 +703,7 @@ class VitalFile:
         for did, dev in self.devs.items():
             if did == 0: 
                 continue
-            ddata = pack_dw(did) + pack_str(dev['name']) + pack_str(dev['type']) + pack_str(dev['port'])
+            ddata = pack_dw(did) + pack_str(dev['type']) + pack_str(dev['name']) + pack_str(dev['port'])
             if not f.write(pack_b(9) + pack_dw(len(ddata)) + ddata):
                 return False
 

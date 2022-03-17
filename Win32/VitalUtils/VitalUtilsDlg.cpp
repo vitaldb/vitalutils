@@ -454,12 +454,22 @@ void CVitalUtilsDlg::OnBnClickedRun() {
 		if (!fs::exists(python_path)) {
 			auto str = "Running Script requires python interpreter\nDo you want to install it?";
 			if (IDOK != AfxMessageBox(str, MB_OKCANCEL)) return;
-			if (!theApp.install_python()) return; // 블록킹
+			if (!theApp.install_python()) return;
 		}
 		m_dlgRun.UpdateData(TRUE);
 		
-		// 스크립트를 실행하는 것과 필터를 실행하는 것으로 나눠야함
-		stool = "\"" + python_path + "\" \"" + get_module_dir() + "scripts\\" + string(m_dlgRun.m_strScript) + "\"";
+		auto idx = m_dlgRun.m_ctrlScript.GetCurSel();
+		if (idx < 0) return;
+		auto pscript = (string*)m_dlgRun.m_ctrlScript.GetItemDataPtr(idx);
+		if (!pscript) return;
+		
+		if (pscript->find("filters") != -1) {
+			stool = "\"" + python_path + "\" \"" + get_module_dir() + "scripts\\_runfilter.py\"";
+			spost = "\"" + (*pscript) + "\"";
+		}
+		else {
+			stool = "\"" + python_path + "\" \"" + (*pscript) + "\" ";
+		}
 
 	} else if (m_ctrlSelCopyFiles.GetCheck()) { // export vital
 		stool = "\"" + get_module_dir() + "utilities\\vital_copy.exe\"";
