@@ -8,6 +8,19 @@ API_URL = "https://vitaldb.net/api/"
 
 access_token = None
 
+def setserver(ip, port=None, secure=False):
+    global API_URL
+    if ip is None:
+        return False
+    
+    internet_protocol = ["http", "https"]
+    API_URL = internet_protocol[int(secure)] + "://" + ip
+    if port != None:
+        API_URL += ":" + str(port)
+    API_URL += "/api/"
+        
+    return True
+
 def receive(vrcode, bedname=None, dtstart=None, dtend=None):
     if isinstance(dtstart, datetime.datetime):
         dtstart = dtstart.timestamp()
