@@ -643,7 +643,7 @@ class VitalFile:
         :param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500
         """
         ret = self.get_samples(track_names, interval, return_datetime, return_timestamp)
-        return pd.DataFrame(ret, columns=track_names)
+        return pd.DataFrame(np.transpose(ret), columns=track_names)
     
 
     def to_numpy(self, track_names, interval, return_datetime=False, return_timestamp=False):
@@ -1252,5 +1252,9 @@ if __name__ == '__main__':
     #vals = vital_recs("https://vitaldb.net/samples/00001.vital", return_timestamp=True, return_pandas=True)
     #print(vals)
     vf = VitalFile("https://vitaldb.net/samples/00001.vital")
-    vf.crop(300, 360)
-    vf.to_wav('1.wav', ['SNUADC/ECG_II'], 44100)
+    print(vf.get_track_names())
+    track_names = ['SNUADC/ECG_II', 'Solar 8000M/HR']
+    df = vf.to_pandas(track_names, 1)
+    print(df.describe())
+    #vf.crop(300, 360)
+    #vf.to_wav('1.wav', ['SNUADC/ECG_II'], 44100)

@@ -781,7 +781,7 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 	if (nIDEvent == 0) { // 상태를 업데이트
 		string str;
 
-		pair<time_t, string> msg;
+		time_msg msg;
 		while (theApp.m_msgs.Pop(msg)) {
 			str += "[" + substr(dt_to_str(msg.first), 11) + "] " + msg.second + _T("\r\n");
 		}
@@ -832,13 +832,12 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 
 					// 파싱 결과로부터 모든 파일의 시작 시각, 종료 시각, 길이를 세팅
 					for (auto p : m_files) {
-						auto& tl = m_path_trklist[p->path].second;
+						auto& mstl = m_path_trklist[p->path];
+						auto& tl = get<2>(mstl);
 						auto pos = tl.find("#dtstart=");
 						if (pos != -1) p->dtstart = strtoul(substr(tl, pos + 9).c_str(), nullptr, 10);
-
 						pos = tl.find("#dtend=");
 						if (pos != -1) p->dtend = strtoul(substr(tl, pos + 7).c_str(), nullptr, 10);
-
 						if (p->dtstart && p->dtend) p->dtlen = p->dtend - p->dtstart;
 					}
 
@@ -846,7 +845,8 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 					// 파싱 된 모든 트랙 종류를 합침
 					set<string> dtnames;
 					for (const auto& it : m_path_trklist) {
-						auto file_dtnames = explode(it.second.second, ',');
+						auto& mstl = it.second;
+						auto file_dtnames = explode(get<2>(mstl), ',');
 						for (auto& dtname : file_dtnames) {
 							dtname = trim(dtname);
 							if (dtname.empty()) continue;
@@ -857,7 +857,7 @@ void CVitalUtilsDlg::OnTimer(UINT_PTR nIDEvent) {
 							// 출력할 수 없는 트랙명은 제거
 							bool isprintable = true;
 							for (auto& c : dtname) {
-								if (!::isalnum(c) && c != '-' && c != '_' && c != '/') {
+								if (!::isalnum(c) && c != '-' && c != '_' && c != '/' && c != ' ') {
 									isprintable = false;
 									break;
 								}
@@ -1292,7 +1292,8 @@ void CVitalUtilsDlg::OnBnClickedSaveList() {
 	fputc('\n', fo);
 
 	for (auto& it : showns) {
-		auto tl = explode(m_path_trklist[it->path].second, ',');
+		auto& mstl = m_path_trklist[it->path];
+		auto& tl = explode(get<2>(mstl), ',');
 
 		DWORD dtstart = 0;
 		DWORD dtend = 0;
@@ -1731,7 +1732,8 @@ void CVitalUtilsDlg::UpdateFileList() {
 		}
 		else {
 			for (auto p : m_files) {
-				auto filedevtrk = m_path_trklist[p->path].second;
+				auto& mstl = m_path_trklist[p->path];
+				auto filedevtrk = get<2>(mstl);
 				if (substr(filedevtrk, 0, 1) != ",") filedevtrk = ',' + filedevtrk;
 				if (substr(filedevtrk, filedevtrk.size() - 1) != ",") filedevtrk += ',';
 
@@ -1809,14 +1811,17 @@ void CVitalUtilsDlg::worker_thread_func() {
 						bool hascache = false;
 						auto it = m_path_trklist.find(p->path);
 						if (it != m_path_trklist.end()) { // 경로가 존재하고
-							if (it->second.first == p->mtime) {// 시간도 같으면
+							auto& mstl = it->second;
+							if (get<0>(mstl) == p->mtime) {// 시간이 같거나
+								hascache = true;
+							} else if (get<1>(mstl) == p->size) {// 크기가 같으면
 								hascache = true;
 							}
 						}
 
 						if (!hascache) { // 캐쉬가 없음. 파징 목록에 추가
 							//TRACE("no cache: " + p->path + '\n');
-							m_parses.Push(make_pair(p->mtime, p->path));
+							m_parses.Push(make_tuple(p->mtime, p->size, p->path));
 							m_ntotal++;
 							// 파징이 끝나면 각 쓰레드에서 m_path_trklist 로 옮겨 주고 캐쉬를 저장함
 						}
@@ -1838,12 +1843,13 @@ void CVitalUtilsDlg::worker_thread_func() {
 				SaveCaches();
 			}
 
-			timet_string dstr;
-			if (m_parses.Pop(dstr)) { // 파징 해야할 파일이 있다면
+			mtime_filesize_path work;
+			if (m_parses.Pop(work)) { // 파징 해야할 파일이 있다면
 				m_nrunning.Inc();
 
-				auto mtime = dstr.first;
-				auto path = dstr.second;
+				auto mtime = get<0>(work);
+				auto filesize = get<1>(work);
+				auto path = get<2>(work);
 				auto dir = dirname(path);
 				auto filename = basename(path);
 				auto cmd = "\"" + get_module_dir() + "utilities\\vital_trks.exe\" -s \"" + path + "\"";
@@ -1852,7 +1858,7 @@ void CVitalUtilsDlg::worker_thread_func() {
 				// 파징이 완료됨
 				{
 					lock_guard<mutex> lk(m_mutex_cache);
-					m_path_trklist[path] = make_pair(mtime, res); // m_path_trklist에 데이터를 추가
+					m_path_trklist[path] = make_tuple(mtime, filesize, res); // m_path_trklist에 데이터를 추가
 					m_cache_updated.insert(dir); // 새로운 파징이 완료되었으므로 캐쉬를 업데이트 해야함
 				}
 
@@ -1921,23 +1927,24 @@ void CVitalUtilsDlg::LoadCache(string dir) {
 	vector<BYTE> buf;
 	if (!get_file_contents(cachepath.c_str(), buf)) return;
 
-	// 파일명\t시간\t트랙목록
+	// 파일명\t수정시각\t트랙목록\t파일크기
 	int icol = 0;
 	int num = 0;
-	string tabs[3];
+	string tabs[4];
 	for (auto c : buf) {
 		switch (c) {
-		case '\t':
+		case '\t': // 하나의 탭이 끝남
 			icol++;
-			if (icol < 3) tabs[icol] = "";
+			if (icol < 4) tabs[icol] = "";
 			break;
-		case '\n':
+		case '\n': // 한 줄이 끝남
 			if (tabs[0].find('\\') == -1) { // old version 은 하위 폴더가 포함되어있었다. 이것은 무시
 				DWORD mtime = strtoul(tabs[1].c_str(), nullptr, 10);
+				DWORD filesize = strtoul(tabs[3].c_str(), nullptr, 10);
 				auto path = dir + '\\' + tabs[0];
 				if (!path.empty() && mtime) {
 					lock_guard<mutex> lk(m_mutex_cache);
-					m_path_trklist[path] = make_pair(mtime, tabs[2]);
+					m_path_trklist[path] = make_tuple(mtime, filesize, tabs[2]);
 					num++;
 				}
 			}
@@ -1947,7 +1954,7 @@ void CVitalUtilsDlg::LoadCache(string dir) {
 		case '\r':
 			break;
 		default:
-			if (icol < 3) tabs[icol] += c;
+			if (icol < 4) tabs[icol] += c;
 		}
 	}
 
@@ -1973,9 +1980,11 @@ void CVitalUtilsDlg::SaveCaches() {
 		int num = 0;
 		for (const auto& it : copyed) { // 다른 스레드에서 계속 추가중이다
 			if (dirname(it.first) != dir) continue;
-			if (it.second.first == 0) continue; // mtime 이 0이면
+			auto& mstl = it.second; // mtime, size, tracklist
+			// if (get<0>(mstl) == 0) continue; // mtime 이 0이면
+			// filename\tmtime\ttracks\tfilesize
 			str += basename(it.first) + '\t';
-			str += str_format("%u", it.second.first) + '\t' + it.second.second + '\n';
+			str += str_format("%u", get<0>(mstl)) + '\t' + get<2>(mstl) + '\t' + str_format("%u", get<1>(mstl)) + '\n';
 			num++;
 		}
 

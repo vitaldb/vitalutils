@@ -16,7 +16,9 @@
 
 using namespace std;
 
-typedef pair<time_t, string> timet_string;
+typedef pair<time_t, string> time_msg;
+typedef tuple<time_t, size_t, string> mtime_filesize_path;
+typedef tuple<time_t, size_t, string> mtime_filesize_trklist;
 
 class CVitalUtilsApp : public CWinApp {
 public:
@@ -32,7 +34,7 @@ public:
 public:
 	CString m_ver;
 	
-	Queue<pair<time_t, string>> m_msgs;
+	Queue<time_msg> m_msgs;
 
 	void log(string msg);
 	bool install_python();

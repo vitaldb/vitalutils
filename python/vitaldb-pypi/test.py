@@ -27,14 +27,10 @@ if not os.path.exists(DOWNLOAD_DIR):
     os.mkdir(DOWNLOAD_DIR)
 
 # issue access token
+vitaldb.api.setserver('')
 if vitaldb.api.login(id="vitaldb_test", pw="vitaldb_test"):
-    vf = vitaldb.VitalFile(vitaldb.api.download('TEST1_211020_142621.vital'))
-    print(vf.get_track_names())
-    quit()
-
     files = vitaldb.api.filelist()
     print(f'{len(files)} files')
-
     for f in files:
         print("Downloading: " + f['filename'], end='...', flush=True)
         opath = DOWNLOAD_DIR + '/' + f['filename']

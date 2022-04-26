@@ -90,7 +90,10 @@ def download(filename, localpath=None):
     if 200 != res.status_code:
         raise Exception('API Server Error: ' + res.content.decode('utf-8'))
     if localpath is None:
-        return res.content.decode('utf-8')
+        try:
+            return res.content.decode('utf-8')
+        except UnicodeDecodeError:
+            return res.url
     if os.path.isdir(localpath):
         localpath = os.path.join(localpath, filename)
     with open(localpath, "wb") as f:

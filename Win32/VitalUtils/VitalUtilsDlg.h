@@ -79,8 +79,8 @@ public:
 	mutex m_mutex_cache;
 	set<string> m_cache_updated;
 	Queue<string> m_scans;
-	Queue<timet_string> m_parses;
-	map<string, timet_string> m_path_trklist; // 여기에 트랙 데이터가 들어간다
+	Queue<mtime_filesize_path> m_parses;
+	map<string, mtime_filesize_trklist> m_path_trklist; // 여기에 트랙 데이터가 들어간다
 	mutex m_mutex_trk;
 	mutex m_mutex_long;
 
