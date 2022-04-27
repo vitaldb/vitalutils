@@ -311,8 +311,8 @@ class VitalFile:
             self.load_opendata(ipath, track_names, exclude)
             return
         elif isinstance(ipath, list):
-            dname_to_dids = {}  # 이번 파일에서의 dname -> did mapping
-            dtname_to_trks = {}  # 이번 파일에서의 dtname -> trk mapping
+            dname_to_dids = {}  # 최종 파일에서의 dname -> did mapping
+            dtname_to_trks = {}  # 최종 파일에서의 dtname -> trk mapping
             for path in ipath:
                 vf = VitalFile(path)
                 if self.dtstart == 0:  # 첫 파일은 무조건 여는거
@@ -336,8 +336,9 @@ class VitalFile:
                         if dname in dname_to_dids:
                             did = dname_to_dids[dname]
                         else:  # 처음 나왔으면
-                            did = len(dname_to_dids) + 1
+                            did = max(self.devs.keys()) + 1
                             dname_to_dids[dname] = did
+                            self.devs[did] = dev
                     
                     for tid, trk in vf.trks.items():
                         dtname = trk['dtname']
@@ -347,11 +348,16 @@ class VitalFile:
                                 trk['did'] = dname_to_dids[dname]
                             else:
                                 continue  # did를 찾을 수 없는 장비이다
-                        if dtname in dtname_to_trks:
+                        if dtname in dtname_to_trks:  # 기존 파일에 이미 트랙이 존재
                             selftrk = dtname_to_trks[dtname]
                             selftrk['recs'].extend(trk['recs'])
-                            selftrk['tid'] = max(vf.trks.keys()) + 1
+                            selftrk['tid'] = max(self.trks.keys()) + 1
                             selftrk['did'] = trk['did']
+                        else:
+                            tid = max(self.trks.keys()) + 1  # 새 tid를 발급
+                            dtname_to_trks[dtname] = trk  # 트랙이 추가됨
+                            trk['tid'] = tid
+                            self.trks[tid] = trk
 
             # sorting tracks -> VR에서 파일을 열 때 sorting을 하기 때문에 저장 시 sorting은 불필요하다.
             #for trk in self.trks.values():
@@ -1247,8 +1253,10 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
-    # vf = VitalFile(['1-1.vital', '1-2.vital', '1-3.vital'])
+    # vf = VitalFile(['1-2.vital', '1-3.vital'])
     # vf.to_vital('merged.vital')
+    # quit()
+    
     #vals = vital_recs("https://vitaldb.net/samples/00001.vital", return_timestamp=True, return_pandas=True)
     #print(vals)
     vf = VitalFile("https://vitaldb.net/samples/00001.vital")
