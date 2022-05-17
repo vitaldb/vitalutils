@@ -450,7 +450,7 @@ class VitalFile:
             ret.insert(0, self.dtstart + np.arange(len(ret[0])) * interval)
             track_names.insert(0, 'Time')
 
-        return ret
+        return ret, track_names
 
 
     def crop(self, dtfrom=None, dtend=None):
@@ -648,7 +648,7 @@ class VitalFile:
         :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
         :param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500
         """
-        ret = self.get_samples(track_names, interval, return_datetime, return_timestamp)
+        ret, track_names = self.get_samples(track_names, interval, return_datetime, return_timestamp)
         return pd.DataFrame(np.transpose(ret), columns=track_names)
     
 
@@ -657,7 +657,7 @@ class VitalFile:
         :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
         :param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500
         """
-        ret = self.get_samples(track_names, interval, return_datetime, return_timestamp)
+        ret, track_names = self.get_samples(track_names, interval, return_datetime, return_timestamp)
         return np.transpose(ret)
 
 
