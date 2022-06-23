@@ -62,7 +62,7 @@ def to_timestamp(dt):
 # bedname = "TEST"
 # startdate = "2021-08-01"
 # enddate = "2021-08-31"
-def filelist(bedname=None, dtstart=None, dtend=None):
+def filelist(bedname=None, dtstart=None, dtend=None, notimestamp=None, unixtimestamp=None, hid=None):
     global access_token
     pars = {"access_token": access_token}
     if bedname:
@@ -73,6 +73,12 @@ def filelist(bedname=None, dtstart=None, dtend=None):
         pars['dtstart'] = dtstart
     if dtend:
         pars['dtend'] = dtend
+    if notimestamp:
+        pars['notimestamp'] = 1
+    if unixtimestamp:
+        pars['unixtimestamp'] = 1
+    if hid:
+        pars['hid'] = 1
     res = requests.get(API_URL + "filelist", params=pars)
     if 200 != res.status_code:
         raise Exception('API Server Error: ' + res.content.decode('utf-8'))
