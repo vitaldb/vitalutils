@@ -4,8 +4,7 @@ import json
 import gzip
 import os
 
-API_URL = "https://vitaldb.net/api/"
-
+API_URL = None
 access_token = None
 
 def setserver(ip, port=None, secure=False):
@@ -21,31 +20,23 @@ def setserver(ip, port=None, secure=False):
         
     return True
 
-def receive(vrcode, bedname=None, dtstart=None, dtend=None):
-    if isinstance(dtstart, datetime.datetime):
-        dtstart = dtstart.timestamp()
-    if isinstance(dtend, datetime.datetime):
-        dtend = dtend.timestamp()
-    pars = {'vrcode':vrcode}
-    if bedname:
-        pars['bedname'] = bedname
-    if dtstart:
-        pars['dtstart'] = dtstart
-    if dtend:
-        pars['dtend'] = dtend
-
-    res = requests.get(API_URL + "receive", params=pars)
-    if 200 != res.status_code:
-        raise Exception('API Server Error: ' + res.content.decode('utf-8'))
-    return json.loads(res.content)
-
-def login(id, pw):
+def login(id, pw, host=None, port=None):
     global access_token
+
+    if host is None:
+        host = 'vitaldb.net'
+        port = 443
+    elif port is None:
+        port = 80
+        
+    setserver(host, port, port==443)
+
     # request an access token to use VitalDB API
     res = requests.post(API_URL + "login", params={"id":id, "pw":pw})
     if 200 != res.status_code:
         return False
     access_token = json.loads(res.content)["access_token"]  # get the token from response
+
     return True
 
 def to_timestamp(dt):
@@ -64,6 +55,9 @@ def to_timestamp(dt):
 # enddate = "2021-08-31"
 def filelist(bedname=None, dtstart=None, dtend=None):
     global access_token
+    if access_token is None:
+        raise Exception('Please login first')
+
     pars = {"access_token": access_token}
     if bedname:
         pars['bedname'] = bedname
@@ -83,6 +77,9 @@ def filelist(bedname=None, dtstart=None, dtend=None):
 # localpath를 안적으면 url만 리턴
 def download(filename, localpath=None):
     global access_token
+    if access_token is None:
+        raise Exception('Please login first')
+
     asurl = 0
     if localpath is None:
         asurl = 1
@@ -99,6 +96,25 @@ def download(filename, localpath=None):
     with open(localpath, "wb") as f:
         f.write(res.content)
     return True
+
+
+def receive(vrcode, bedname=None, dtstart=None, dtend=None):
+    if isinstance(dtstart, datetime.datetime):
+        dtstart = dtstart.timestamp()
+    if isinstance(dtend, datetime.datetime):
+        dtend = dtend.timestamp()
+    pars = {'vrcode':vrcode}
+    if bedname:
+        pars['bedname'] = bedname
+    if dtstart:
+        pars['dtstart'] = dtstart
+    if dtend:
+        pars['dtend'] = dtend
+
+    res = requests.get(API_URL + "receive", params=pars)
+    if 200 != res.status_code:
+        raise Exception('API Server Error: ' + res.content.decode('utf-8'))
+    return json.loads(res.content)
 
 
 if __name__ == '__main__':

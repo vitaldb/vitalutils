@@ -59,12 +59,18 @@ def load_trks(tids, interval=1):
 
 def find_cases(track_names):
     global dftrks
-    if dftrks is None:  # 여러번 실행 시 한번만 로딩 되면 됨
+    if dftrks is None:
         dftrks = pd.read_csv("https://api.vitaldb.net/trks")
 
-    return set(dftrks.loc[dftrks['tname'].isin(track_names), 'caseid'])
+    if isinstance(track_names, str):
+        if track_names.find(','):
+            track_names = track_names.split(',')
+        else:
+            track_names = [track_names]
 
-def load_case(caseid, tnames, interval=1):
+    return list(set.intersection(*[set(dftrks.loc[dftrks['tname'].str.endswith(dtname), 'caseid']) for dtname in track_names]))
+
+def load_case(caseid, track_names, interval=1):
     global dftrks
 
     if not caseid:
@@ -73,15 +79,15 @@ def load_case(caseid, tnames, interval=1):
     if dftrks is None:
         dftrks = pd.read_csv("https://api.vitaldb.net/trks")
 
-    if isinstance(tnames, str):
-        if tnames.find(','):
-            tnames = tnames.split(',')
+    if isinstance(track_names, str):
+        if track_names.find(','):
+            track_names = track_names.split(',')
         else:
-            tnames = [tnames]
+            track_names = [track_names]
 
     tids = []
-    for tname in tnames:
-        tid_values = dftrks.loc[(dftrks['caseid'] == caseid) & (dftrks['tname'] == tname), 'tid'].values
+    for dtname in track_names:
+        tid_values = dftrks.loc[(dftrks['caseid'] == caseid) & (dftrks['tname'].str.endswith(dtname)), 'tid'].values
         if len(tid_values):
             tids.append(tid_values[0])
         else:
@@ -91,6 +97,13 @@ def load_case(caseid, tnames, interval=1):
 
 
 if __name__ == '__main__':
+    caseids = find_cases(['ECG_II'])
+    print(len(caseids))
+    quit()
+    
+    vals = load_case(1, ['ECG_II', 'ART'])
+    print(vals)
+    quit()
     vals = load_trks([
         'eb1e6d9a963d7caab8f00993cd85bf31931b7a32',
         '29cef7b8fe2cc84e69fd143da510949b3c271314',

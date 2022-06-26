@@ -114,7 +114,7 @@ public:
 		unsigned int m_cnt = 0;
 	} m_nrunning; // 현재 진행중인 쓰레드의 총 수
 
-	thread m_thread_worker[16];
+	vector<thread> m_thread_worker;
 	void worker_thread_func();
 
 public:

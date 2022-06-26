@@ -38,30 +38,47 @@ def pack_str(s):
     return pack_dw(len(sutf)) + sutf
 
 
+# open dataset trks
+dftrks = None
+
+class Device:
+    def __init__(self, name, typename='', port=''):
+        self.name = name
+        if not typename:
+            self.type = name
+        else:
+            self.type = typename
+        self.port = port
+
+class Track:
+    def __init__(self, name, type=2, col=0xffffff, montype=0, dname='', unit='', fmt=1, srate=0, gain=1.0, offset=0.0, mindisp=0, maxdisp=0, recs=None):
+        self.type = type  # 1: wav, 2: num, 5: str
+        self.fmt = fmt
+        self.name = name
+        self.srate = srate
+        self.unit = unit
+        self.mindisp = mindisp
+        self.maxdisp = maxdisp
+        self.gain = gain
+        self.offset = offset
+        self.col = col
+        self.montype = montype
+        self.dname = dname
+        if dname:
+            self.dtname = dname + '/' + name
+        else:
+            self.dtname = dname
+        if recs is None:
+            self.recs = []
+        else:
+            self.recs = recs
+
 # 4 byte L (unsigned) l (signed)
 # 2 byte H (unsigned) h (signed)
 # 1 byte B (unsigned) b (signed)
-def parse_fmt(fmt):
-    if fmt == 1:
-        return 'f', 4
-    elif fmt == 2:
-        return 'd', 8
-    elif fmt == 3:
-        return 'b', 1
-    elif fmt == 4:
-        return 'B', 1
-    elif fmt == 5:
-        return 'h', 2
-    elif fmt == 6:
-        return 'H', 2
-    elif fmt == 7:
-        return 'l', 4
-    elif fmt == 8:
-        return 'L', 4
-    return '', 0
+FMT_TYPE_LEN = {1: ('f', 4), 2: ('d', 8), 3: ('b', 1), 4: ('B', 1), 5: ('h', 2), 6: ('H', 2), 7: ('l', 4), 8: ('L', 4)}
 
-
-dtname_tis = {
+TRACK_INFO = {
     'SNUADC/ART': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': 4294901760}, 
     'SNUADC/ECG_II': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': 4278255360}, 
     'SNUADC/ECG_V5': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': 4278255360}, 
@@ -279,10 +296,6 @@ dtname_tis = {
     }
 
 
-# open dataset trks
-dftrks = None
-
-
 class VitalFile:
     """A VitalFile class.
     :param dict devs: device info
@@ -292,80 +305,60 @@ class VitalFile:
     :param float dgmt: dgmt = ut - localtime in minutes. For KST, it is -540.
     """
     
-    def __init__(self, ipath, track_names=None, track_names_only=False, exclude=[], userid=None):
+    def __init__(self, ipath, track_names=None, skip_records=False, exclude=None, userid=None):
         """Constructor of the VitalFile class.
         :param ipath: file path, list of file path, or caseid of open dataset
         :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
-        :param track_names_only: read track names only
+        :param skip_records: read track names only for fast reading
         """
-        # 아래 5개 정보만 로딩하면 된다.
-        self.devs = {}  # did -> devinfo (name, type, port). did = 0 represents the vital recorder
-        self.trks = {}  # tid -> trkinfo (name, type, fmt, unit, mindisp, maxdisp, col, srate, gain, offset, montype, did)
+        self.devs = {}  # dname -> Device(type, port)
+        self.trks = {}  # dtname -> Track(type, fmt, unit, mindisp, maxdisp, col, srate, gain, offset, montype, dname)
         self.dtstart = 0
         self.dtend = 0
         self.dgmt = 0
+        self.order = []  # optional: order of dtname
 
         if isinstance(ipath, int):
-            if track_names_only:
+            if skip_records:
                 raise NotImplementedError
             self.load_opendata(ipath, track_names, exclude)
             return
         elif isinstance(ipath, list):
-            dname_to_dids = {}  # 최종 파일에서의 dname -> did mapping
-            dtname_to_trks = {}  # 최종 파일에서의 dtname -> trk mapping
             for path in ipath:
                 vf = VitalFile(path)
-                if self.dtstart == 0:  # 첫 파일은 무조건 여는거
-                    self.dtstart = vf.dtstart
-                    self.dtend = vf.dtend
+                if self.dtstart == 0:  # open the first file
                     self.devs = vf.devs
                     self.trks = vf.trks
+                    self.dtstart = vf.dtstart
+                    self.dtend = vf.dtend
                     self.dgmt = vf.dgmt
-                    dname_to_dids = {dev['name']: did for did, dev in vf.devs.items()}
-                    dtname_to_trks = {trk['dtname']: trk for tid, trk in vf.trks.items()}
-                else:  # 그 다음 파일 부터는 합쳐야 함
-                    if abs(self.dtstart - vf.dtstart) > 7 * 24 * 3600:
-                        # 모든 파일은 7일 이내에 있어야 한다
+                else:  # merge from the next file
+                    if abs(self.dtstart - vf.dtstart) > 7 * 24 * 3600:  # maximum length of vital file < 7 days
                         continue
-                    
                     self.dtstart = min(self.dtstart, vf.dtstart)
                     self.dtend = max(self.dtend, vf.dtend)
-
-                    for did, dev in vf.devs.items():
-                        dname = dev['name']
-                        if dname in dname_to_dids:
-                            did = dname_to_dids[dname]
-                        else:  # 처음 나왔으면
-                            did = max(self.devs.keys()) + 1
-                            dname_to_dids[dname] = did
-                            self.devs[did] = dev
-                    
-                    for tid, trk in vf.trks.items():
-                        dtname = trk['dtname']
-                        if dtname.find('/') != -1:
-                            dname, tname = dtname.split('/')
-                            if dname in dname_to_dids:
-                                trk['did'] = dname_to_dids[dname]
-                            else:
-                                continue  # did를 찾을 수 없는 장비이다
-                        if dtname in dtname_to_trks:  # 기존 파일에 이미 트랙이 존재
-                            selftrk = dtname_to_trks[dtname]
-                            selftrk['recs'].extend(trk['recs'])
-                            selftrk['tid'] = max(self.trks.keys()) + 1
-                            selftrk['did'] = trk['did']
+                    # merge devices
+                    for dname, dev in vf.devs.items():
+                        if dname not in self.devs:
+                            self.devs[dname] = dev
+                    # merge tracks
+                    for dtname, trk in vf.trks.items():
+                        if dtname in self.trks:
+                            self.trks[dtname].recs.extend(trk.recs)
                         else:
-                            tid = max(self.trks.keys()) + 1  # 새 tid를 발급
-                            dtname_to_trks[dtname] = trk  # 트랙이 추가됨
-                            trk['tid'] = tid
-                            self.trks[tid] = trk
+                            self.trks[dtname] = trk
+                    # merge order
+                    for dtname in vf.order:
+                        if dtname not in self.order:
+                            self.order.append(dtname)
 
-            # sorting tracks -> VR에서 파일을 열 때 sorting을 하기 때문에 저장 시 sorting은 불필요하다.
+            # sorting tracks
             #for trk in self.trks.values():
-            #    trk['recs'].sort(key=lambda r:r['dt'])
+            #    trk.recs.sort(key=lambda r:r['dt'])
             
             return
 
-        # url 형태인 경우, 파라미터 부분을 제거한다
+        # check ipath is url
         ext = os.path.splitext(ipath)[1]
         ipos = ext.find('&')
         if ipos > 0:
@@ -384,25 +377,27 @@ class VitalFile:
                 month = ipath[-19:-15]
                 ipath = f's3://vitaldb-myfiles/{userid}/{month}/{bedname}/{ipath}'
 
-        # 포함할 트랙
+        # tracks including
         if isinstance(track_names, str):
             if track_names.find(','):
                 track_names = track_names.split(',')
             else:
                 track_names = [track_names]
 
-        # 제외할 트랙
+        # tracks excluding
         if isinstance(exclude, str):
             if exclude.find(','):
                 exclude = exclude.split(',')
             else:
                 exclude = [exclude]
-        exclude = set(exclude)
+        
+        if exclude is not None:
+            exclude = set(exclude)
 
         if ext == '.vital':
-            self.load_vital(ipath, track_names, track_names_only, exclude)
+            self.load_vital(ipath, track_names, skip_records, exclude)
         elif ext == '.parquet':
-            if track_names_only:
+            if skip_records:
                 raise NotImplementedError
             self.load_parquet(ipath, track_names, exclude)
 
@@ -410,36 +405,33 @@ class VitalFile:
     def get_samples(self, track_names, interval, return_datetime=False, return_timestamp=False):
         """Get track samples.
         :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
-        :param track_names_only: read track names only
         :param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500
         :return: [[samples of track1], [samples of track2]...]
         """
-        if not interval:  # interval 이 지정되지 않으면 최대 해상도로 데이터 추출
-            max_srate = max([trk['srate'] for trk in self.trks.values()])
+        if not interval:  # maximum sampling rate
+            max_srate = max([trk.srate for trk in self.trks.values()])
             interval = 1 / max_srate
-
-        if not interval:  # 500 Hz
-            interval = 0.002
-
+        if not interval:
+            interval = 1
         assert interval > 0
 
-        # 포함할 트랙
+        # parse comma separated track names
         if isinstance(track_names, str):
             if track_names.find(','):
                 track_names = track_names.split(',')
             else:
                 track_names = [track_names]
 
-        # 순서를 유지하면서 중복을 없앰
+        if track_names is None:  # if track_names is None, return all tracks
+            track_names = [trk.dtname for trk in self.trks.values()]
+
+        # removing duplicated track names with the same order
         track_names = list(dict.fromkeys(track_names))
-        
-        if not track_names:
-            track_names = [trk['dtname'] for trk in self.trks.values()]
 
         ret = []
         for dtname in track_names:
-            col = self.get_track_samples(dtname, interval)
-            ret.append(col)
+            vals = self.get_track_samples(dtname, interval)
+            ret.append(vals)
 
         # return time column
         if return_datetime: # in this case, numpy array with object type will be returned
@@ -471,35 +463,146 @@ class VitalFile:
         if dtend < dtfrom:
             return
 
-        for tid, trk in self.trks.items():
+        for dtname, trk in self.trks.items():
             new_recs = []
-            for rec in trk['recs']:
+            for rec in trk.recs:
                 if dtfrom <= rec['dt'] <= dtend:
                     new_recs.append(rec)
-            self.trks[tid]['recs'] = new_recs
+            self.trks[dtname].recs = new_recs
         self.dtstart = dtfrom
         self.dtend = dtend
         return self
         
 
     def get_track_names(self):
-        dtnames = []
-        for tid, trk in self.trks.items():
-            if trk['dtname']:
-                dtnames.append(trk['dtname'])
-        return dtnames
+        return list(self.trks.keys())
 
-    def del_track(self, dtname):
-        """ delete track by name
-        :param dtname: device and track name. eg) SNUADC/ECG
+
+    def rename_device(self, oldname, newname):
+        """ rename tracks
+        :param oldname: device name
+        :param newname: target name
         """
-        for tid, trk in self.trks.items():
-            if trk['dtname'] == dtname:
-                del self.trks[tid]
+        if newname.find('/') >= 0:
+            raise ValueError('newname should not include the slash')
+        if newname == oldname:
+            raise ValueError('newname should not be same with oldname')
+
+        for dname, dev in self.devs.items():
+            if dname == oldname:
+                dev.name = newname
+                self.devs[newname] = self.devs.pop(oldname)
                 break
 
+        mapping = {}
+        for old_dtname, trk in self.trks.items():
+            if trk.dname == oldname:
+                trk.dname = newname
+                trk.dtname = newname + '/' + trk.name
+                mapping[old_dtname] = trk.dtname
+                if old_dtname in self.order:
+                    self.order[self.order.index(old_dtname)] = trk.dtname
+        
+        for oldname, newname in mapping.items():
+            self.trks[newname] = self.trks.pop(oldname)
 
-    def add_track(self, dtname, recs, srate=0, unit='', mindisp=0, maxdisp=0):
+    def rename_devices(self, mapping):
+        """ rename devices
+        :param mapping: {oldname : newname} eg) {'SNUADC': 'SUPER_NICE_ADC'}
+        """
+        if not isinstance(mapping, dict):
+            raise TypeError('mapping must be a dict')
+        for oldname, newname in mapping.items():
+            self.rename_device(oldname, newname)
+
+    def rename_track(self, dtname, target):
+        """ rename tracks
+        :param dtname: track name. only first matching tracks will be renamed
+        :param target: target name. it should not include the device name.
+        """
+        if target.find('/') >= 0:
+            raise ValueError('target name should not include the device name')
+
+        trk = self.find_track(dtname)
+        if trk is None:
+            return None
+        oldname = trk.dtname
+        newname = trk.dname + '/' + target
+        trk.dtname = newname
+        trk.name = target
+        if oldname in self.trks:
+            self.trks[newname] = self.trks.pop(oldname)
+        if oldname in self.order:
+            self.order[self.order.index(oldname)] = newname
+        return trk
+
+    def rename_tracks(self, mapping):
+        """ rename tracks
+        :param mapping: {oldname : newname} eg) {'ECG_II': 'ECG_2'}
+        """
+        if not isinstance(mapping, dict):
+            raise TypeError('mapping must be a dict')
+        for dtname, target in mapping.items():
+            self.rename_track(dtname, target)
+
+
+    def remove_device(self, dname):
+        """ remove track by name
+        :param dname: device name. eg) SNUADC/ECG
+        """
+        if dname in self.devs:
+            self.devs.pop(dname)
+
+        dtnames = []
+        for dtname, trk in self.trks.items():
+            if trk.dname == dname:
+                dtnames.append(dtname)
+        for dtname in dtnames:
+            self.trks.pop(dtname)
+            if dtname in self.order:
+                self.order.remove(dtname)
+
+    del_device = remove_device
+
+    def remove_devices(self, dnames):
+        """ remove devices by name
+        :param dnames: list of device name. eg) ['SNUADC/ECG']
+        """
+        if isinstance(dnames, str):
+            dnames = [dnames]
+        for dname in dnames:
+            self.remove_device(dname)
+    
+    del_devices = remove_devices
+
+    def remove_track(self, dtname):
+        """ remove track by name
+        :param dtname: track name. eg) SNUADC/ECG
+        """
+        trk = self.find_track(dtname)
+        if trk is None:
+            return None
+        dtname = trk.dtname
+        if dtname in self.trks:
+            del self.trks[dtname]
+        if dtname in self.order:
+            self.order.remove(dtname)
+        return trk
+
+    del_track = remove_track
+
+    def remove_tracks(self, dtnames):
+        """ remove tracks by name
+        :param dtnames: list of track names. eg) ['SNUADC/ECG']
+        """
+        if isinstance(dtnames, str):
+            dtnames = [dtnames]
+        for dtname in dtnames:
+            self.del_track(dtname)
+    
+    del_tracks = remove_tracks
+
+    def add_track(self, dtname, recs, srate=0, unit='', mindisp=0, maxdisp=0, after=None):
         if len(recs) == 0:
             return
 
@@ -507,45 +610,40 @@ class VitalFile:
             return
 
         dname = ''
-        trkdid = 0
         tname = dtname
         if dtname.find('/') >= 0:
             dname, tname = dtname.split('/')
 
-        for devdid, dev in self.devs.items():
-            if dname == dev['name']:
-                trkdid = devdid
-                break
+        # add device
+        if dname not in self.devs:
+            self.devs[dname] = Device(dname)
 
-        # 장치 추가
-        if dname and not trkdid:
-            trkdid = max(self.devs.keys()) + 1
-            self.devs[trkdid] = {'name': dname, 'type': dname, 'port': ''}
-
-        # 트랙 종류 판정: wav=1, num=2, str=5
+        # track type: wav=1, num=2, str=5
         ntype = 2
         if srate > 0:
             ntype = 1
         elif isinstance(recs[0]['val'], str):
             ntype = 5
+        self.trks[dtname] = Track(tname, ntype, fmt=1, srate=srate, unit=unit, mindisp=mindisp, maxdisp=maxdisp, dname=dname, recs=recs)
 
-        tid = max(self.trks.keys()) + 1
-        self.trks[tid] = {
-            'type': ntype, 
-            'fmt': 1, # float32
-            'dtname': dtname,
-            'name': tname,
-            'srate': srate,
-            'unit': unit,
-            'mindisp': mindisp,
-            'maxdisp': maxdisp,
-            'gain': 1.0,
-            'offset': 0.0,
-            'col': 0xffffff,
-            'montype': 0,
-            'did': trkdid,
-            'recs': recs}
+        # change track order
+        if after is not None:
+            if not hasattr(self, 'order') or len(self.order) == 0:
+                self.order = self.get_track_names()
+            if dtname in self.order:  # remove if it already exists
+                self.order.remove(dtname)
+            self.order.insert(self.order.index(after) + 1, dtname)
 
+    def find_track(self, dtname):
+        """Find track from dtname
+        :param dtname: device and track name. eg) SNUADC/ECG_II
+        """
+        if dtname in self.trks:
+            return self.trks[dtname]
+        for trk_dtname, trk in self.trks.items():  # find track
+            if trk_dtname.endswith(dtname):
+                return trk                    
+        return None
 
     def get_track_samples(self, dtname, interval):
         """Get samples of each track.
@@ -555,92 +653,60 @@ class VitalFile:
         if self.dtend <= self.dtstart:
             return []
 
-        # 리턴 할 길이
+        # return length
         nret = int(np.ceil((self.dtend - self.dtstart) / interval))
-
         trk = self.find_track(dtname)
-        if trk:
-            if trk['type'] == 2:  # numeric track
-                ret = np.full(nret, np.nan, dtype=np.float32)  # create a dense array
-                for rec in trk['recs']:  # copy values
-                    idx = int((rec['dt'] - self.dtstart) / interval)
-                    if idx < 0:
-                        idx = 0
-                    elif idx >= nret:
-                        idx = nret - 1
-                    ret[idx] = rec['val']
-                # if return_pandas:  # 현재 pandas sparse data를 to_parquet 함수에서 지원하지 않음
-                #     return pd.Series(pd.arrays.SparseArray(ret))
-                return ret
-            elif trk['type'] == 5:  # str track
-                ret = np.full(nret, np.nan, dtype='object')  # create a dense array
-                for rec in trk['recs']:  # copy values
-                    idx = int((rec['dt'] - self.dtstart) / interval)
-                    if idx < 0:
-                        idx = 0
-                    elif idx >= nret:
-                        idx = nret - 1
-                    ret[idx] = rec['val']
-                return ret
-            elif trk['type'] == 1:  # wave track
-                srate = trk['srate']
-                recs = trk['recs']
+        if trk is None:
+            return np.full(nret, np.nan)
+        if trk.type == 2:  # numeric track
+            ret = np.full(nret, np.nan, dtype=np.float32)  # create a dense array
+            for rec in trk.recs:  # copy values
+                idx = int((rec['dt'] - self.dtstart) / interval)
+                if idx < 0:
+                    idx = 0
+                elif idx >= nret:
+                    idx = nret - 1
+                ret[idx] = rec['val']
+            return ret
+        elif trk.type == 5:  # str track
+            ret = np.full(nret, np.nan, dtype='object')  # create a dense array
+            for rec in trk.recs:  # copy values
+                idx = int((rec['dt'] - self.dtstart) / interval)
+                if idx < 0:
+                    idx = 0
+                elif idx >= nret:
+                    idx = nret - 1
+                ret[idx] = rec['val']
+            return ret
+        elif trk.type == 1:  # wave track
+            # preserve space for return array
+            nsamp = int(np.ceil((self.dtend - self.dtstart) * trk.srate))
+            ret = np.full(nsamp, np.nan, dtype=np.float32)
+            for rec in trk.recs:  # copy samples
+                sidx = int(np.ceil((rec['dt'] - self.dtstart) * trk.srate))
+                eidx = sidx + len(rec['val'])
+                srecidx = 0
+                erecidx = len(rec['val'])
+                if sidx < 0:  # before self.dtstart 
+                    srecidx -= sidx
+                    sidx = 0
+                if eidx > nsamp:  # after self.dtend
+                    erecidx -= (eidx - nsamp)
+                    eidx = nsamp
+                ret[sidx:eidx] = rec['val'][srecidx:erecidx]
 
-                # 자신의 srate 만큼 공간을 미리 확보
-                nsamp = int(np.ceil((self.dtend - self.dtstart) * srate))
-                ret = np.full(nsamp, np.nan, dtype=np.float32)
+            # gain offset conversion
+            if trk.fmt > 2:  # 1: float, 2: double
+                ret *= trk.gain
+                ret += trk.offset
 
-                # 실제 샘플을 가져와 채움
-                for rec in recs:
-                    sidx = int(np.ceil((rec['dt'] - self.dtstart) * srate))
-                    eidx = sidx + len(rec['val'])
-                    srecidx = 0
-                    erecidx = len(rec['val'])
-                    if sidx < 0:  # self.dtstart 이전이면
-                        srecidx -= sidx
-                        sidx = 0
-                    if eidx > nsamp:  # self.dtend 이후이면
-                        erecidx -= (eidx - nsamp)
-                        eidx = nsamp
-                    ret[sidx:eidx] = rec['val'][srecidx:erecidx]
+            # up sampling
+            
+            # downsampling
+            if trk.srate != int(1 / interval + 0.5):
+                ret = np.take(ret, np.linspace(0, nsamp - 1, nret).astype(np.int64))
 
-                # gain offset 변환
-                if trk['fmt'] > 2:  # 1: float, 2: double
-                    ret *= trk['gain']
-                    ret += trk['offset']
-
-                # 업샘플
-                
-                # 다운샘플
-                if srate != int(1 / interval + 0.5):
-                    ret = np.take(ret, np.linspace(0, nsamp - 1, nret).astype(np.int64))
-
-                return ret
-
-        # 트랙을 찾을 수 없을 때
-        return np.full(nret, np.nan)
-
-
-    def find_track(self, dtname):
-        """Find track from dtname
-        :param dtname: device and track name. eg) SNUADC/ECG_II
-        """
-        dname = None
-        tname = dtname
-        if dtname.find('/') != -1:
-            dname, tname = dtname.split('/')
-
-        for trk in self.trks.values():  # find track
-            if trk['name'] == tname:
-                did = trk['did']
-                if did == 0 or not dname:
-                    return trk                    
-                if did in self.devs:
-                    dev = self.devs[did]
-                    if 'name' in dev and dname == dev['name']:
-                        return trk
-
-        return None
+            return ret
 
 
     def to_pandas(self, track_names, interval, return_datetime=False, return_timestamp=False):
@@ -650,7 +716,7 @@ class VitalFile:
         """
         ret, track_names = self.get_samples(track_names, interval, return_datetime, return_timestamp)
         return pd.DataFrame(np.transpose(ret), columns=track_names)
-    
+
 
     def to_numpy(self, track_names, interval, return_datetime=False, return_timestamp=False):
         """
@@ -685,7 +751,16 @@ class VitalFile:
             f.writeframes(vals.tobytes())
 
 
-    def to_vital(self, opath, compresslevel=9):
+    def to_csv(self, opath, track_names, interval, return_datetime=False, return_timestamp=False):
+        """
+        :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
+        :param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500
+        """
+        df = self.to_pandas(track_names, interval, return_datetime, return_timestamp)
+        return df.to_csv(opath, index=False, encoding='utf-8-sig')
+
+
+    def to_vital(self, opath, compresslevel=1):
         """ save as vital file
         :param opath: file path to save.
         """
@@ -706,44 +781,77 @@ class VitalFile:
             return False
 
         # save devinfos
-        for did, dev in self.devs.items():
-            if did == 0: 
+        did = 0
+        dname_dids = {}
+        for dname, dev in self.devs.items():
+            if dname == '': 
                 continue
-            ddata = pack_dw(did) + pack_str(dev['type']) + pack_str(dev['name']) + pack_str(dev['port'])
+            
+            # issue did
+            did += 1
+            dname_dids[dname] = did
+
+            ddata = pack_dw(did) + pack_str(dev.type) + pack_str(dev.name) + pack_str(dev.port)
             if not f.write(pack_b(9) + pack_dw(len(ddata)) + ddata):
                 return False
 
-        # save trkinfos
-        for tid, trk in self.trks.items():
-            ti = pack_w(tid) + pack_b(trk['type']) + pack_b(trk['fmt']) + pack_str(trk['name']) \
-                + pack_str(trk['unit']) + pack_f(trk['mindisp']) + pack_f(trk['maxdisp']) \
-                + pack_dw(trk['col']) + pack_f(trk['srate']) + pack_d(trk['gain']) + pack_d(trk['offset']) \
-                + pack_b(trk['montype']) + pack_dw(trk['did'])
+        # save trks
+        tid = 0
+        dtname_tids = {}
+        for dtname, trk in self.trks.items():
+            #stime = time.time()
+
+            # issue tid
+            tid += 1
+            dtname_tids[dtname] = tid
+
+            # find device id
+            dname = trk.dname
+            did = 0
+            if dname in dname_dids:
+                did = dname_dids[dname]
+
+            ti = pack_w(tid) + pack_b(trk.type) + pack_b(trk.fmt) + pack_str(trk.name) \
+                + pack_str(trk.unit) + pack_f(trk.mindisp) + pack_f(trk.maxdisp) \
+                + pack_dw(trk.col) + pack_f(trk.srate) + pack_d(trk.gain) + pack_d(trk.offset) \
+                + pack_b(trk.montype) + pack_dw(did)
             if not f.write(pack_b(0) + pack_dw(len(ti)) + ti):
                 return False
-
+            
             # save recs
-            for rec in trk['recs']:
+            for rec in trk.recs:
                 rdata = pack_w(10) + pack_d(rec['dt']) + pack_w(tid)  # infolen + dt + tid (= 12 bytes)
-                if trk['type'] == 1:  # wav
+                if trk.type == 1:  # wav
                     rdata += pack_dw(len(rec['val'])) + rec['val'].tobytes()
-                elif trk['type'] == 2:  # num
-                    fmtcode, fmtlen = parse_fmt(trk['fmt'])
+                elif trk.type == 2:  # num
+                    fmtcode, fmtlen = FMT_TYPE_LEN[trk.fmt]
                     rdata += pack(fmtcode, rec['val'])
-                elif trk['type'] == 5:  # str
+                elif trk.type == 5:  # str
                     rdata += pack_dw(0) + pack_str(rec['val'])
 
                 if not f.write(pack_b(1) + pack_dw(len(rdata)) + rdata):
                     return False
 
+            #print(f'{dtname } @ {time.time()-stime}')
+
+
         # save trk order
-        if hasattr(self, 'trkorder'):
-            cdata = pack_b(5) + pack_w(len(self.trkorder)) + self.trkorder.tobytes()
+        if len(self.order) > 0:
+            tids = np.array([dtname_tids[dtname] for dtname in self.order], dtype=np.dtype('H'))
+            cdata = pack_b(5) + pack_w(len(tids)) + tids.tobytes()
             if not f.write(pack_b(6) + pack_dw(len(cdata)) + cdata):
                 return False
 
         f.close()
         return True
+
+    def get_dt(self, year, month, day, hour=0, minute=0, second=0.0):
+        """ get unix timestamp based on the file's timezone
+        """
+        tz = datetime.timezone(datetime.timedelta(minutes=-self.dgmt))
+        nsec = int(second)
+        microsec = int((second - nsec) * 1000000)
+        return datetime.datetime(year, month, day, hour, minute, nsec, microsec, tz).timestamp()
 
     save_vital = to_vital
 
@@ -752,47 +860,45 @@ class VitalFile:
         """
         rows = []
         for _, trk in self.trks.items():
-            dtname = trk['name']
+            dtname = trk.name
             dname = ''
-            did = trk['did']
-            if did in self.devs:
-                dev = self.devs[did]
+            if dname in self.devs:
+                dev = self.devs[dname]
                 if 'name' in dev:
-                    dname = dev['name']
+                    dname = dev.name
                     dtname = dname + '/' + dtname  # 장비명을 앞에 붙임
 
-            # 웨이브 트랙이면 대략 1초 단위로 이어붙임
-            # parquet 파일에서 특별한 길이 제한은 없음
+            # concat wave records
             newrecs = []
-            if trk['type'] == 1 and trk['srate'] > 0:
-                srate = trk['srate']
+            if trk.type == 1 and trk.srate > 0:
+                srate = trk.srate
                 newrec = {}
-                for rec in trk['recs']:
+                for rec in trk.recs:
                     if not newrec:  # 첫 샘플
                         newrec = rec
                     elif abs(newrec['dt'] + len(newrec['val']) / srate - rec['dt']) < 1.1 / srate and len(newrec['val']) < srate:
-                        # 이전 샘플에서 이어짐
+                        # continue from the previous rec
                         newrec['val'] = np.concatenate((newrec['val'], rec['val']))
-                    else:  # 이어지지 않음
+                    else:  # inturrupted
                         newrecs.append(newrec)
                         newrec = rec
                 if newrec:
                     newrecs.append(newrec)
-                trk['recs'] = newrecs
+                trk.recs = newrecs
 
-            for rec in trk['recs']:
+            for rec in trk.recs:
                 row = {'tname': dtname, 'dt': rec['dt']}
-                if trk['type'] == 1:  # wav
+                if trk.type == 1:  # wav
                     vals = rec['val'].astype(np.float32)
-                    if trk['fmt'] > 2:  # 1: float, 2: double
-                        vals *= trk['gain']
-                        vals += trk['offset']
+                    if trk.fmt > 2:  # 1: float, 2: double
+                        vals *= trk.gain
+                        vals += trk.offset
                     row['wval'] = vals.tobytes()
-                    row['nval'] = trk['srate']
-                elif trk['type'] == 2:  # num
+                    row['nval'] = trk.srate
+                elif trk.type == 2:  # num
                     # row['val'] = pack_f(np.float32(rec['val']))
                     row['nval'] = rec['val']
-                elif trk['type'] == 5:  # str
+                elif trk.type == 5:  # str
                     row['sval'] = rec['val']
                 rows.append(row)
 
@@ -805,99 +911,76 @@ class VitalFile:
 
     def load_opendata(self, caseid, track_names, exclude):
         global dftrks
+        
         if not caseid:
             return
-        if dftrks is None:  # 여러번 실행 시 한번만 로딩 되면 됨
+
+        if dftrks is None:  # for cache
             dftrks = pd.read_csv("https://api.vitaldb.net/trks")
 
-        trks = dftrks.loc[dftrks['caseid'] == caseid]
-        dname_to_dids = {}
-        dtname_to_tids = {}
-        for _, row in trks.iterrows():
+        tids = []
+        dtnames = []
+        for dtname in track_names:
+            rows = dftrks.loc[(dftrks['caseid'] == caseid) & (dftrks['tname'].str.endswith(dtname))]
+            if len(rows) == 0:
+                continue
+            row = rows.iloc[0]
+            
+            # make device
             dtname = row['tname']
-            tid = row['tid']
-
-            # 포함 트랙, 제외 트랙
-            if track_names:
-                if dtname not in track_names:
-                    continue
-            if exclude:
-                if dtname in exclude:
-                    continue
-
-            # 장비명을 지정
             dname = ''
-            did = 0
             tname = dtname
             if dtname.find('/') >= 0:
                 dname, tname = dtname.split('/')
+            if dname not in self.devs:
+                self.devs[dname] = Device(dname)
 
-            if dname:
-                if dname in dname_to_dids:
-                    did = dname_to_dids[dname]
-                else:  # 처음 나왔으면
-                    did = len(dname_to_dids) + 1
-                    dname_to_dids[dname] = did
-                    self.devs[did] = {'name': dname, 'type': dname, 'port': ''}
-
-            # 실제 레코드를 읽음
-            try:
-                url = 'https://api.vitaldb.net/' + tid
+            try:  # read tracks
+                url = 'https://api.vitaldb.net/' + row['tid']
                 dtvals = pd.read_csv(url, na_values='-nan(ind)').values
             except:
-                return
+                continue
+
             if len(dtvals) == 0:
-                return
+                continue
 
-            # tid를 발급
-            tid = 0
-            if dtname in dtname_to_tids:
-                tid = dtname_to_tids[dtname]
-            else:  # 처음 나왔으면
-                tid = len(dtname_to_tids) + 1  # tid를 발급
-                dtname_to_tids[dtname] = tid
+            if dtname in self.trks:  # already read
+                continue
+            
+            # sampling rate
+            if np.isnan(dtvals[:,0]).any():  # wav
+                ntype = 1
+                interval = dtvals[1,0] - dtvals[0,0]
+                assert interval > 0
+                srate = 1 / interval
+            else:  # num
+                ntype = 2  
+                srate = 0
+            # no string type in open dataset
 
-                # open dataset 은 string 이 없기 때문에 반드시 num 혹은 wav
-                # 구분은 시간행에 결측값이 있는지로 이루어짐
-                if np.isnan(dtvals[:,0]).any():  # wav
-                    ntype = 1
-                    interval = dtvals[1,0] - dtvals[0,0]
-                    assert interval > 0
-                    srate = 1 / interval
-                else:  # num
-                    ntype = 2  
-                    srate = 0
+            # default track information
+            if dtname in TRACK_INFO:
+                trk = Track(dtname, **TRACK_INFO[dtname])
+                trk.type = ntype
+                trk.srate = srate
+            else:
+                trk = Track(tname, ntype=ntype, srate=srate, dname=dname)
 
-                # 트랙명으로부터 가져온 기본 트랙 정보
-                default_ti = {'unit': '', 'mindisp': 0, 'maxdisp': 0, 'col': 0xffffff, 'gain': 1.0, 'offset': 0.0, 'montype': 0}
-                if dtname in dtname_tis:
-                    trk = {**default_ti, **dtname_tis[dtname]}
-                else:
-                    trk = dict(default_ti)
+            self.trks[dtname] = trk
 
-                trk['dtname'] = dtname
-                trk['name'] = tname
-                trk['type'] = ntype
-                trk['fmt'] = 1  # float32
-                trk['srate'] = srate
-                trk['did'] = did
-                trk['recs'] = []
-
-                self.trks[tid] = trk
-
-            # 실제 레코드를 저장
+            # parsing the records
             if ntype == 1:  # wav
                 assert srate > 0
-                # 1초 단위로 나눠 담자
+                # seperate with 1sec interval
                 interval = dtvals[1,0] - dtvals[0,0]
                 dtvals = dtvals.astype(np.float32)
                 for i in range(0, len(dtvals), int(srate)):
-                    trk['recs'].append({'dt': dtvals[0,0] + i * interval, 'val': dtvals[i:i+int(srate), 1]})
+                    trk.recs.append({'dt': dtvals[0,0] + i * interval, 'val': dtvals[i:i+int(srate), 1]})
             else:  # num
                 for dt, val in dtvals:  # copy values
-                    trk['recs'].append({'dt': dt, 'val': val})
+                    trk.recs.append({'dt': dt, 'val': val})
 
-            # open dataset 은 시작이 항상 0이고 정렬이 되어있다
+            # open dataset always starts with 0
             dt = dtvals[-1,0]
             if dt > self.dtend:
                 self.dtend = dt
@@ -905,15 +988,11 @@ class VitalFile:
         return
 
     def load_parquet(self, ipath, track_names, exclude):
-        dname_to_dids = {}
-        dtname_to_tids = {}
-
         filts = None
         if track_names:
             filts = [['tname', 'in', track_names]]
         df = pq.read_table(ipath, filters=filts).to_pandas()
 
-        # 아래 코드도 동일하지만 filters 지원이 안된다.
         # df = pd.read_parquet(ipath)
 
         self.dtstart = df['dt'].min()
@@ -924,7 +1003,7 @@ class VitalFile:
             if not dtname:
                 continue
 
-            # 포함 트랙, 제외 트랙
+            # including and excluding tracks
             if track_names:
                 if dtname not in track_names:
                     continue
@@ -932,28 +1011,16 @@ class VitalFile:
                 if dtname in exclude:
                     continue
 
-            # 장비명을 지정
+            # for specifying device name
             dname = ''
-            did = 0
             tname = dtname
             if dtname.find('/') >= 0:
                 dname, tname = dtname.split('/')
+            if dname not in self.devs:
+                self.devs[dname] = Device(dname)
 
-            if dname:
-                if dname in dname_to_dids:
-                    did = dname_to_dids[dname]
-                else:  # 처음 나왔으면
-                    did = len(dname_to_dids) + 1
-                    dname_to_dids[dname] = did
-                    self.devs[did] = {'name': dname, 'type': dname, 'port': ''}
-
-            # tid를 발급
-            tid = 0
-            if dtname in dtname_to_tids:
-                tid = dtname_to_tids[dtname]
-            else:  # 처음 나왔으면
-                tid = len(dtname_to_tids) + 1  # tid를 발급
-                dtname_to_tids[dtname] = tid
+            # create tracks
+            if dtname not in self.trks:  # new track
                 if 'wval' in row and row['wval'] is not None:
                     ntype = 1  # wav
                     srate = row['nval']
@@ -966,45 +1033,30 @@ class VitalFile:
                 else:
                     continue
 
-                # 트랙명으로부터 가져온 기본 트랙 정보
-                default_ti = {'unit': '', 'mindisp': 0, 'maxdisp': 0, 'col': 0xffffff, 'gain': 1.0, 'offset': 0.0, 'montype': 0}
-                if dtname in dtname_tis:
-                    trk = {**default_ti, **dtname_tis[dtname]}
-                else:
-                    trk = dict(default_ti)
+                # basic track information from the track name
+                trk = Track(tname, ntype, srate=srate, dname=dname)
+                self.trks[dtname] = trk
 
-                trk['dtname'] = dtname
-                trk['name'] = tname
-                trk['type'] = ntype
-                trk['fmt'] = 1  # float32
-                trk['srate'] = srate
-                trk['did'] = did
-                trk['recs'] = []
-
-                self.trks[tid] = trk
-
-            # 실제 레코드를 읽음
-            trk = self.trks[tid]
+            # reading records
+            trk = self.trks[dtname]
             rec = {'dt': row['dt']}
-            if trk['type'] == 1:  # wav
+            if trk.type == 1:  # wav
                 rec['val'] = np.frombuffer(row['wval'], dtype=np.float32)
-                #rec['val'] = np.array(Struct('<{}f'.format(len(row['wval']) // 4)).unpack_from(row['wval'], 0), dtype=np.float32)
-                
-                # TODO: dtend가 부정확할 수 있으므로 조정 필요
-            elif trk['type'] == 2:  # num
+                # rec['val'] = np.array(Struct('<{}f'.format(len(row['wval']) // 4)).unpack_from(row['wval'], 0), dtype=np.float32)
+                # TODO: dtend may be incorrect
+            elif trk.type == 2:  # num
                 rec['val'] = row['nval']
-            elif trk['type'] == 5:  # str
+            elif trk.type == 5:  # str
                 rec['val'] = row['sval']
             else:
                 continue
-
-            trk['recs'].append(rec)
+            trk.recs.append(rec)
         
 
-    # track_names: 로딩을 원하는 dtname 의 리스트. track_names가 None 이면 모든 트랙이 읽혀짐
-    # track_names_only: 트랙명만 읽고 싶을 때
-    # exclude: 제외할 트랙
-    def load_vital(self, ipath, track_names=None, track_names_only=False, exclude=[]):
+    # track_names: list of dtname to read. If track_names is None, all tracks will be loaded
+    # skip_records: read track names only
+    # exclude: track names to exclude
+    def load_vital(self, ipath, track_names=None, skip_records=False, exclude=None):
         # check if ipath is url
         iurl = parse.urlparse(ipath)
         if iurl.scheme and iurl.netloc:
@@ -1031,13 +1083,14 @@ class VitalFile:
         if buf == b'':
             return False
         headerlen = unpack_w(buf, 0)[0]
-        header = f.read(headerlen)  # header 전체를 읽음
+        header = f.read(headerlen)  # read header
 
         self.dgmt = unpack_s(header, 0)[0]  # dgmt = ut - localtime
 
         # parse body
         try:
-            sel_tids = set()
+            tid_dtnames = {}  # tid -> dtname for this file
+            did_dnames = {}  # did -> dname for this file
             while True:
                 buf = f.read(5)
                 if buf == b'':
@@ -1047,7 +1100,7 @@ class VitalFile:
                 packet_type = unpack_b(buf, pos)[0]; pos += 1
                 packet_len = unpack_dw(buf, pos)[0]; pos += 4
 
-                if packet_len > 1000000: # 1개의 패킷이 1MB 이상이면
+                if packet_len > 1000000: # maximum packet size should be < 1MB
                     break
                 
                 buf = f.read(packet_len)
@@ -1060,11 +1113,12 @@ class VitalFile:
                     devtype, pos = unpack_str(buf, pos)
                     name, pos = unpack_str(buf, pos)
                     port = ''
-                    if len(buf) > pos + 4:  # port는 없을 수 있다
+                    if len(buf) > pos + 4:  # port is optional
                         port, pos = unpack_str(buf, pos)
                     if not name:
                         name = devtype
-                    self.devs[did] = {'name': name, 'type': devtype, 'port': port}
+                    self.devs[name] = Device(name, devtype, port)
+                    did_dnames[did] = name
                 elif packet_type == 0:  # trkinfo
                     did = col = 0
                     montype = 0
@@ -1103,40 +1157,35 @@ class VitalFile:
                         pos += 4
 
                     dname = ''
-                    if did and did in self.devs:
-                        if did and did in self.devs:
-                            dname = self.devs[did]['name']
+                    if did and did in did_dnames:
+                        dname = did_dnames[did]
                         dtname = dname + '/' + tname
                     else:
                         dtname = tname
 
                     matched = False
-                    if not track_names:  # 사용자가 특정 트랙만 읽으라고 했을 때
+                    if not track_names:  # for reading user definded tracks
                         matched = True
-                    elif dtname in track_names:  # dtname (현재 읽고 있는 트랙명)이 track_names에 지정된 것과 정확히 일치할 때
+                    elif dtname in track_names:
                         matched = True
-                    else:  # 정확히 일치하지는 않을 때
+                    else:  # matching with tolerance
                         for sel_dtname in track_names:
-                            if dtname.endswith('/' + sel_dtname) or (dname + '/*' == sel_dtname): # 트랙명만 지정 or 특정 장비의 모든 트랙일 때
+                            if dtname.endswith(sel_dtname) or (dname + '/*' == sel_dtname): # only track name is specified or all tracks in a specific device
                                 matched = True
                                 break
-
-                    if exclude and matched:  # 제외해야할 트랙이 있을 때
-                        if dtname in exclude:  # 제외해야할 트랙명과 정확히 일치할 때
+                    if exclude and matched:  # excluded tracks
+                        if dtname in exclude:
                             matched = False
-                        else:  # 정확히 일치하지는 않을 때
+                        else:  # exclude with tolerance
                             for sel_dtname in exclude:
-                                if dtname.endswith('/' + sel_dtname) or (dname + '/*' == sel_dtname): # 트랙명만 지정 or 특정 장비의 모든 트랙일 때
+                                if dtname.endswith(sel_dtname) or (dname + '/*' == sel_dtname):
                                     matched = False
                                     break
-                    
                     if not matched:
                         continue
                     
-                    sel_tids.add(tid)  # sel_tids 는 무조건 존재하고 앞으로는 sel_tids의 트랙만 로딩한다
-                    self.trks[tid] = {'name': tname, 'dtname': dtname, 'type': trktype, 'fmt': fmt, 'unit': unit, 'srate': srate,
-                                      'mindisp': mindisp, 'maxdisp': maxdisp, 'col': col, 'montype': montype,
-                                      'gain': gain, 'offset': offset, 'did': did, 'recs': []}
+                    tid_dtnames[tid] = dtname
+                    self.trks[dtname] = Track(tname, trktype, fmt=fmt, unit=unit, srate=srate, mindisp=mindisp, maxdisp=maxdisp, col=col, montype=montype, gain=gain, offset=offset, dname=dname)
                 elif packet_type == 1:  # rec
                     if len(buf) < pos + 12:
                         continue
@@ -1152,78 +1201,79 @@ class VitalFile:
                     if dt > self.dtend:
                         self.dtend = dt
 
-                    if track_names_only:  # track_name 만 읽을 때
+                    if skip_records:  # skip records
                         continue
 
-                    if tid not in self.trks:  # 이전 정보가 없는 트랙이거나
+                    if tid not in tid_dtnames:  # tid not to read
                         continue
+                    dtname = tid_dtnames[tid]
 
-                    if tid not in sel_tids:  # 사용자가 트랙 지정을 했는데 그 트랙이 아니면
+                    if dtname not in self.trks:
                         continue
-
-                    trk = self.trks[tid]
+                    trk = self.trks[dtname]
 
                     fmtlen = 4
-                    # gain, offset 변환은 하지 않은 raw data 상태로만 로딩한다.
-                    # 항상 이 변환이 필요하지 않기 때문에 변환은 나중에 한다.
                     rec_dtend = dt
-                    if trk['type'] == 1:  # wav
-                        fmtcode, fmtlen = parse_fmt(trk['fmt'])
+                    if trk.type == 1:  # wav
+                        fmtcode, fmtlen = FMT_TYPE_LEN[trk.fmt]
                         if len(buf) < pos + 4:
                             continue
                         nsamp = unpack_dw(buf, pos)[0]; pos += 4
                         if len(buf) < pos + nsamp * fmtlen:
                             continue
                         samps = np.ndarray((nsamp,), buffer=buf, offset=pos, dtype=np.dtype(fmtcode)); pos += nsamp * fmtlen
-                        trk['recs'].append({'dt': dt, 'val': samps})
-                        
-                        if trk['srate'] > 0:
-                            rec_dtend = dt + len(samps) / trk['srate']
+                        trk.recs.append({'dt': dt, 'val': samps})
+                        if trk.srate > 0:
+                            rec_dtend = dt + len(samps) / trk.srate
                             if rec_dtend > self.dtend:
                                 self.dtend = rec_dtend
-                    elif trk['type'] == 2:  # num
-                        fmtcode, fmtlen = parse_fmt(trk['fmt'])
+                    elif trk.type == 2:  # num
+                        fmtcode, fmtlen = FMT_TYPE_LEN[trk.fmt]
                         if len(buf) < pos + fmtlen:
                             continue
                         val = unpack_from(fmtcode, buf, pos)[0]; pos += fmtlen
-                        trk['recs'].append({'dt': dt, 'val': val})
-                    elif trk['type'] == 5:  # str
+                        trk.recs.append({'dt': dt, 'val': val})
+                    elif trk.type == 5:  # str
                         pos += 4  # skip
                         if len(buf) < pos + 4:
                             continue
                         s, pos = unpack_str(buf, pos)
-                        trk['recs'].append({'dt': dt, 'val': s})
+                        trk.recs.append({'dt': dt, 'val': s})
                 elif packet_type == 6:  # cmd
                     cmd = unpack_b(buf, pos)[0]; pos += 1
                     if cmd == 6:  # reset events
-                        evt_trk = self.find_track('/EVENT')
-                        if evt_trk:
-                            evt_trk['recs'] = []
+                        if 'EVENT' in self.trks:
+                            self.trks['EVENT'] = []
                     elif cmd == 5:  # trk order
-                        cnt = unpack_w(buf, pos)[0]; pos += 2
-                        self.trkorder = np.ndarray((cnt,), buffer=buf, offset=pos, dtype=np.dtype('H')); pos += cnt * 2
+                        cnt = unpack_w(buf, pos)[0]
+                        pos += 2
+                        tids = np.ndarray((cnt,), buffer=buf, offset=pos, dtype=np.dtype('H'))
+                        self.order = []
+                        for tid in tids:
+                            if tid in tid_dtnames:
+                                self.order.append(tid_dtnames[tid])
+                        pos += cnt * 2
 
         except EOFError:
             pass
 
         # sorting tracks
         # for trk in self.trks.values():
-        #     trk['recs'].sort(key=lambda r:r['dt'])
+        #     trk.recs.sort(key=lambda r:r['dt'])
 
         f.close()
         return True
 
 
-def vital_recs(ipath, track_names=None, interval=None, return_timestamp=False, return_datetime=False, return_pandas=False, exclude=[]):
+def vital_recs(ipath, track_names=None, interval=None, return_timestamp=False, return_datetime=False, return_pandas=False, exclude=None):
     """Constructor of the VitalFile class.
     :param ipath: file path to read
-    :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
-    :param interval: interval of each samples. if None, maximum resolution. wave 트랙이 없으면 0.002 초 (500Hz)
-    :param return_timestamp: 
-    :param return_datetime: 
-    :param return_pandas: 
+    :param interval: interval of each sample. if None, maximum resolution. if there is no wave tracks, 1 sec
+    :param return_timestamp: return unix timestamp
+    :param return_datetime: return datetime of each sample at first column
+    :param return_pandas: return pandas dataframe
     """
-    # 만일 SNUADC/ECG_II,Solar8000 형태의 문자열이면?
+    # convert string like "SNUADC/ECG_II,Solar8000" to the list
     if isinstance(track_names, str):
         if track_names.find(',') != -1:
             track_names = track_names.split(',')
@@ -1237,32 +1287,57 @@ def vital_recs(ipath, track_names=None, interval=None, return_timestamp=False, r
 
 
 def vital_trks(ipath):
-    # 트랙 목록만 읽어옴
+    """Read track names from the vital file
+    :param ipath: file path to read
+    """
     ret = []
-    vf = VitalFile(ipath, track_names_only=True)
-    for trk in vf.trks.values():
-        tname = trk['name']
-        dname = ''
-        did = trk['did']
-        if did in vf.devs:
-            dev = vf.devs[did]
-            if 'name' in dev:
-                dname = dev['name']
-        ret.append(dname + '/' + tname)
-    return ret
+    vf = VitalFile(ipath, skip_records=True)
+    return vf.get_track_names()
 
 
 if __name__ == '__main__':
-    # vf = VitalFile(['1-2.vital', '1-3.vital'])
-    # vf.to_vital('merged.vital')
-    # quit()
     
-    #vals = vital_recs("https://vitaldb.net/samples/00001.vital", return_timestamp=True, return_pandas=True)
+    vf = VitalFile('https://vitaldb.net/1.vital')
+    vf.remove_devices(['SNUADC', 'BIS'])
+    vf.to_vital('edited.vital')
+    quit()
+
+    vf = VitalFile('https://vitaldb.net/1.vital')
+    vf.to_vital('1.vital')
+    quit()
+    
+    TRACK_NAMES = ['ECG_II', 'ART']
+    vf = VitalFile(1, TRACK_NAMES)  # load the first case from open dataset
+    print(f'{len(vf.get_track_names())} tracks')
+    vals = vf.to_numpy(TRACK_NAMES, 1/100)
+    print(vals)
+    quit()
+
+    TRACK_NAMES = ['SNUADC/ECG_II', 'Solar 8000M/HR']
+    vf = VitalFile("https://vitaldb.net/1.vital")
+    vals = vf.to_numpy(TRACK_NAMES, 1/100)
+    print(vals)
+    quit()
+
+    vf = VitalFile(['1-1.vital', '1-2.vital'])
+    vf.to_vital('merged.vital')
+    quit()
+    
+    TRACK_NAMES = ['SNUADC/ECG_II', 'Solar 8000M/HR']
+    vf = VitalFile("https://vitaldb.net/1.vital")
+    vf.to_vital('1.vital')
+    quit()
+
+    #df = vf.to_pandas(TRACK_NAMES, 1/60, return_datetime=True)
+    #df.to_csv('1.csv', index=False, encoding='utf-8-sig')
+    quit()
+
+    
+    #vals = vital_recs("https://vitaldb.net/1.vital", return_timestamp=True, return_pandas=True)
     #print(vals)
-    vf = VitalFile("https://vitaldb.net/samples/00001.vital")
+    vf = VitalFile("https://vitaldb.net/1.vital")
     print(vf.get_track_names())
-    track_names = ['SNUADC/ECG_II', 'Solar 8000M/HR']
-    df = vf.to_pandas(track_names, 1)
+    df = vf.to_pandas(TRACK_NAMES, 1)
     print(df.describe())
     #vf.crop(300, 360)
     #vf.to_wav('1.wav', ['SNUADC/ECG_II'], 44100)

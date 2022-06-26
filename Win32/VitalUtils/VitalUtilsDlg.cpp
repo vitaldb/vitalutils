@@ -267,17 +267,16 @@ BOOL CVitalUtilsDlg::OnInitDialog() {
 
 	// begin worker thread pool
 	auto ncores = (int)thread::hardware_concurrency();
-	if (ncores > 16) ncores = 16;
 	for (int i = 0; i < ncores; ++i) {
-		m_thread_worker[i] = thread(&CVitalUtilsDlg::worker_thread_func, this);
+		m_thread_worker.push_back(thread(&CVitalUtilsDlg::worker_thread_func, this));
 	}
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
 
 // 대화 상자에 최소화 단추를 추가할 경우 아이콘을 그리려면
-//  아래 코드가 필요합니다.  문서/뷰 모델을 사용하는 MFC 응용 프로그램의 경우에는
-//  프레임워크에서 이 작업을 자동으로 수행합니다.
+// 아래 코드가 필요합니다.  문서/뷰 모델을 사용하는 MFC 응용 프로그램의 경우에는
+// 프레임워크에서 이 작업을 자동으로 수행합니다.
 void CVitalUtilsDlg::OnPaint() {
 	CPaintDC dc(this); // 그리기를 위한 디바이스 컨텍스트입니다.
 	if (IsIconic()) {
@@ -1082,9 +1081,10 @@ void CVitalUtilsDlg::OnDestroy() {
 	// 모든 작업을 종료
 	m_bExiting = true;
 	OnBnClickedCancel();
-	for (int i = 0; i < 16; i++) {
-		if (m_thread_worker[i].joinable()) 
-			m_thread_worker[i].join();
+	
+	for (auto& th: m_thread_worker) {
+		if (th.joinable()) 
+			th.join();
 	}
 
 	// 파일 목록을 삭제
