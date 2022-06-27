@@ -1,6 +1,10 @@
 from . import api as _api
 api = _api
 
+from .api import login
+from .api import filelist
+from .api import download
+from .api import receive
 from .utils import vital_recs
 from .utils import vital_trks
 from .utils import VitalFile
