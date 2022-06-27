@@ -4,9 +4,9 @@ import pandas as pd
 # open dataset trks
 dftrks = None
 
-def load_trk(tid, interval=1):
+def _load_trk(tid, interval=1):
     if isinstance(tid, list) or isinstance(tid, set) or isinstance(tid, tuple):
-        return load_trks(tid, interval)
+        return _load_trks(tid, interval)
 
     try:
         url = 'https://api.vitaldb.net/' + tid
@@ -33,12 +33,12 @@ def load_trk(tid, interval=1):
     return ret
 
 
-def load_trks(tids, interval=1):
+def _load_trks(tids, interval=1):
     trks = []
     maxlen = 0
     for tid in tids:
         if tid:
-            trk = load_trk(tid, interval)
+            trk = _load_trk(tid, interval)
             trks.append(trk)
             if len(trk) > maxlen:
                 maxlen = len(trk)
@@ -93,18 +93,18 @@ def load_case(caseid, track_names, interval=1):
         else:
             tids.append(None)
     
-    return load_trks(tids, interval)
+    return _load_trks(tids, interval)
 
 
 if __name__ == '__main__':
-    caseids = find_cases(['ECG_II'])
-    print(len(caseids))
-    quit()
+    # caseids = find_cases(['ECG_II'])
+    # print(len(caseids))
+    # quit()
     
     vals = load_case(1, ['ECG_II', 'ART'])
     print(vals)
     quit()
-    vals = load_trks([
+    vals = _load_trks([
         'eb1e6d9a963d7caab8f00993cd85bf31931b7a32',
         '29cef7b8fe2cc84e69fd143da510949b3c271314',
         '829134dd331e867598f17d81c1b31f5be85dddec'
