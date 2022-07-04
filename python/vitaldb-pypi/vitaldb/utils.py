@@ -1264,6 +1264,68 @@ class VitalFile:
         f.close()
         return True
 
+    def run_filter(self, run, cfg):
+        # find input tracks
+        track_names = []  # input 의 트랙명을 순서대로 저장
+        srate = 0
+        last_dtname = 0
+        for inp in cfg['inputs']:
+            matched_dtname = None
+            for dtname, trk in self.trks.items():  # find track
+                if (inp['type'].lower() == 'wav') and (trk.type != 1):
+                    continue
+                if (inp['type'].lower() == 'num') and (trk.type != 2):
+                    continue
+                if (inp['type'].lower() == 'str') and (trk.type != 5):
+                    continue
+                if trk.name.lower().startswith(inp['name'].lower()) or\
+                    (inp['name'].lower()[:3] == 'ecg') and (trk.name.lower().startswith('ecg' + inp['name'].lower()[3:])) or \
+                    (inp['name'].lower()[:3] == 'art') and (trk.name.lower().startswith('abp' + inp['name'].lower()[3:])) or \
+                    (inp['name'].lower()[:3] == 'abp') and (trk.name.lower().startswith('art' + inp['name'].lower()[3:])):
+                    matched_dtname = trk.dtname
+                    if trk.srate:
+                        if srate < trk.srate:
+                            srate = trk.srate
+                    last_dtname = dtname
+                    break
+            if not matched_dtname:
+                print(inp['name'] + ' not found')
+                quit()
+            track_names.append(matched_dtname)
+
+        if srate == 0:
+            srate = 100
+
+        # extract samples
+        vals = self.to_numpy(track_names, 1 / srate).flatten()
+
+        # output records
+        output_recs = []
+        for output in cfg['outputs']:
+            output_recs.append([])
+
+        # run filter
+        # TODO: multi track inputs
+        # TODO: numeric / string track inputs
+        for dtstart_seg in np.arange(self.dtstart, self.dtend, cfg['interval'] - cfg['overlap']):
+            dtend_seg = dtstart_seg + cfg['interval']
+            idx_dtstart = int((dtstart_seg - self.dtstart) * srate)
+            idx_dtend = int((dtend_seg - self.dtstart) * srate)
+            outputs = run({cfg['inputs'][0]['name']: {'srate':srate, 'vals': vals[idx_dtstart:idx_dtend]}}, {}, cfg)
+            if outputs is None:
+                continue
+            for i in range(len(cfg['outputs'])):
+                output = outputs[i]
+                for rec in output:  # convert relative time to absolute time
+                    rec['dt'] += dtstart_seg
+                    output_recs[i].append(rec)
+
+        # add output tracks
+        for i in range(len(cfg['outputs'])):
+            dtname = cfg['outputs'][i]['name']
+            self.add_track(dtname, output_recs[i], after=last_dtname)
+            last_dtname = dtname
+
 
 def vital_recs(ipath, track_names=None, interval=None, return_timestamp=False, return_datetime=False, return_pandas=False, exclude=None):
     """Constructor of the VitalFile class.
@@ -1296,10 +1358,12 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
-    
+    import pyvital.filters.ecg_hrv as f
     vf = VitalFile('https://vitaldb.net/1.vital')
-    vf.remove_devices(['SNUADC', 'BIS'])
-    vf.to_vital('edited.vital')
+    vf.run_filter(f.run, f.cfg)
+    vf.to_vital('filtered.vital')
+    #vf.remove_devices(['SNUADC', 'BIS'])
+    #vf.to_vital('edited.vital')
     quit()
 
     vf = VitalFile('https://vitaldb.net/1.vital')
