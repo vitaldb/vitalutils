@@ -318,6 +318,23 @@ class VitalFile:
         self.dgmt = 0
         self.order = []  # optional: order of dtname
 
+        # tracks including
+        if isinstance(track_names, str):
+            if track_names.find(','):
+                track_names = track_names.split(',')
+            else:
+                track_names = [track_names]
+
+        # tracks excluding
+        if isinstance(exclude, str):
+            if exclude.find(','):
+                exclude = exclude.split(',')
+            else:
+                exclude = [exclude]
+        
+        if exclude is not None:
+            exclude = set(exclude)
+
         if isinstance(ipath, int):
             if skip_records:
                 raise NotImplementedError
@@ -376,23 +393,6 @@ class VitalFile:
                 bedname = ipath[:-20]
                 month = ipath[-19:-15]
                 ipath = f's3://vitaldb-myfiles/{userid}/{month}/{bedname}/{ipath}'
-
-        # tracks including
-        if isinstance(track_names, str):
-            if track_names.find(','):
-                track_names = track_names.split(',')
-            else:
-                track_names = [track_names]
-
-        # tracks excluding
-        if isinstance(exclude, str):
-            if exclude.find(','):
-                exclude = exclude.split(',')
-            else:
-                exclude = [exclude]
-        
-        if exclude is not None:
-            exclude = set(exclude)
 
         if ext == '.vital':
             self.load_vital(ipath, track_names, skip_records, exclude)
@@ -608,6 +608,11 @@ class VitalFile:
 
         if 'val' not in recs[0] or 'dt' not in recs[0]:
             return
+
+        srate = float(srate)
+        unit = str(unit)
+        mindisp = float(mindisp)
+        maxdisp = float(maxdisp)
 
         dname = ''
         tname = dtname
@@ -913,6 +918,7 @@ class VitalFile:
         global dftrks
         
         if not caseid:
+            raise ValueError('caseid should be greater than zero')
             return
 
         if dftrks is None:  # for cache
@@ -960,11 +966,10 @@ class VitalFile:
 
             # default track information
             if dtname in TRACK_INFO:
-                trk = Track(dtname, **TRACK_INFO[dtname])
-                trk.type = ntype
+                trk = Track(tname, **TRACK_INFO[dtname], type=ntype, dname=dname)
                 trk.srate = srate
             else:
-                trk = Track(tname, ntype=ntype, srate=srate, dname=dname)
+                trk = Track(tname, ntype, srate=srate, dname=dname)
 
             self.trks[dtname] = trk
 
@@ -1322,9 +1327,13 @@ class VitalFile:
 
         # add output tracks
         for i in range(len(cfg['outputs'])):
-            dtname = cfg['outputs'][i]['name']
-            self.add_track(dtname, output_recs[i], after=last_dtname)
-            last_dtname = dtname
+            out = cfg['outputs'][i]
+            unit = out['unit'] if 'unit' in out else ''
+            srate = out['srate'] if 'srate' in out else 0
+            mindisp = out['min'] if 'min' in out else 0
+            maxdisp = out['max'] if 'max' in out else 1
+            self.add_track(out['name'], output_recs[i], after=last_dtname, srate=srate, unit=unit, mindisp=mindisp, maxdisp=maxdisp)
+            last_dtname = out['name']
 
 
 def vital_recs(ipath, track_names=None, interval=None, return_timestamp=False, return_datetime=False, return_pandas=False, exclude=None):
