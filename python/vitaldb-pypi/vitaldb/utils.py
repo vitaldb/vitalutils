@@ -1333,7 +1333,8 @@ class VitalFile:
             mindisp = out['min'] if 'min' in out else 0
             maxdisp = out['max'] if 'max' in out else 1
             self.add_track(out['name'], output_recs[i], after=last_dtname, srate=srate, unit=unit, mindisp=mindisp, maxdisp=maxdisp)
-            last_dtname = out['name']
+            if out['name'] in self.trks:
+                last_dtname = out['name']
 
 
 def vital_recs(ipath, track_names=None, interval=None, return_timestamp=False, return_datetime=False, return_pandas=False, exclude=None):
