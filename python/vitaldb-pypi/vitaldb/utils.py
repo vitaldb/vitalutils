@@ -1200,6 +1200,14 @@ class VitalFile:
                     tid = unpack_w(buf, pos)[0]; pos += 2
                     pos = 2 + infolen
 
+                    if tid not in tid_dtnames:  # tid not to read
+                        continue
+                    dtname = tid_dtnames[tid]
+
+                    if dtname not in self.trks:
+                        continue
+                    trk = self.trks[dtname]
+
                     if self.dtstart == 0 or (dt > 0 and dt < self.dtstart):
                         self.dtstart = dt
                     
@@ -1208,14 +1216,6 @@ class VitalFile:
 
                     if skip_records:  # skip records
                         continue
-
-                    if tid not in tid_dtnames:  # tid not to read
-                        continue
-                    dtname = tid_dtnames[tid]
-
-                    if dtname not in self.trks:
-                        continue
-                    trk = self.trks[dtname]
 
                     fmtlen = 4
                     rec_dtend = dt

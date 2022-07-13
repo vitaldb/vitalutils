@@ -1,18 +1,19 @@
 import os
-import vitaldb
 import datetime
 import copy
 import numpy as np
 import shutil
 from joblib import Parallel, delayed
+import utils as vitaldb
 
 # raw path
 RAW_DIR = 'c:/Vital/Raw/'
+RAW_DIR = r'C:\Users\lucid\OneDrive\Desktop\SICU1_04_220616_230000/'
 
 # save path
 OUTPUT_DIR = 'C:/Vital/Output/'
 
-USE_MULTIPROCESS = True
+USE_MULTIPROCESS = False
 
 # 1시간 이내 파일 인지 아닌지 확인
 def cut_vital_file(prefix_done_list, filepath):
@@ -22,6 +23,8 @@ def cut_vital_file(prefix_done_list, filepath):
     except:
         return
     if not vf.dtstart:  # 1KB 파일 등 이상한 파일
+        return
+    if vf.dtend > vf.dtstart + 48 * 3600:  # 48 시간 이상 파일도 이상한 파일
         return
         
     newdir = OUTPUT_DIR + filepath[len(RAW_DIR):-len(filename)]
