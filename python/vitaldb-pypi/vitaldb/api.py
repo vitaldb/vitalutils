@@ -39,7 +39,7 @@ def login(id, pw, host=None, port=None):
 
     return True
 
-def to_timestamp(dt):
+'''def to_timestamp(dt):
     if isinstance(dt, str):
         defstr = '2000-01-01 00:00:00'
         if len(dt) < len(defstr):
@@ -47,7 +47,7 @@ def to_timestamp(dt):
         dt = datetime.datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
     if isinstance(dt, datetime.datetime):
         dt = dt.timestamp()
-    return dt
+    return dt'''
 
 # request file list
 # bedname = "TEST"
@@ -61,8 +61,8 @@ def filelist(bedname=None, dtstart=None, dtend=None, hid=None, notimestamp=None,
     pars = {"access_token": access_token}
     if bedname:
         pars['bedname'] = bedname
-    dtstart = to_timestamp(dtstart)
-    dtend = to_timestamp(dtend)
+    #dtstart = to_timestamp(dtstart)
+    #dtend = to_timestamp(dtend)
     if dtstart:
         pars['dtstart'] = dtstart
     if dtend:
