@@ -7,6 +7,7 @@ import shutil
 import pandas as pd
 import wave
 import pyarrow.parquet as pq
+from copy import deepcopy
 from urllib import parse, request
 from struct import pack, unpack_from, Struct
 import s3fs
@@ -638,6 +639,24 @@ class VitalFile:
             if dtname in self.order:  # remove if it already exists
                 self.order.remove(dtname)
             self.order.insert(self.order.index(after) + 1, dtname)
+
+    def anonymize(self):
+        # 1. create a deep copy of self
+        vf = deepcopy(self)
+        # 2. subtract dtstart from all dt of each trk rec
+        for dtname in vf.trks:
+            trk = vf.trks[dtname]
+            for rec in trk.recs:
+                if 'dt' in rec:
+                    rec['dt'] -= vf.dtstart
+                else:
+                    continue
+        # 3. set dtend -= dtstart
+        vf.dtend -= vf.dtstart
+        # 4. set dtstart to 0
+        vf.dtstart = 0
+
+        return vf
 
     def find_track(self, dtname):
         """Find track from dtname
@@ -1368,6 +1387,13 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
+    vf = VitalFile('Z:\\C1\\202206\\220601\\C1_220601_092848.vital')
+    new_vf = vf.anonymize_vital()
+    print(new_vf.dtstart, new_vf.dtend)
+    print(new_vf.trks['Intellivue/CO2_WAV'].recs[0])
+    new_vf.to_vital('C:\\Users\\vitallab\\OneDrive - SNU\\바탕 화면\\test.vital')
+    quit()
+
     import pyvital.filters.ecg_hrv as f
     vf = VitalFile('https://vitaldb.net/1.vital')
     vf.run_filter(f.run, f.cfg)

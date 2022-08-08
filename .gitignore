@@ -9,3 +9,6 @@ credential*.py
 *.ipdb
 *.iobj
 *.exe
+.DS_Store
+python/.DS_Store
+python/vitaldb-pypi/.DS_Store
