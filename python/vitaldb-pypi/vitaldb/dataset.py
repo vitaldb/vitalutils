@@ -10,7 +10,7 @@ def load_trk(tid, interval=1):
 
     try:
         url = 'https://api.vitaldb.net/' + tid
-        dtvals = pd.read_csv(url, na_values='-nan(ind)').values
+        dtvals = pd.read_csv(url, na_values='-nan(ind)', dtype=np.float32).values
     except:
         return np.empty(0)
 

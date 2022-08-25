@@ -784,6 +784,31 @@ class VitalFile:
         return df.to_csv(opath, index=False, encoding='utf-8-sig')
 
 
+    def to_wfdb(self, opath, track_names=None, interval=None):
+        if not interval:  # maximum sampling rate
+            max_srate = max([trk.srate for trk in self.trks.values()])
+            interval = 1 / max_srate
+        if not interval:
+            interval = 1
+        assert interval > 0
+
+        # parse comma separated track names
+        if isinstance(track_names, str):
+            if track_names.find(','):
+                track_names = track_names.split(',')
+            else:
+                track_names = [track_names]
+
+        if track_names is None:  # if track_names is None, return all tracks
+            track_names = [trk.dtname for trk in self.trks.values()]
+
+        # wav, num, str 을 나눈다.
+        wav_track_names = []
+
+        raise NotImplementedError
+        
+        return None
+
     def to_vital(self, opath, compresslevel=1):
         """ save as vital file
         :param opath: file path to save.
