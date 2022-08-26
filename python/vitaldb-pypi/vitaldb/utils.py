@@ -70,7 +70,7 @@ class Track:
         if dname:
             self.dtname = dname + '/' + name
         else:
-            self.dtname = dname
+            self.dtname = name
         if recs is None:
             self.recs = []
         else:
@@ -1325,7 +1325,7 @@ class VitalFile:
                     cmd = unpack_b(buf, pos)[0]; pos += 1
                     if cmd == 6:  # reset events
                         if 'EVENT' in self.trks:
-                            self.trks['EVENT'] = []
+                            self.trks['EVENT'].recs = []
                     elif cmd == 5:  # trk order
                         cnt = unpack_w(buf, pos)[0]
                         pos += 2
