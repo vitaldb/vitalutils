@@ -1,16 +1,18 @@
 import os
+import s3fs
 import gzip
-import numpy as np
+import wave
+import wfdb
+import shutil
 import datetime
 import tempfile
-import shutil
+import numpy as np
 import pandas as pd
-import wave
 import pyarrow.parquet as pq
 from copy import deepcopy
 from urllib import parse, request
 from struct import pack, unpack_from, Struct
-import s3fs
+
 
 unpack_b = Struct('<b').unpack_from
 unpack_w = Struct('<H').unpack_from
@@ -785,6 +787,8 @@ class VitalFile:
 
 
     def to_wfdb(self, opath, track_names=None, interval=None):
+        """ save as wfdb files
+        """
         if not interval:  # maximum sampling rate
             max_srate = max([trk.srate for trk in self.trks.values()])
             interval = 1 / max_srate
@@ -804,10 +808,39 @@ class VitalFile:
 
         # wav, num, str 을 나눈다.
         wav_track_names = []
+        wav_units = []
+        num_track_names = []
+        for track_name in track_names:
+            trk = self.find_track(track_name)
+            if trk is None:
+                continue
+            if trk.type == 1:  # wav
+                wav_track_names.append(trk.dtname)
+                wav_units.append(trk.unit)
+            elif trk.type == 2:  # num
+                num_track_names.append(trk.dtname)
 
-        raise NotImplementedError
-        
-        return None
+        # save wave tracks
+        df = self.to_pandas(wav_track_names, interval, return_timestamp=True)
+        wfdb.wrsamp(os.path.basename(opath),
+            write_dir=os.path.dirname(opath),
+            fs=float(1/interval), units=wav_units, 
+            sig_name=wav_track_names, 
+            p_signal=df.values[:,1:], 
+            fmt=['16'] * len(wav_track_names))
+        df.rename(columns={'Time':'time'}, inplace=True)
+        df['time'] = (df['time'] - self.dtstart)
+        df = df.round(4)
+        ret = df.to_csv(f'{opath}w.csv.gz', encoding='utf-8-sig', index=False)
+
+        # save numeric tracks
+        df = self.to_pandas(num_track_names, 1, return_timestamp=True)
+        df.rename(columns={'Time':'time'}, inplace=True)
+        df['time'] = (df['time'] - self.dtstart).astype(int)
+        df = df.round(4)
+        ret = df.to_csv(f'{opath}n.csv.gz', encoding='utf-8-sig', index=False)
+
+        return ret
 
     def to_vital(self, opath, compresslevel=1):
         """ save as vital file
@@ -1412,6 +1445,10 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
+    vf = VitalFile('https://vitaldb.net/1.vital')
+    vf.to_wfdb('Y:\\Release\\ex11_wfdb\\1', interval=1/100)
+    quit()
+
     vf = VitalFile('Z:\\C1\\202206\\220601\\C1_220601_092848.vital')
     new_vf = vf.anonymize_vital()
     print(new_vf.dtstart, new_vf.dtend)
