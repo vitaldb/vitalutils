@@ -76,6 +76,22 @@ class Track:
         else:
             self.recs = recs
 
+    def _distinct_values(self):
+        """Get a list of all distinct values in the track.
+        :return: list of distinct values, as a sorted 1D numpy array
+        """
+        if not self.recs:
+            return np.array([])
+        def rec_list_values(recs):
+            n = len(recs)
+            if n == 1:
+                return np.unique(recs[0]['val'])
+            recs1 = recs[:n//2]
+            recs2 = recs[n//2:]
+            return np.union1d(rec_list_values(recs1),
+                              rec_list_values(recs2))
+        return rec_list_values(self.recs)
+
 # 4 byte L (unsigned) l (signed)
 # 2 byte H (unsigned) h (signed)
 # 1 byte B (unsigned) b (signed)
@@ -734,6 +750,44 @@ class VitalFile:
 
             return ret
 
+    def _get_track_gain_offset(self, dtname, sample_bits=16):
+        """Determine the quantization scale of waveform samples.
+
+        Gain is defined here as the smallest measurable change in
+        physical units (the reciprocal of WFDB gain); offset is the
+        physical value corresponding to an integer sample value of
+        zero.  If the track is not natively stored in an integer
+        format, we will try to guess a suitable gain and offset value
+        to fit in the specified number of bits.
+
+        :param dtname: name of the waveform track
+        :param sample_bits: maximum output resolution in bits
+        :return: (gain, offset)
+        """
+        trk = self.find_track(dtname)
+        if trk is None:
+            return 1, 0
+
+        if trk.type == 1 and trk.fmt > 2:
+            return trk.gain, trk.offset
+
+        max_sample = 2**(sample_bits - 1) - 1
+        min_sample = -(2**(sample_bits - 1) - 1)
+        n_sample_values = max_sample - min_sample + 1
+
+        values = trk._distinct_values()
+        values = values[np.isfinite(values)]
+        for n in range(len(values), n_sample_values):
+            gain = (values[-1] - values[0]) / (n - 1)
+            offset = values[0] - (gain * min_sample)
+            conv_values = np.round((values - offset) / gain)
+            diff = np.abs(conv_values * gain + offset - values)
+            if diff.max() < gain * 0.05:
+                return gain, offset
+
+        gain = (values[-1] - values[0]) / (n_sample_values - 1)
+        offset = values[0] - (gain * min_sample)
+        return gain, offset
 
     def to_pandas(self, track_names, interval, return_datetime=False, return_timestamp=False):
         """
@@ -822,11 +876,28 @@ class VitalFile:
 
         # save wave tracks
         df = self.to_pandas(wav_track_names, interval, return_timestamp=True)
+
+        adc_gain = []
+        baseline = []
+        for track_name in wav_track_names:
+            gain, offset = self._get_track_gain_offset(track_name)
+            adc_gain.append(1 / gain)
+            baseline.append(int(round(-offset / gain)))
+
+        # wfdb-python 4.0.0 converts samples incorrectly
+        # (https://github.com/MIT-LCP/wfdb-python/issues/418)
+        p_signal = df.values[:,1:]
+        d_signal = p_signal * adc_gain + baseline
+        d_signal = np.round(d_signal).astype('int16')
+        d_signal[np.isnan(p_signal)] = -32768
+
         wfdb.wrsamp(os.path.basename(opath),
             write_dir=os.path.dirname(opath),
             fs=float(1/interval), units=wav_units, 
             sig_name=wav_track_names, 
-            p_signal=df.values[:,1:], 
+            d_signal=d_signal,
+            adc_gain=adc_gain,
+            baseline=baseline,
             fmt=['16'] * len(wav_track_names))
         df.rename(columns={'Time':'time'}, inplace=True)
         df['time'] = (df['time'] - self.dtstart)
