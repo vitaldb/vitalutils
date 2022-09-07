@@ -411,6 +411,9 @@ class VitalFile:
         :param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500
         :return: [[samples of track1], [samples of track2]...]
         """
+        if len(track_names) == 0:
+            return [], ['Time'] if return_datetime or return_timestamp else [] 
+
         if not interval:  # maximum sampling rate
             max_srate = max([trk.srate for trk in self.trks.values()])
             interval = 1 / max_srate
@@ -726,11 +729,12 @@ class VitalFile:
                 ret *= trk.gain
                 ret += trk.offset
 
-            # up sampling
-            
             # downsampling
             if trk.srate != int(1 / interval + 0.5):
                 ret = np.take(ret, np.linspace(0, nsamp - 1, nret).astype(np.int64))
+
+            # nan value
+            ret[np.isinf(ret) | (ret > 4e9)] = np.nan
 
             return ret
 
@@ -806,9 +810,11 @@ class VitalFile:
         if track_names is None:  # if track_names is None, return all tracks
             track_names = [trk.dtname for trk in self.trks.values()]
 
-        # wav, num, str 을 나눈다.
+        # wav, num, str tracks
         wav_track_names = []
         wav_units = []
+        wav_gains = []
+        wav_offsets = []
         num_track_names = []
         for track_name in track_names:
             trk = self.find_track(track_name)
@@ -817,21 +823,54 @@ class VitalFile:
             if trk.type == 1:  # wav
                 wav_track_names.append(trk.dtname)
                 wav_units.append(trk.unit)
+                if trk.gain == 0:
+                    trk.gain = 1.0
+                if trk.fmt <= 2:  # 1: float, 2: double
+                    wav_gains.append(0)
+                    wav_offsets.append(0)
+                else:
+                    wav_gains.append(1 / trk.gain)
+                    wav_offsets.append(int(round(-trk.offset / trk.gain)))
+                # vitaldb: (cnt + trk.offset / trk.gain) * trk.gain = val
+                # physionet: (cnt - baseline) / gain = val
             elif trk.type == 2:  # num
                 num_track_names.append(trk.dtname)
 
         # save wave tracks
         df = self.to_pandas(wav_track_names, interval, return_timestamp=True)
+        wav_vals = df.values[:, 1:]
+
+        # estimate gain and offset
+        for itrk in range(len(wav_track_names)):
+            if wav_gains[itrk] == 0:
+                minval = np.nanmin(wav_vals[:,itrk])
+                maxval = np.nanmax(wav_vals[:,itrk])
+                if minval == maxval:
+                    newgain = 1
+                else:
+                    # Format 16: -32768 to +32767
+                    # mapping: minval to maxval -> -32767 to 32766
+                    newgain = float(32766 - (-32767)) / (maxval - minval)
+                # physionet: cnt = val * gain + baseline
+                # -32767 = minval * gain + baseline
+                newoffset = -32767 - int(round(minval * newgain))
+                # wav_cnts = wav_vals * newgain + newoffset
+                wav_gains[itrk] = newgain
+                wav_offsets[itrk] = newoffset
+
         wfdb.wrsamp(os.path.basename(opath),
             write_dir=os.path.dirname(opath),
             fs=float(1/interval), units=wav_units, 
             sig_name=wav_track_names, 
-            p_signal=df.values[:,1:], 
+            p_signal=wav_vals, 
+            adc_gain=wav_gains,
+            baseline=wav_offsets,
             fmt=['16'] * len(wav_track_names))
-        df.rename(columns={'Time':'time'}, inplace=True)
-        df['time'] = (df['time'] - self.dtstart)
-        df = df.round(4)
-        ret = df.to_csv(f'{opath}w.csv.gz', encoding='utf-8-sig', index=False)
+
+        # df.rename(columns={'Time':'time'}, inplace=True)
+        # df['time'] = (df['time'] - self.dtstart)
+        # df = df.round(4)
+        # ret = df.to_csv(f'{opath}w.csv.gz', encoding='utf-8-sig', index=False)
 
         # save numeric tracks
         df = self.to_pandas(num_track_names, 1, return_timestamp=True)
@@ -1445,8 +1484,19 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
-    vf = VitalFile('https://vitaldb.net/1.vital')
-    vf.to_wfdb('Y:\\Release\\ex11_wfdb\\1', interval=1/100)
+    vf = VitalFile('1.vital', ['ART', 'EEG1_WAV'])
+    vf.to_wfdb('1', interval=1/500)
+    vals = vf.to_numpy(['ART','EEG1_WAV'], 1/500)
+    print(vals[10000:-10000])
+    print(np.nanmin(vals, axis=0))
+    print(np.nanmax(vals, axis=0))
+    print(np.nanmax(vals, axis=0) - np.nanmin(vals, axis=0))
+    print()
+    vals, trks = wfdb.rdsamp('1')
+    print(vals[10000:-10000])
+    print(np.nanmin(vals, axis=0))
+    print(np.nanmax(vals, axis=0))
+    print(np.nanmax(vals, axis=0) - np.nanmin(vals, axis=0))
     quit()
 
     vf = VitalFile('Z:\\C1\\202206\\220601\\C1_220601_092848.vital')
