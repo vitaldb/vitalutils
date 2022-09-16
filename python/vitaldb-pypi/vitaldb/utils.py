@@ -1050,6 +1050,9 @@ class VitalFile:
         if dftrks is None:  # for cache
             dftrks = pd.read_csv("https://api.vitaldb.net/trks")
 
+        if track_names is None:
+            track_names = dftrks.loc[dftrks['caseid'] == caseid, 'tname']
+
         tids = []
         dtnames = []
         for dtname in track_names:
@@ -1494,6 +1497,9 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
+    VitalFile(1).to_vital('1.vital')
+    quit()
+
     VitalFile('https://vitaldb.net/1.vital').anonymize(datetime.datetime(1999,12,25)).to_vital('anonymized.vital')
     quit()
 
