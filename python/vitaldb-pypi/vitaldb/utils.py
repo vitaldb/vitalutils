@@ -645,7 +645,7 @@ class VitalFile:
                 self.order.remove(dtname)
             self.order.insert(self.order.index(after) + 1, dtname)
 
-    def anonymize(self, dt):
+    def anonymize(self, dt=datetime.datetime(2100,1,1)):
         """Move all datetimes to specific timepoint
         :param dt: datetime or unix timestamp to move. Time zone of dt will be overwitten by UTC
         """
@@ -1497,10 +1497,7 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
-    VitalFile(1).to_vital('1.vital')
-    quit()
-
-    VitalFile('https://vitaldb.net/1.vital').anonymize(datetime.datetime(1999,12,25)).to_vital('anonymized.vital')
+    VitalFile('https://vitaldb.net/1.vital').anonymize().to_vital('anonymized.vital')
     quit()
 
     vf = VitalFile('1.vital', ['ART', 'EEG1_WAV'])
