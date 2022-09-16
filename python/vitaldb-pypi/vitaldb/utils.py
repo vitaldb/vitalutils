@@ -645,21 +645,31 @@ class VitalFile:
                 self.order.remove(dtname)
             self.order.insert(self.order.index(after) + 1, dtname)
 
-    def anonymize(self):
+    def anonymize(self, dt):
+        """Move all datetimes to specific timepoint
+        :param dt: datetime or unix timestamp to move. Time zone of dt will be overwitten by UTC
+        """
+        if isinstance(dt, datetime.datetime):
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+            dt = dt.timestamp()
+
         # 1. create a deep copy of self
         vf = deepcopy(self)
+        shift = dt - vf.dtstart
+
         # 2. subtract dtstart from all dt of each trk rec
         for dtname in vf.trks:
             trk = vf.trks[dtname]
             for rec in trk.recs:
                 if 'dt' in rec:
-                    rec['dt'] -= vf.dtstart
+                    rec['dt'] += shift
                 else:
                     continue
-        # 3. set dtend -= dtstart
-        vf.dtend -= vf.dtstart
-        # 4. set dtstart to 0
-        vf.dtstart = 0
+
+        # 3. set dtstart and dtend
+        vf.dtend += shift
+        vf.dtstart = dt
+        vf.dgmt = 0
 
         return vf
 
@@ -1484,6 +1494,9 @@ def vital_trks(ipath):
 
 
 if __name__ == '__main__':
+    VitalFile('https://vitaldb.net/1.vital').anonymize(datetime.datetime(1999,12,25)).to_vital('anonymized.vital')
+    quit()
+
     vf = VitalFile('1.vital', ['ART', 'EEG1_WAV'])
     vf.to_wfdb('1', interval=1/500)
     vals = vf.to_numpy(['ART','EEG1_WAV'], 1/500)
@@ -1497,13 +1510,6 @@ if __name__ == '__main__':
     print(np.nanmin(vals, axis=0))
     print(np.nanmax(vals, axis=0))
     print(np.nanmax(vals, axis=0) - np.nanmin(vals, axis=0))
-    quit()
-
-    vf = VitalFile('Z:\\C1\\202206\\220601\\C1_220601_092848.vital')
-    new_vf = vf.anonymize_vital()
-    print(new_vf.dtstart, new_vf.dtend)
-    print(new_vf.trks['Intellivue/CO2_WAV'].recs[0])
-    new_vf.to_vital('C:\\Users\\vitallab\\OneDrive - SNU\\바탕 화면\\test.vital')
     quit()
 
     import pyvital.filters.ecg_hrv as f
