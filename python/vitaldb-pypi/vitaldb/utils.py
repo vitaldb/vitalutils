@@ -1375,6 +1375,8 @@ class VitalFile:
                     tid = unpack_w(buf, pos)[0]; pos += 2
                     trktype = unpack_b(buf, pos)[0]; pos += 1
                     fmt = unpack_b(buf, pos)[0]; pos += 1
+                    if fmt < 1 or fmt > 8: 
+                        continue
                     tname, pos = unpack_str(buf, pos)
 
                     if packet_len > pos:
