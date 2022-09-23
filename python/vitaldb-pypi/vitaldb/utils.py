@@ -53,9 +53,21 @@ class Device:
             self.type = typename
         self.port = port
 
+TYPE_WAV = 1
+TYPE_NUM = 2
+TYPE_STR = 5
+
+COLOR_RED = 4294901760
+COLOR_GREEN = 4278255360
+COLOR_ORANGE = 4294944000
+COLOR_SKYBLUE = 4287090426
+COLOR_TAN = 4291998860
+COLOR_YELLOW = 4294967040
+COLOR_WHITE = 0xffffff
+
 class Track:
-    def __init__(self, name, type=2, col=0xffffff, montype=0, dname='', unit='', fmt=1, srate=0, gain=1.0, offset=0.0, mindisp=0, maxdisp=0, recs=None):
-        self.type = type  # 1: wav, 2: num, 5: str
+    def __init__(self, name, type=2, col=None, montype=0, dname='', unit='', fmt=1, srate=0, gain=1.0, offset=0.0, mindisp=0, maxdisp=0, recs=None):
+        self.type = type
         self.fmt = fmt
         self.name = name
         self.srate = srate
@@ -64,7 +76,10 @@ class Track:
         self.maxdisp = maxdisp
         self.gain = gain
         self.offset = offset
-        self.col = col
+        if col is None:
+            self.col = Track.find_color(name)
+        else:
+            self.col = col
         self.montype = montype
         self.dname = dname
         if dname:
@@ -76,73 +91,83 @@ class Track:
         else:
             self.recs = recs
 
+    def find_color(name):
+        if name in {'I', 'II', 'III', 'V', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'aVR', 'aVL', 'aVF', 'MLII',
+                'DeltaQTc', 'HR', 'PVC', 'QT', 'QT-HR', 'QTc', 'ST-I', 'ST-II', 'ST-III', 'ST-V'}:
+            return COLOR_GREEN
+        if name in {'Pleth', 'SpO2', 'Pulse (SpO2)'}:
+            return COLOR_SKYBLUE
+        if name in {'Resp', 'RR'}:
+            return COLOR_YELLOW
+        return COLOR_WHITE
+
 # 4 byte L (unsigned) l (signed)
 # 2 byte H (unsigned) h (signed)
 # 1 byte B (unsigned) b (signed)
 FMT_TYPE_LEN = {1: ('f', 4), 2: ('d', 8), 3: ('b', 1), 4: ('B', 1), 5: ('h', 2), 6: ('H', 2), 7: ('l', 4), 8: ('L', 4)}
 
 TRACK_INFO = {
-    'SNUADC/ART': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': 4294901760}, 
-    'SNUADC/ECG_II': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': 4278255360}, 
-    'SNUADC/ECG_V5': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': 4278255360}, 
-    'SNUADC/PLETH': {'srate': 500.0, 'maxdisp': 100.0, 'col': 4287090426}, 
-    'SNUADC/CVP': {'unit': 'cmH2O', 'srate': 500.0, 'maxdisp': 30.0, 'col': 4294944000}, 
-    'SNUADC/FEM': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': 4294901760}, 
+    'SNUADC/ART': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': COLOR_RED}, 
+    'SNUADC/ECG_II': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': COLOR_GREEN}, 
+    'SNUADC/ECG_V5': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': COLOR_GREEN}, 
+    'SNUADC/PLETH': {'srate': 500.0, 'maxdisp': 100.0, 'col': COLOR_SKYBLUE}, 
+    'SNUADC/CVP': {'unit': 'cmH2O', 'srate': 500.0, 'maxdisp': 30.0, 'col': COLOR_ORANGE}, 
+    'SNUADC/FEM': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': COLOR_RED}, 
 
-    'SNUADCM/ART': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': 4294901760}, 
-    'SNUADCM/ECG_II': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': 4278255360}, 
-    'SNUADCM/ECG_V5': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': 4278255360}, 
-    'SNUADCM/PLETH': {'srate': 500.0, 'maxdisp': 100.0, 'col': 4287090426}, 
-    'SNUADCM/CVP': {'unit': 'cmH2O', 'srate': 500.0, 'maxdisp': 30.0, 'col': 4294944000}, 
-    'SNUADCM/FEM': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': 4294901760}, 
+    'SNUADCM/ART': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': COLOR_RED}, 
+    'SNUADCM/ECG_II': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': COLOR_GREEN}, 
+    'SNUADCM/ECG_V5': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': COLOR_GREEN}, 
+    'SNUADCM/PLETH': {'srate': 500.0, 'maxdisp': 100.0, 'col': COLOR_SKYBLUE}, 
+    'SNUADCM/CVP': {'unit': 'cmH2O', 'srate': 500.0, 'maxdisp': 30.0, 'col': COLOR_ORANGE}, 
+    'SNUADCM/FEM': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': COLOR_RED}, 
 
-    'Solar8000/HR': {'unit': '/min', 'mindisp': 30.0, 'maxdisp': 150.0, 'col': 4278255360}, 
-    'Solar8000/ST_I': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': 4278255360}, 
-    'Solar8000/ST_II': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': 4278255360}, 
-    'Solar8000/ST_III': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': 4278255360}, 
-    'Solar8000/ST_AVL': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': 4278255360}, 
-    'Solar8000/ST_AVR': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': 4278255360}, 
-    'Solar8000/ST_AVF': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': 4278255360}, 
-    'Solar8000/ART_MBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': 4294901760}, 
-    'Solar8000/ART_SBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': 4294901760}, 
-    'Solar8000/ART_DBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': 4294901760}, 
-    'Solar8000/PLETH_SPO2': {'mindisp': 90.0, 'maxdisp': 100.0, 'col': 4287090426}, 
-    'Solar8000/PLETH_HR': {'mindisp': 50.0, 'maxdisp': 150.0, 'col': 4287090426}, 
-    'Solar8000/BT': {'unit': 'C', 'mindisp': 20.0, 'maxdisp': 40.0, 'col': 4291998860}, 
-    'Solar8000/VENT_MAWP': {'unit': 'mbar', 'maxdisp': 20.0, 'col': 4287090426}, 
-    'Solar8000/ST_V5': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': 4278255360}, 
+    'Solar8000/HR': {'unit': '/min', 'mindisp': 30.0, 'maxdisp': 150.0, 'col': COLOR_GREEN}, 
+    'Solar8000/ST_I': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': COLOR_GREEN}, 
+    'Solar8000/ST_II': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': COLOR_GREEN}, 
+    'Solar8000/ST_III': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': COLOR_GREEN}, 
+    'Solar8000/ST_AVL': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': COLOR_GREEN}, 
+    'Solar8000/ST_AVR': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': COLOR_GREEN}, 
+    'Solar8000/ST_AVF': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': COLOR_GREEN}, 
+    'Solar8000/ART_MBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': COLOR_RED}, 
+    'Solar8000/ART_SBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': COLOR_RED}, 
+    'Solar8000/ART_DBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': COLOR_RED}, 
+    'Solar8000/PLETH_SPO2': {'mindisp': 90.0, 'maxdisp': 100.0, 'col': COLOR_SKYBLUE}, 
+    'Solar8000/PLETH_HR': {'mindisp': 50.0, 'maxdisp': 150.0, 'col': COLOR_SKYBLUE}, 
+    'Solar8000/BT': {'unit': 'C', 'mindisp': 20.0, 'maxdisp': 40.0, 'col': COLOR_TAN}, 
+    'Solar8000/VENT_MAWP': {'unit': 'mbar', 'maxdisp': 20.0, 'col': COLOR_SKYBLUE}, 
+    'Solar8000/ST_V5': {'unit': 'mm', 'mindisp': -3.0, 'maxdisp': 3.0, 'col': COLOR_GREEN}, 
     'Solar8000/NIBP_MBP': {'unit': 'mmHg', 'maxdisp': 200.0}, 
     'Solar8000/NIBP_SBP': {'unit': 'mmHg', 'maxdisp': 200.0}, 
     'Solar8000/NIBP_DBP': {'unit': 'mmHg', 'maxdisp': 200.0}, 
-    'Solar8000/VENT_PIP': {'unit': 'mbar', 'mindisp': 5.0, 'maxdisp': 25.0, 'col': 4287090426}, 
-    'Solar8000/VENT_RR': {'unit': '/min', 'maxdisp': 50.0, 'col': 4287090426}, 
-    'Solar8000/VENT_MV': {'unit': 'L/min', 'maxdisp': 8.0, 'col': 4287090426}, 
-    'Solar8000/VENT_TV': {'unit': 'mL', 'maxdisp': 1000.0, 'col': 4287090426},
-    'Solar8000/VENT_PPLAT': {'unit': 'mbar', 'maxdisp': 20.0, 'col': 4287090426}, 
-    'Solar8000/GAS2_AGENT': {'col': 4294944000},
-    'Solar8000/GAS2_EXPIRED': {'unit': '%', 'maxdisp': 10.0, 'col': 4294944000}, 
-    'Solar8000/GAS2_INSPIRED': {'unit': '%', 'maxdisp': 10.0, 'col': 4294944000}, 
-    'Solar8000/ETCO2': {'unit': 'mmHg', 'maxdisp': 60.0, 'col': 4294967040}, 
-    'Solar8000/INCO2': {'unit': 'mmHg', 'maxdisp': 60.0, 'col': 4294967040}, 
-    'Solar8000/RR_CO2': {'unit': '/min', 'maxdisp': 50.0, 'col': 4294967040}, 
+    'Solar8000/VENT_PIP': {'unit': 'mbar', 'mindisp': 5.0, 'maxdisp': 25.0, 'col': COLOR_SKYBLUE}, 
+    'Solar8000/VENT_RR': {'unit': '/min', 'maxdisp': 50.0, 'col': COLOR_SKYBLUE}, 
+    'Solar8000/VENT_MV': {'unit': 'L/min', 'maxdisp': 8.0, 'col': COLOR_SKYBLUE}, 
+    'Solar8000/VENT_TV': {'unit': 'mL', 'maxdisp': 1000.0, 'col': COLOR_SKYBLUE},
+    'Solar8000/VENT_PPLAT': {'unit': 'mbar', 'maxdisp': 20.0, 'col': COLOR_SKYBLUE}, 
+    'Solar8000/GAS2_AGENT': {'col': COLOR_ORANGE},
+    'Solar8000/GAS2_EXPIRED': {'unit': '%', 'maxdisp': 10.0, 'col': COLOR_ORANGE}, 
+    'Solar8000/GAS2_INSPIRED': {'unit': '%', 'maxdisp': 10.0, 'col': COLOR_ORANGE}, 
+    'Solar8000/ETCO2': {'unit': 'mmHg', 'maxdisp': 60.0, 'col': COLOR_YELLOW}, 
+    'Solar8000/INCO2': {'unit': 'mmHg', 'maxdisp': 60.0, 'col': COLOR_YELLOW}, 
+    'Solar8000/RR_CO2': {'unit': '/min', 'maxdisp': 50.0, 'col': COLOR_YELLOW}, 
     'Solar8000/FEO2': {'unit': '%', 'maxdisp': 100.0}, 
     'Solar8000/FIO2': {'unit': '%', 'maxdisp': 100.0}, 
-    'Solar8000/VENT_INSP_TM': {'unit': 'sec', 'maxdisp': 10.0, 'col': 4287090426}, 
-    'Solar8000/VENT_SET_TV': {'unit': 'mL', 'maxdisp': 800.0, 'col': 4287090426}, 
-    'Solar8000/VENT_SET_PCP': {'unit': 'cmH2O', 'maxdisp': 40.0, 'col': 4287090426}, 
+    'Solar8000/VENT_INSP_TM': {'unit': 'sec', 'maxdisp': 10.0, 'col': COLOR_SKYBLUE}, 
+    'Solar8000/VENT_SET_TV': {'unit': 'mL', 'maxdisp': 800.0, 'col': COLOR_SKYBLUE}, 
+    'Solar8000/VENT_SET_PCP': {'unit': 'cmH2O', 'maxdisp': 40.0, 'col': COLOR_SKYBLUE}, 
     'Solar8000/VENT_SET_FIO2': {'unit': '%', 'maxdisp': 100.0}, 
-    'Solar8000/RR': {'unit': '/min', 'maxdisp': 50.0, 'col': 4294967040},
-    'Solar8000/CVP': {'unit': 'mmHg', 'maxdisp': 30.0, 'col': 4294944000}, 
-    'Solar8000/FEM_MBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': 4294901760}, 
-    'Solar8000/FEM_SBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': 4294901760}, 
-    'Solar8000/FEM_DBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': 4294901760}, 
-    'Solar8000/PA_MBP': {'unit': 'mmHg', 'maxdisp': 30.0, 'col': 4294901760}, 
-    'Solar8000/PA_SBP': {'unit': 'mmHg', 'maxdisp': 30.0, 'col': 4294901760}, 
-    'Solar8000/PA_DBP': {'unit': 'mmHg', 'maxdisp': 30.0, 'col': 4294901760}, 
+    'Solar8000/RR': {'unit': '/min', 'maxdisp': 50.0, 'col': COLOR_YELLOW},
+    'Solar8000/CVP': {'unit': 'mmHg', 'maxdisp': 30.0, 'col': COLOR_ORANGE}, 
+    'Solar8000/FEM_MBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': COLOR_RED}, 
+    'Solar8000/FEM_SBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': COLOR_RED}, 
+    'Solar8000/FEM_DBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': COLOR_RED}, 
+    'Solar8000/PA_MBP': {'unit': 'mmHg', 'maxdisp': 30.0, 'col': COLOR_RED}, 
+    'Solar8000/PA_SBP': {'unit': 'mmHg', 'maxdisp': 30.0, 'col': COLOR_RED}, 
+    'Solar8000/PA_DBP': {'unit': 'mmHg', 'maxdisp': 30.0, 'col': COLOR_RED}, 
     'Solar8000/VENT_MEAS_PEEP': {'unit': 'hPa'}, 
     'Solar8000/VENT_COMPL': {'unit': 'mL/cmH2O', 'mindisp': 17.0, 'maxdisp': 17.0}, 
 
-    'Primus/CO2': {'unit': 'mmHg', 'srate': 62.5, 'maxdisp': 60.0, 'col': 4294967040}, 
+    'Primus/CO2': {'unit': 'mmHg', 'srate': 62.5, 'maxdisp': 60.0, 'col': COLOR_YELLOW}, 
     'Primus/AWP': {'unit': 'hPa', 'srate': 62.5, 'mindisp': -10.0, 'maxdisp': 30.0}, 
     'Primus/INSP_SEVO': {'unit': 'kPa', 'maxdisp': 10.0}, 
     'Primus/EXP_SEVO': {'unit': 'kPa', 'maxdisp': 10.0}, 
@@ -151,7 +176,7 @@ TRACK_INFO = {
     'Primus/MAC': {'maxdisp': 2.0}, 
     'Primus/VENT_LEAK': {'unit': 'mL/min', 'maxdisp': 1000.0}, 
     'Primus/INCO2': {'unit': 'mmHg', 'maxdisp': 5.0},
-    'Primus/ETCO2': {'unit': 'mmHg', 'maxdisp': 50.0, 'col': 4294967040}, 
+    'Primus/ETCO2': {'unit': 'mmHg', 'maxdisp': 50.0, 'col': COLOR_YELLOW}, 
     'Primus/FEO2': {'unit': '%', 'maxdisp': 100.0}, 
     'Primus/FIO2': {'unit': '%', 'maxdisp': 100.0}, 
     'Primus/FIN2O': {'unit': '%', 'maxdisp': 100.0}, 
@@ -159,12 +184,12 @@ TRACK_INFO = {
     'Primus/SET_FIO2': {'unit': '%', 'maxdisp': 100.0}, 
     'Primus/SET_FRESH_FLOW': {'unit': 'mL/min', 'maxdisp': 10000.0}, 
     'Primus/SET_AGE': {'maxdisp': 100.0}, 
-    'Primus/PIP_MBAR': {'unit': 'mbar', 'mindisp': 5.0, 'maxdisp': 25.0, 'col': 4287090426}, 
+    'Primus/PIP_MBAR': {'unit': 'mbar', 'mindisp': 5.0, 'maxdisp': 25.0, 'col': COLOR_SKYBLUE}, 
     'Primus/COMPLIANCE': {'unit': 'mL / mbar', 'maxdisp': 100.0}, 
     'Primus/PPLAT_MBAR': {'unit': 'mbar', 'maxdisp': 40.0}, 
-    'Primus/PEEP_MBAR': {'unit': 'mbar', 'maxdisp': 20.0, 'col': 4287090426}, 
-    'Primus/TV': {'unit': 'mL', 'maxdisp': 1000.0, 'col': 4287090426}, 
-    'Primus/MV': {'unit': 'L', 'maxdisp': 10.0, 'col': 4287090426}, 
+    'Primus/PEEP_MBAR': {'unit': 'mbar', 'maxdisp': 20.0, 'col': COLOR_SKYBLUE}, 
+    'Primus/TV': {'unit': 'mL', 'maxdisp': 1000.0, 'col': COLOR_SKYBLUE}, 
+    'Primus/MV': {'unit': 'L', 'maxdisp': 10.0, 'col': COLOR_SKYBLUE}, 
     'Primus/RR_CO2': {'unit': '/min', 'maxdisp': 30.0}, 
     'Primus/SET_TV_L': {'unit': 'L', 'maxdisp': 1.0}, 
     'Primus/SET_INSP_TM': {'unit': 'sec', 'maxdisp': 10.0}, 
@@ -264,18 +289,18 @@ TRACK_INFO = {
     'Vigilance/ESVI': {'unit': 'ml/m2', 'mindisp': 56.0, 'maxdisp': 78.0}, 
     'Vigilance/SNR': {'unit': 'dB', 'mindisp': -10.0, 'maxdisp': 20.0}, 
 
-    'EV1000/ART_MBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': 4294901760}, 
+    'EV1000/ART_MBP': {'unit': 'mmHg', 'maxdisp': 200.0, 'col': COLOR_RED}, 
     'EV1000/CO': {'unit': 'L/min', 'mindisp': 1.0, 'maxdisp': 15.0, 'col': 4294951115}, 
     'EV1000/CI': {'unit': 'L/min/m2', 'mindisp': 1.0, 'maxdisp': 5.0, 'col': 4294951115}, 
     'EV1000/SVV': {'unit': '%', 'maxdisp': 100.0, 'col': 4294951115}, 
     'EV1000/SV': {'unit': 'ml/beat', 'mindisp': 40.0, 'maxdisp': 69.0}, 
     'EV1000/SVI': {'unit': 'ml/beat/m2', 'mindisp': 26.0, 'maxdisp': 44.0}, 
-    'EV1000/CVP': {'unit': 'mmHg', 'maxdisp': 30.0, 'col': 4294944000}, 
+    'EV1000/CVP': {'unit': 'mmHg', 'maxdisp': 30.0, 'col': COLOR_ORANGE}, 
     'EV1000/SVR': {'unit': 'dn-s/cm5', 'mindisp': 1079.0, 'maxdisp': 1689.0}, 
     'EV1000/SVRI': {'unit': 'dn-s-m2/cm5', 'mindisp': 1673.0, 'maxdisp': 2619.0}, 
 
-    'CardioQ/FLOW': {'unit': 'cm/sec', 'srate': 180.0, 'mindisp': -100.0, 'maxdisp': 1000.0, 'col': 4278255360}, 
-    'CardioQ/ABP': {'unit': 'mmHg', 'srate': 180.0, 'maxdisp': 300.0, 'col': 4294901760}, 
+    'CardioQ/FLOW': {'unit': 'cm/sec', 'srate': 180.0, 'mindisp': -100.0, 'maxdisp': 1000.0, 'col': COLOR_GREEN}, 
+    'CardioQ/ABP': {'unit': 'mmHg', 'srate': 180.0, 'maxdisp': 300.0, 'col': COLOR_RED}, 
     'CardioQ/CO': {'unit': 'L/min', 'mindisp': 1.0, 'maxdisp': 15.0, 'col': 4294951115}, 
     'CardioQ/SV': {'unit': 'mL', 'maxdisp': 100.0}, 
     'CardioQ/HR': {'unit': '/min', 'maxdisp': 200.0}, 
@@ -308,11 +333,12 @@ class VitalFile:
     :param float dgmt: dgmt = ut - localtime in minutes. For KST, it is -540.
     """
     
-    def __init__(self, ipath, track_names=None, skip_records=False, exclude=None, userid=None):
+    def __init__(self, ipath, track_names=None, header_only=False, skip_records=None, exclude=None, userid=None):
         """Constructor of the VitalFile class.
-        :param ipath: file path, list of file path, or caseid of open dataset
+        :param ipath: file path, list of file path, or caseid of open dataset.
         :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
-        :param skip_records: read track names only for fast reading
+        :param header_only: read track names, dtstart, dtend, and dgmt only
+        :param skip_records: alias for header_only
         """
         self.devs = {}  # dname -> Device(type, port)
         self.trks = {}  # dtname -> Track(type, fmt, unit, mindisp, maxdisp, col, srate, gain, offset, montype, dname)
@@ -320,6 +346,9 @@ class VitalFile:
         self.dtend = 0
         self.dgmt = 0
         self.order = []  # optional: order of dtname
+
+        if skip_records is not None: 
+            header_only = skip_records
 
         # tracks including
         if isinstance(track_names, str):
@@ -339,7 +368,7 @@ class VitalFile:
             exclude = set(exclude)
 
         if isinstance(ipath, int):
-            if skip_records:
+            if header_only:
                 raise NotImplementedError
             self.load_opendata(ipath, track_names, exclude)
             return
@@ -398,9 +427,11 @@ class VitalFile:
                 ipath = f's3://vitaldb-myfiles/{userid}/{month}/{bedname}/{ipath}'
 
         if ext == '.vital':
-            self.load_vital(ipath, track_names, skip_records, exclude)
+            self.load_vital(ipath, track_names, header_only, exclude)
+        elif ext == '.hea':
+            self.load_wfdb(ipath, track_names, header_only, exclude)
         elif ext == '.parquet':
-            if skip_records:
+            if header_only:
                 raise NotImplementedError
             self.load_parquet(ipath, track_names, exclude)
 
@@ -629,12 +660,11 @@ class VitalFile:
         if dname not in self.devs:
             self.devs[dname] = Device(dname)
 
-        # track type: wav=1, num=2, str=5
-        ntype = 2
+        ntype = TYPE_NUM
         if srate > 0:
-            ntype = 1
+            ntype = TYPE_WAV
         elif isinstance(recs[0]['val'], str):
-            ntype = 5
+            ntype = TYPE_STR
         self.trks[dtname] = Track(tname, ntype, fmt=1, srate=srate, unit=unit, mindisp=mindisp, maxdisp=maxdisp, dname=dname, recs=recs)
 
         # change track order
@@ -1084,12 +1114,12 @@ class VitalFile:
             
             # sampling rate
             if np.isnan(dtvals[:,0]).any():  # wav
-                ntype = 1
+                ntype = TYPE_WAV
                 interval = dtvals[1,0] - dtvals[0,0]
                 assert interval > 0
                 srate = 1 / interval
             else:  # num
-                ntype = 2  
+                ntype = TYPE_NUM
                 srate = 0
             # no string type in open dataset
 
@@ -1156,13 +1186,13 @@ class VitalFile:
             # create tracks
             if dtname not in self.trks:  # new track
                 if 'wval' in row and row['wval'] is not None:
-                    ntype = 1  # wav
+                    ntype = TYPE_WAV
                     srate = row['nval']
                 elif 'sval' in row and row['sval'] is not None:
-                    ntype = 5  # str
+                    ntype = TYPE_STR
                     srate = 0
                 elif 'nval' in row and row['nval'] is not None:
-                    ntype = 2  # num
+                    ntype = TYPE_NUM
                     srate = 0
                 else:
                     continue
@@ -1187,10 +1217,94 @@ class VitalFile:
             trk.recs.append(rec)
         
 
+    def load_wfdb(self, ipath, track_names=None, header_only=False, exclude=None):
+        self.dtstart = 0
+        self.dtend = 0
+        self.dgmt = 0
+
+        ipath = ipath.replace('\\', '/')
+        
+        isurl = not os.path.exists(ipath)
+        if not isurl:
+            isurl = ipath.lower().startswith('http://') or ipath.lower().startswith('https://')
+
+        pn_dir = os.path.dirname(ipath)
+        pn_dir = pn_dir.lstrip('https://physionet.org/files/')
+        hea_name = os.path.splitext(os.path.basename(ipath))[0]
+
+        # parse header
+        if isurl:
+            hea = wfdb.rdheader(hea_name, pn_dir=pn_dir, rd_segments=True)
+        else:
+            hea = wfdb.rdheader(pn_dir + '/' + hea_name, rd_segments=True)
+
+        if not hea.base_datetime:
+            self.dtstart = 0
+        else:
+            self.dtstart = float(hea.base_datetime.timestamp())
+
+        # sig_name -> channel_names
+        channel_names = []
+        for dtname in hea.sig_name:
+            if ((not track_names) or (dtname in track_names)) and ((not exclude) or dtname not in exclude):
+                channel_names.append(dtname)
+
+        # read waveform samples
+        if isurl:
+            vals, fields = wfdb.rdsamp(hea_name, pn_dir=pn_dir, channel_names=channel_names, return_res=32)
+        else:
+            vals, fields = wfdb.rdsamp(pn_dir + '/' + hea_name, channel_names=channel_names, return_res=32)
+        
+        srate = fields['fs']
+        assert srate > 0
+
+        for ich in range(len(channel_names)):
+            dtname = channel_names[ich]
+            trk = Track(dtname, TYPE_WAV, srate=srate)
+            self.trks[dtname] = trk
+            
+            dtend = self.dtstart + len(vals) / srate
+            if dtend > self.dtend:
+                self.dtend = dtend
+
+            # seperate with 1sec records
+            for istart in range(0, len(vals), int(srate)):
+                trk.recs.append({'dt': self.dtstart + istart / srate, 'val': vals[istart:istart+int(srate), ich]})
+
+        # read numeric values
+        try:
+            df = pd.read_csv(os.path.splitext(ipath)[0] + 'n.csv.gz', low_memory=False)
+            if 'time' in df.columns:
+                df['time'] = hea.base_datetime.timestamp() + df['time'] / hea.counter_freq
+                for colname in df.columns:
+                    if colname == 'time':
+                        continue
+
+                    dtname_unit = colname.split('[')
+                    dtname = dtname_unit[0].rstrip(' ')
+                    unit = dtname_unit[1].rstrip(']')
+
+                    if ((not track_names) or (dtname in track_names)) and ((not exclude) or dtname not in exclude):
+                        subdf = df[['time', colname]]
+                        vals = subdf[~subdf[colname].isnull()].values
+                        if pd.api.types.is_numeric_dtype(df[colname]):
+                            trk = Track(dtname, TYPE_NUM, unit=unit)
+                            for i in range(len(vals)):
+                                trk.recs.append({'dt': vals[i,0], 'val': vals[i,1]})
+                        else:
+                            trk = Track(dtname, TYPE_STR, unit=unit)
+                            for i in range(len(vals)):
+                                trk.recs.append({'dt': vals[i,0], 'val': str(vals[i,1])})
+                        self.trks[dtname] = trk
+                    
+                self.dtend = float(df['time'].max())
+        except:
+            pass
+
     # track_names: list of dtname to read. If track_names is None, all tracks will be loaded
-    # skip_records: read track names only
+    # header_only: read track names only
     # exclude: track names to exclude
-    def load_vital(self, ipath, track_names=None, skip_records=False, exclude=None):
+    def load_vital(self, ipath, track_names=None, header_only=False, exclude=None):
         # check if ipath is url
         iurl = parse.urlparse(ipath)
         if iurl.scheme and iurl.netloc:
@@ -1343,7 +1457,7 @@ class VitalFile:
                     if dt > self.dtend:
                         self.dtend = dt
 
-                    if skip_records:  # skip records
+                    if header_only:  # skip records
                         continue
 
                     fmtlen = 4
@@ -1492,11 +1606,64 @@ def vital_trks(ipath):
     :param ipath: file path to read
     """
     ret = []
-    vf = VitalFile(ipath, skip_records=True)
+    vf = VitalFile(ipath, header_only=True)
     return vf.get_track_names()
 
 
 if __name__ == '__main__':
+    # import urllib.request
+    # from bs4 import BeautifulSoup
+
+    # tempdir = 'mimic4wdb'
+    # dbname = 'mimic4wdb/0.1.0/waves/p100/p10014354/81739927'
+
+    # dtstart = datetime.datetime.now()
+    # if not os.path.exists(tempdir):
+    #     os.mkdir(tempdir)
+    # rooturl = 'https://physionet.org/files/' + dbname
+    # html = urllib.request.urlopen(rooturl).read().decode('utf-8')
+    # for link in BeautifulSoup(html, "html.parser").find_all('a'):
+    #     url = rooturl + '/' + link.get('href')
+    #     if url.endswith('.hea') or url.endswith('.dat') or url.endswith('.gz'):
+    #         f = urllib.request.urlopen(url)
+    #         with open(tempdir + '/' + os.path.basename(url), 'wb') as fo:
+    #             shutil.copyfileobj(f, fo)
+    # print(datetime.datetime.now() - dtstart)
+
+    
+    # dtstart = datetime.datetime.now()
+    # vf = VitalFile(tempdir + '/' + os.path.basename(dbname) + ".hea")
+    # print(datetime.datetime.now() - dtstart)
+
+    # vf.to_vital('1.vital')
+
+    # quit()
+
+    dtstart = datetime.datetime.now()
+    signals, fields = wfdb.rdsamp('81739927', pn_dir='mimic4wdb/0.1.0/waves/p100/p10014354/81739927')
+    print(datetime.datetime.now() - dtstart)
+    print(signals)
+    print(fields)
+    quit()
+
+    dbname = 'mitdb'
+    #vf = VitalFile('mitdb/1.0.0/100.hea')
+    ver = wfdb.io.download.get_version(dbname)
+    files = wfdb.io.download.get_record_list(dbname)
+    for hea_name in files:
+        print(f'Downloading {hea_name}', end='...', flush=True)
+        VitalFile(f'{dbname}/{ver}/{hea_name}.hea').to_vital(hea_name + '.vital')
+        print('done')
+
+    quit()
+
+    #vf = VitalFile('mitdb/1.0.0/100.hea', ['MLII', 'V5']).to_vital('mitdb_100.vital')
+    # vf = VitalFile('https://physionet.org/files/mimic4wdb/0.1.0/waves/p100/p10014354/81739927/81739927_0001.hea', ['II', 'V'])
+    # vf = VitalFile('https://physionet.org/files/mimic4wdb/0.1.0/waves/p100/p10014354/81739927/81739927.hea', ['II', 'V'])
+    #vf = VitalFile(r"C:\Users\lucid\physionet.org\files\mimic4wdb\0.1.0\waves\p100\p10014354\81739927\81739927.hea")
+    vf.to_vital('mimic4.vital')
+    quit()
+
     VitalFile('https://vitaldb.net/1.vital').anonymize().to_vital('anonymized.vital')
     quit()
 
@@ -1553,7 +1720,6 @@ if __name__ == '__main__':
     #df.to_csv('1.csv', index=False, encoding='utf-8-sig')
     quit()
 
-    
     #vals = vital_recs("https://vitaldb.net/1.vital", return_timestamp=True, return_pandas=True)
     #print(vals)
     vf = VitalFile("https://vitaldb.net/1.vital")

@@ -97,6 +97,10 @@ def load_case(caseid, track_names, interval=1):
 
 
 if __name__ == '__main__':
+    vals = load_case(858, ['SNUADC/ECG_II', 'SNUADC/PLETH', 'BIS/EEG1_WAV', 'BIS/BIS'], 1/100)     
+    print(vals)
+    quit()
+
     # caseids = find_cases(['ECG_II'])
     # print(len(caseids))
     # quit()
