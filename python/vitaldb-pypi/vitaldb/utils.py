@@ -1375,7 +1375,7 @@ class VitalFile:
                     tid = unpack_w(buf, pos)[0]; pos += 2
                     trktype = unpack_b(buf, pos)[0]; pos += 1
                     fmt = unpack_b(buf, pos)[0]; pos += 1
-                    if fmt < 1 or fmt > 8: 
+                    if fmt not in FMT_TYPE_LEN: 
                         continue
                     tname, pos = unpack_str(buf, pos)
 
