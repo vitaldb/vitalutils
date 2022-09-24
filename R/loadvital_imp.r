@@ -4,7 +4,8 @@ load_vital <- function (path) {
   f <- gzfile(path, "rb")
   
   #nrec <- 0
-  
+  blksize <- 1000
+    
   # header
   sign <- rawToChar(readBin(f, "raw", n=4))
   if ("VITA" != sign) return()
@@ -177,7 +178,14 @@ load_vital <- function (path) {
         }
       }
       
-      trks[[tid]] = list("name"=name, "type"=type, "unit"=unit, "minval"=minval, "maxval"=maxval, "srate"=srate, "gain"=gain, "offset"=offset, "montype"=montype, "did"=did, "recs"=list(), "fmttype"=fmttype, "fmtlen"=fmtlen)
+      trks[[tid]] = list("name"=name, "type"=type, "unit"=unit, 
+                         "minval"=minval, "maxval"=maxval, "srate"=srate, 
+                         "gain"=gain, "offset"=offset, 
+                         "montype"=montype, "did"=did, 
+                         "fmttype"=fmttype, "fmtlen"=fmtlen, 
+                         "dts"=rep(NA,blksize), 
+                         "vals"=vector(mode="list", blksize),
+                         "nrec"=0)
     } else if (type == 1) { # rec
       infolen <- readBin(f, "integer", signed=F, size=2)
       datalen <- datalen - 2
@@ -190,28 +198,29 @@ load_vital <- function (path) {
       
       if (!is.null(trks[[tid]])) { # track should exist
         type <- trks[[tid]]$type
-        if(type == 1) { # wav
-          nsamp <- readBin(f, "integer", size=4)
-          datalen <- datalen - 4
-          
-          trks[[tid]]$recs <- c(trks[[tid]]$recs, list("dt"=dt, "vals"=readBin(f, trks[[tid]]$fmttype, size=trks[[tid]]$fmtlen, n=nsamp)))
-          datalen <- datalen - trks[[tid]]$fmtlen * nsamp
-        } else if (type == 2) { # num
-          val <- readBin(f, trks[[tid]]$fmttype, size=trks[[tid]]$fmtlen)
-          datalen <- datalen - trks[[tid]]$fmtlen
-          
-          trks[[tid]]$recs <- c(trks[[tid]]$recs, list("dt"=dt, "val"=val))
-        } else if (type == 5) { # str
-          readBin(f, "raw", n=4)
-          datalen <- datalen - 4
-          
-          strlen <- readBin(f, "integer", size=4)
-          datalen <- datalen - 4
-          
-          str <- rawToChar(readBin(f, "raw", n=strlen))
-          datalen <- datalen - strlen
-          
-          trks[[tid]]$recs <- c(trks[[tid]]$recs, list("dt"=dt, "val"=str))
+        nrec <- trks[[tid]]$nrec + 1
+        if (nrec <= blksize) {
+          trks[[tid]]$dts[nrec] <- dt
+          if(type == 1) { # wav
+            nsamp <- readBin(f, "integer", size=4)
+            datalen <- datalen - 4
+            
+            #trks[[tid]]$vals[nrec] <- readBin(f, trks[[tid]]$fmttype, size=trks[[tid]]$fmtlen, n=nsamp)
+            #datalen <- datalen - trks[[tid]]$fmtlen * nsamp
+          } else if (type == 2) { # num
+            trks[[tid]]$vals[nrec] <- readBin(f, trks[[tid]]$fmttype, size=trks[[tid]]$fmtlen)
+            datalen <- datalen - trks[[tid]]$fmtlen
+          } else if (type == 5) { # str
+            readBin(f, "raw", n=4)
+            datalen <- datalen - 4
+            
+            strlen <- readBin(f, "integer", size=4)
+            datalen <- datalen - 4
+            
+            trks[[tid]]$vals[nrec] <- rawToChar(readBin(f, "raw", n=strlen))
+            datalen <- datalen - strlen
+          }
+          trks[[tid]]$nrec <- nrec
         }
       }
     } else if (type == 6) { # cmd
@@ -220,9 +229,19 @@ load_vital <- function (path) {
     readBin(f, "raw", n=datalen)
   }
   
+  # convert dts, vals to dataframe
+  for (tid in names(trks)) {
+    nrec = trks[[tid]]$nrec
+    trks[[tid]]$recs <- data.frame(dt=trks[[tid]]$dts[1:nrec], val=trks[[tid]]$vals[1:nrec])
+    #trks[[tid]]$dts <- NULL
+    #trks[[tid]]$vals <- NULL
+    #trks[[tid]]$nrec <- NULL
+  }
+  
   close(f)
-  return(list("devs" = devs, "trks" = trks, "dtstart" = dtstart, "dtend" = dtend))
+  return(list("devs"=devs, "trks"=trks, "dtstart"=dtstart, "dtend"=dtend))
 }
 
+dtstart <- Sys.time()
 vit <- load_vital("1.vital")
-str(vit)
+print(Sys.time() - dtstart)
