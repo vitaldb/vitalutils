@@ -1253,7 +1253,8 @@ class VitalFile:
         channel_names = []
         for dtname in hea.sig_name:
             if ((not track_names) or (dtname in track_names)) and ((not exclude) or dtname not in exclude):
-                channel_names.append(dtname)
+                if dtname not in channel_names:
+                    channel_names.append(dtname)
 
         # read waveform samples
         if isurl:
@@ -1304,7 +1305,8 @@ class VitalFile:
                     if dtname in self.trks:  # already loaded
                         continue
                     if ((not track_names) or (dtname in track_names)) and ((not exclude) or dtname not in exclude):
-                        channel_names.append(dtname)
+                        if dtname not in channel_names:
+                            channel_names.append(dtname)
 
                 # read numeric samples
                 if isurl:
