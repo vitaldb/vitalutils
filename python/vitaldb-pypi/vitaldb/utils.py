@@ -13,7 +13,6 @@ from copy import deepcopy
 from urllib import parse, request
 from struct import pack, unpack_from, Struct
 
-
 unpack_b = Struct('<b').unpack_from
 unpack_w = Struct('<H').unpack_from
 unpack_s = Struct('<h').unpack_from
@@ -58,6 +57,7 @@ TYPE_NUM = 2
 TYPE_STR = 5
 
 COLOR_RED = 4294901760
+COLOR_PINK = 4294951115
 COLOR_GREEN = 4278255360
 COLOR_ORANGE = 4294944000
 COLOR_SKYBLUE = 4287090426
@@ -93,11 +93,17 @@ class Track:
 
     def find_color(name):
         if name in {'I', 'II', 'III', 'V', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'aVR', 'aVL', 'aVF', 'MLII',
-                'DeltaQTc', 'HR', 'PVC', 'QT', 'QT-HR', 'QTc', 'ST-I', 'ST-II', 'ST-III', 'ST-V'}:
+                'DeltaQTc', 'HR', 'PVC', 'QT', 'QT-HR', 'QTc', 'ST-I', 'ST-II', 'ST-III', 'ST-V', 'PULSE'}:
             return COLOR_GREEN
-        if name in {'Pleth', 'SpO2', 'Pulse (SpO2)'}:
+        elif name in {'ABPSys', 'ABPDias', 'ABPMean', 'PAPSys', 'PAPDias', 'PAPMean'}:
+            return COLOR_RED
+        elif name in {'Pleth', 'SpO2', 'Pulse (SpO2)'}:
             return COLOR_SKYBLUE
-        if name in {'Resp', 'RR'}:
+        elif name in {'CVP'}:
+            return COLOR_ORANGE
+        elif name in {'CO', 'CI', 'SV', 'SVI'}:
+            return COLOR_PINK
+        elif name in {'Resp', 'RR', 'RESP'}:
             return COLOR_YELLOW
         return COLOR_WHITE
 
@@ -1241,7 +1247,7 @@ class VitalFile:
         if not hea.base_datetime:
             self.dtstart = 0
         else:
-            self.dtstart = float(hea.base_datetime.timestamp())
+            self.dtstart = float(hea.base_datetime.replace(tzinfo=datetime.timezone.utc).timestamp())
 
         # sig_name -> channel_names
         channel_names = []
@@ -1255,8 +1261,8 @@ class VitalFile:
         else:
             vals, fields = wfdb.rdsamp(pn_dir + '/' + hea_name, channel_names=channel_names, return_res=32)
         
-        srate = fields['fs']
-        assert srate > 0
+        srate = float(fields['fs'])
+        assert srate >= 1
 
         for ich in range(len(channel_names)):
             dtname = channel_names[ich]
@@ -1271,35 +1277,90 @@ class VitalFile:
             for istart in range(0, len(vals), int(srate)):
                 trk.recs.append({'dt': self.dtstart + istart / srate, 'val': vals[istart:istart+int(srate), ich]})
 
-        # read numeric values
-        try:
-            df = pd.read_csv(os.path.splitext(ipath)[0] + 'n.csv.gz', low_memory=False)
-            if 'time' in df.columns:
-                df['time'] = hea.base_datetime.timestamp() + df['time'] / hea.counter_freq
-                for colname in df.columns:
-                    if colname == 'time':
+        # read numeric values (mimic3)
+        numeric_filename = os.path.splitext(ipath)[0] + 'n.hea'
+        if ipath.find('mimic3wdb') >= 0 or (not isurl and os.path.exists(numeric_filename)):
+            try:
+                # parse header for numeric value
+                if isurl:
+                    hea = wfdb.rdheader(hea_name + 'n', pn_dir=pn_dir, rd_segments=True)
+                else:
+                    hea = wfdb.rdheader(pn_dir + '/' + hea_name + 'n', rd_segments=True)
+            except:
+                pass
+            else:
+                if not hea.base_datetime:
+                    dtstart = self.dtstart
+                else:
+                    dtstart = float(hea.base_datetime.replace(tzinfo=datetime.timezone.utc).timestamp())
+                    if abs(dtstart - self.dtstart) > 48 * 60 * 60:
+                        raise ValueError()
+                    if dtstart < self.dtstart:
+                        self.dtstart = dtstart
+
+                # sig_name -> channel_names
+                channel_names = []
+                for dtname in hea.sig_name:
+                    if dtname in self.trks:  # already loaded
                         continue
-
-                    dtname_unit = colname.split('[')
-                    dtname = dtname_unit[0].rstrip(' ')
-                    unit = dtname_unit[1].rstrip(']')
-
                     if ((not track_names) or (dtname in track_names)) and ((not exclude) or dtname not in exclude):
-                        subdf = df[['time', colname]]
-                        vals = subdf[~subdf[colname].isnull()].values
-                        if pd.api.types.is_numeric_dtype(df[colname]):
-                            trk = Track(dtname, TYPE_NUM, unit=unit)
-                            for i in range(len(vals)):
-                                trk.recs.append({'dt': vals[i,0], 'val': vals[i,1]})
-                        else:
-                            trk = Track(dtname, TYPE_STR, unit=unit)
-                            for i in range(len(vals)):
-                                trk.recs.append({'dt': vals[i,0], 'val': str(vals[i,1])})
-                        self.trks[dtname] = trk
+                        channel_names.append(dtname)
+
+                # read numeric samples
+                if isurl:
+                    vals, fields = wfdb.rdsamp(hea_name + 'n', pn_dir=pn_dir, channel_names=channel_names)
+                else:
+                    vals, fields = wfdb.rdsamp(pn_dir + '/' + hea_name + 'n', channel_names=channel_names)
+                
+                srate = float(fields['fs'])
+                assert srate > 0
+
+                for ich in range(len(channel_names)):
+                    dtname = channel_names[ich]
+                    trk = Track(dtname, TYPE_NUM)
+                    self.trks[dtname] = trk
                     
-                self.dtend = float(df['time'].max())
-        except:
-            pass
+                    dtend = dtstart + len(vals) / srate
+                    if dtend > self.dtend:
+                        self.dtend = dtend
+
+                    # read all values
+                    for idx in range(len(vals)):
+                        if not np.isnan(vals[idx, ich]):
+                            trk.recs.append({'dt': dtstart + idx / srate, 'val': vals[idx, ich]})
+
+        # read numeric values (mimic4)
+        numeric_filename = os.path.splitext(ipath)[0] + 'n.csv.gz'
+        if ipath.find('mimic4wdb') >= 0 or (not isurl and os.path.exists(numeric_filename)):
+            try:
+                df = pd.read_csv(numeric_filename, low_memory=False)
+            except:
+                pass
+            else:
+                if 'time' in df.columns:
+                    df['time'] = hea.base_datetime.replace(tzinfo=datetime.timezone.utc).timestamp() + df['time'] / hea.counter_freq
+                    for colname in df.columns:
+                        if colname == 'time':
+                            continue
+
+                        dtname_unit = colname.split('[')
+                        dtname = dtname_unit[0].rstrip(' ')
+                        unit = dtname_unit[1].rstrip(']')
+
+                        if ((not track_names) or (dtname in track_names)) and ((not exclude) or dtname not in exclude):
+                            subdf = df[['time', colname]]
+                            vals = subdf[~subdf[colname].isnull()].values
+                            if pd.api.types.is_numeric_dtype(df[colname]):
+                                trk = Track(dtname, TYPE_NUM, unit=unit)
+                                for i in range(len(vals)):
+                                    trk.recs.append({'dt': vals[i,0], 'val': vals[i,1]})
+                            else:
+                                trk = Track(dtname, TYPE_STR, unit=unit)
+                                for i in range(len(vals)):
+                                    trk.recs.append({'dt': vals[i,0], 'val': str(vals[i,1])})
+                            self.trks[dtname] = trk
+                        
+                    self.dtend = float(df['time'].max())
 
     # track_names: list of dtname to read. If track_names is None, all tracks will be loaded
     # header_only: read track names only
@@ -1612,7 +1673,43 @@ def vital_trks(ipath):
     return vf.get_track_names()
 
 
+def list_wfdb(dbname):
+    dbname = dbname.rstrip('/')
+    if '.' not in dbname:
+        ver = wfdb.io.download.get_version(dbname)
+        dbname = f'{dbname}/{ver}'
+    recs = wfdb.io.download.get_record_list(dbname)
+    ret = []
+    for hea_name in recs:
+        if hea_name.endswith('/'):
+            ret.extend(list_wfdb(f'{dbname}/{hea_name}'))
+        else:
+            ret.append(f'{dbname}/{hea_name}.hea')
+    return ret
+
+
 if __name__ == '__main__':
+    dtstart = datetime.datetime.now()
+
+    dbname = 'mitdb'
+    dbname = 'mimic3wdb'
+    # ver = wfdb.io.download.get_version(dbname)
+    # dbname = f'{dbname}/{ver}'
+    recs = wfdb.io.download.get_record_list(dbname)
+
+    #urls = list_wfdb('mimic3wdb')
+    print(datetime.datetime.now() - dtstart)
+
+    print(recs)
+    print(len(recs))
+    quit()
+
+    for url in urls:
+        print(f'Downloading {url}', end='...', flush=True)
+        VitalFile(url).to_vital(os.path.basename(url) + '.vital')
+        print('done')
+    quit()
+
     # import urllib.request
     # from bs4 import BeautifulSoup
 
@@ -1648,17 +1745,6 @@ if __name__ == '__main__':
     print(fields)
     quit()
 
-    dbname = 'mitdb'
-    #vf = VitalFile('mitdb/1.0.0/100.hea')
-    ver = wfdb.io.download.get_version(dbname)
-    files = wfdb.io.download.get_record_list(dbname)
-    for hea_name in files:
-        print(f'Downloading {hea_name}', end='...', flush=True)
-        VitalFile(f'{dbname}/{ver}/{hea_name}.hea').to_vital(hea_name + '.vital')
-        print('done')
-
-    quit()
-
     #vf = VitalFile('mitdb/1.0.0/100.hea', ['MLII', 'V5']).to_vital('mitdb_100.vital')
     # vf = VitalFile('https://physionet.org/files/mimic4wdb/0.1.0/waves/p100/p10014354/81739927/81739927_0001.hea', ['II', 'V'])
     # vf = VitalFile('https://physionet.org/files/mimic4wdb/0.1.0/waves/p100/p10014354/81739927/81739927.hea', ['II', 'V'])
@@ -1685,7 +1771,7 @@ if __name__ == '__main__':
     quit()
 
     import pyvital.filters.ecg_hrv as f
-    vf = VitalFile('https://vitaldb.net/1.vital')
+    vf = VitalFile('https://vitaldb.net/2.vital')
     vf.run_filter(f.run, f.cfg)
     vf.to_vital('filtered.vital')
     #vf.remove_devices(['SNUADC', 'BIS'])
