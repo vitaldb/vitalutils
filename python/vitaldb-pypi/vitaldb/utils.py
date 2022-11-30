@@ -339,7 +339,7 @@ class VitalFile:
     :param float dgmt: dgmt = ut - localtime in minutes. For KST, it is -540.
     """
     
-    def __init__(self, ipath, track_names=None, header_only=False, skip_records=None, exclude=None, userid=None):
+    def __init__(self, ipath, track_names=None, header_only=False, skip_records=None, exclude=None, userid=None, maxlen=None):
         """Constructor of the VitalFile class.
         :param ipath: file path, list of file path, or caseid of open dataset.
         :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
@@ -433,7 +433,7 @@ class VitalFile:
                 ipath = f's3://vitaldb-myfiles/{userid}/{month}/{bedname}/{ipath}'
 
         if ext == '.vital':
-            self.load_vital(ipath, track_names, header_only, exclude)
+            self.load_vital(ipath, track_names, header_only, exclude, maxlen)
         elif ext == '.hea':
             self.load_wfdb(ipath, track_names, header_only, exclude)
         elif ext == '.parquet':
@@ -1367,7 +1367,7 @@ class VitalFile:
     # track_names: list of dtname to read. If track_names is None, all tracks will be loaded
     # header_only: read track names only
     # exclude: track names to exclude
-    def load_vital(self, ipath, track_names=None, header_only=False, exclude=None):
+    def load_vital(self, ipath, track_names=None, header_only=False, exclude=None, maxlen=None):
         # check if ipath is url
         iurl = parse.urlparse(ipath)
         if iurl.scheme and iurl.netloc:
@@ -1524,6 +1524,11 @@ class VitalFile:
 
                     if header_only:  # skip records
                         continue
+
+                    if maxlen is not None:
+                        if self.dtstart > 0:
+                            if dt > self.dtstart + maxlen:
+                                continue
 
                     fmtlen = 4
                     rec_dtend = dt
