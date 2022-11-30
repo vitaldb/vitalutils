@@ -78,6 +78,24 @@ def filelist(bedname=None, dtstart=None, dtend=None, hid=None, notimestamp=None,
         raise Exception('API Server Error: ' + res.content.decode('utf-8'))
     return json.loads(gzip.decompress(res.content))
 
+def tracklist(bedname=None, dtstart=None, dtend=None):
+    global access_token
+    if access_token is None:
+        raise Exception('Please login first')
+
+    pars = {"access_token": access_token}
+    if bedname:
+        pars['bedname'] = bedname
+    #dtstart = to_timestamp(dtstart)
+    #dtend = to_timestamp(dtend)
+    if dtstart:
+        pars['dtstart'] = dtstart
+    if dtend:
+        pars['dtend'] = dtend
+    res = requests.get(API_URL + "tracklist", params=pars)
+    if 200 != res.status_code:
+        raise Exception('API Server Error: ' + res.content.decode('utf-8'))
+    return json.loads(gzip.decompress(res.content))
 
 # request file download
 # localpath를 안적으면 url만 리턴
@@ -130,9 +148,10 @@ if __name__ == '__main__':
         os.mkdir(DOWNLOAD_DIR)
 
     # issue access token
-    if login(id="vitaldb_test", pw="vitaldb_test"):
-        files = filelist(None, '2021-10-01')
-        for f in files:
+    if login(id="admin", pw="vital2469!", host="snuh.vitaldb.net", port=80):
+        files = tracklist(None, '2021-10-01')
+        print(files)
+        """ for f in files:
             print("Downloading: " + f['filename'], end='...', flush=True)
             opath = DOWNLOAD_DIR + '/' + f['filename']
             if os.path.isfile(opath): # check if file exists
@@ -141,4 +160,4 @@ if __name__ == '__main__':
                     continue
                 #os.utime(opath, (mtime, mtime))
             download(f['filename'], opath)
-            print('done')
+            print('done') """
