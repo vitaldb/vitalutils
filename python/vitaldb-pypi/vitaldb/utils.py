@@ -1403,18 +1403,31 @@ class VitalFile:
             tid_dtnames = {}  # tid -> dtname for this file
             did_dnames = {}  # did -> dname for this file
             while True:
-                buf = f.read(5)
+                try:
+                    buf = f.read(5)
+                except:
+                    break
                 if buf == b'':
                     break
                 pos = 0
 
-                packet_type = unpack_b(buf, pos)[0]; pos += 1
-                packet_len = unpack_dw(buf, pos)[0]; pos += 4
+                try:
+                    packet_type = unpack_b(buf, pos)[0]; pos += 1
+                except:
+                    break
+
+                try:
+                    packet_len = unpack_dw(buf, pos)[0]; pos += 4
+                except:
+                    break
 
                 if packet_len > 1000000: # maximum packet size should be < 1MB
                     break
                 
-                buf = f.read(packet_len)
+                try:
+                    buf = f.read(packet_len)
+                except:
+                    break
                 if buf == b'':
                     break
                 pos = 0
@@ -1696,26 +1709,26 @@ def list_wfdb(dbname):
 
 
 if __name__ == '__main__':
-    dtstart = datetime.datetime.now()
+    # dtstart = datetime.datetime.now()
 
-    dbname = 'mitdb'
-    dbname = 'mimic3wdb'
+    # dbname = 'mitdb'
+    # dbname = 'mimic3wdb'
     # ver = wfdb.io.download.get_version(dbname)
     # dbname = f'{dbname}/{ver}'
-    recs = wfdb.io.download.get_record_list(dbname)
+    #recs = wfdb.io.download.get_record_list(dbname)
 
     #urls = list_wfdb('mimic3wdb')
-    print(datetime.datetime.now() - dtstart)
+    # print(datetime.datetime.now() - dtstart)
 
-    print(recs)
-    print(len(recs))
-    quit()
+    # print(recs)
+    # print(len(recs))
+    # quit()
 
-    for url in urls:
-        print(f'Downloading {url}', end='...', flush=True)
-        VitalFile(url).to_vital(os.path.basename(url) + '.vital')
-        print('done')
-    quit()
+    # for url in urls:
+    #     print(f'Downloading {url}', end='...', flush=True)
+    #     VitalFile(url).to_vital(os.path.basename(url) + '.vital')
+    #     print('done')
+    # quit()
 
     # import urllib.request
     # from bs4 import BeautifulSoup
@@ -1745,19 +1758,24 @@ if __name__ == '__main__':
 
     # quit()
 
-    dtstart = datetime.datetime.now()
-    signals, fields = wfdb.rdsamp('81739927', pn_dir='mimic4wdb/0.1.0/waves/p100/p10014354/81739927')
-    print(datetime.datetime.now() - dtstart)
-    print(signals)
-    print(fields)
-    quit()
+    # dtstart = datetime.datetime.now()
+    # signals, fields = wfdb.rdsamp('81739927', pn_dir='mimic4wdb/0.1.0/waves/p100/p10014354/81739927')
+    # print(datetime.datetime.now() - dtstart)
+    # print(signals)
+    # print(fields)
+    # quit()
 
-    #vf = VitalFile('mitdb/1.0.0/100.hea', ['MLII', 'V5']).to_vital('mitdb_100.vital')
+    files = os.listdir("./Download")
+    for f in files:
+        print(f)
+        vf = VitalFile("./Download/" + f)
+        print(vf.get_track_names())
+    quit()
     # vf = VitalFile('https://physionet.org/files/mimic4wdb/0.1.0/waves/p100/p10014354/81739927/81739927_0001.hea', ['II', 'V'])
     # vf = VitalFile('https://physionet.org/files/mimic4wdb/0.1.0/waves/p100/p10014354/81739927/81739927.hea', ['II', 'V'])
     #vf = VitalFile(r"C:\Users\lucid\physionet.org\files\mimic4wdb\0.1.0\waves\p100\p10014354\81739927\81739927.hea")
-    vf.to_vital('mimic4.vital')
-    quit()
+    # vf.to_vital('mimic4.vital')
+    # quit()
 
     VitalFile('https://vitaldb.net/1.vital').anonymize().to_vital('anonymized.vital')
     quit()
