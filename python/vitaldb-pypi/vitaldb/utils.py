@@ -1400,18 +1400,31 @@ class VitalFile:
             tid_dtnames = {}  # tid -> dtname for this file
             did_dnames = {}  # did -> dname for this file
             while True:
-                buf = f.read(5)
+                try:
+                    buf = f.read(5)
+                except:
+                    break
                 if buf == b'':
                     break
                 pos = 0
 
-                packet_type = unpack_b(buf, pos)[0]; pos += 1
-                packet_len = unpack_dw(buf, pos)[0]; pos += 4
+                try:
+                    packet_type = unpack_b(buf, pos)[0]; pos += 1
+                except:
+                    break
+
+                try:
+                    packet_len = unpack_dw(buf, pos)[0]; pos += 4
+                except:
+                    break
 
                 if packet_len > 1000000: # maximum packet size should be < 1MB
                     break
                 
-                buf = f.read(packet_len)
+                try:
+                    buf = f.read(packet_len)
+                except:
+                    break
                 if buf == b'':
                     break
                 pos = 0
@@ -1693,7 +1706,6 @@ def list_wfdb(dbname):
 
 
 if __name__ == '__main__':
-    
     srate = 500  # sampling rate for ecg
 
     # sample data from the VitalDB open dataset
@@ -1723,128 +1735,27 @@ if __name__ == '__main__':
     vf.to_vital('1.vital', compresslevel=9)
     quit()
 
-        # for ich in range(len(channel_names)):
-        #     dtname = channel_names[ich]
-        #     trk = Track(dtname, TYPE_WAV, srate=srate)
-        #     self.trks[dtname] = trk
-            
-        #     dtend = self.dtstart + len(vals) / srate
-        #     if dtend > self.dtend:
-        #         self.dtend = dtend
-
-        #     # seperate with 1sec records
-        #     for istart in range(0, len(vals), int(srate)):
-        #         trk.recs.append({'dt': self.dtstart + istart / srate, 'val': vals[istart:istart+int(srate), ich]})
-
-        # # read numeric values (mimic3)
-        # numeric_filename = os.path.splitext(ipath)[0] + 'n.hea'
-        # if ipath.find('mimic3wdb') >= 0 or (not isurl and os.path.exists(numeric_filename)):
-        #     try:
-        #         # parse header for numeric value
-        #         if isurl:
-        #             hea = wfdb.rdheader(hea_name + 'n', pn_dir=pn_dir, rd_segments=True)
-        #         else:
-        #             hea = wfdb.rdheader(pn_dir + '/' + hea_name + 'n', rd_segments=True)
-        #     except:
-        #         pass
-        #     else:
-        #         if not hea.base_datetime:
-        #             dtstart = self.dtstart
-        #         else:
-        #             dtstart = float(hea.base_datetime.replace(tzinfo=datetime.timezone.utc).timestamp())
-        #             if abs(dtstart - self.dtstart) > 48 * 60 * 60:
-        #                 raise ValueError()
-        #             if dtstart < self.dtstart:
-        #                 self.dtstart = dtstart
-
-        #         # sig_name -> channel_names
-        #         channel_names = []
-        #         for dtname in hea.sig_name:
-        #             if dtname in self.trks:  # already loaded
-        #                 continue
-        #             if ((not track_names) or (dtname in track_names)) and ((not exclude) or dtname not in exclude):
-        #                 if dtname not in channel_names:
-        #                     channel_names.append(dtname)
-
-        #         # read numeric samples
-        #         if isurl:
-        #             vals, fields = wfdb.rdsamp(hea_name + 'n', pn_dir=pn_dir, channel_names=channel_names)
-        #         else:
-        #             vals, fields = wfdb.rdsamp(pn_dir + '/' + hea_name + 'n', channel_names=channel_names)
-                
-        #         srate = float(fields['fs'])
-        #         assert srate > 0
-
-        #         for ich in range(len(channel_names)):
-        #             dtname = channel_names[ich]
-        #             trk = Track(dtname, TYPE_NUM)
-        #             self.trks[dtname] = trk
-                    
-        #             dtend = dtstart + len(vals) / srate
-        #             if dtend > self.dtend:
-        #                 self.dtend = dtend
-
-        #             # read all values
-        #             for idx in range(len(vals)):
-        #                 if not np.isnan(vals[idx, ich]):
-        #                     trk.recs.append({'dt': dtstart + idx / srate, 'val': vals[idx, ich]})
-
-        # # read numeric values (mimic4)
-        # numeric_filename = os.path.splitext(ipath)[0] + 'n.csv.gz'
-        # if ipath.find('mimic4wdb') >= 0 or (not isurl and os.path.exists(numeric_filename)):
-        #     try:
-        #         df = pd.read_csv(numeric_filename, low_memory=False)
-        #     except:
-        #         pass
-        #     else:
-        #         if 'time' in df.columns:
-        #             df['time'] = hea.base_datetime.replace(tzinfo=datetime.timezone.utc).timestamp() + df['time'] / hea.counter_freq
-        #             for colname in df.columns:
-        #                 if colname == 'time':
-        #                     continue
-
-        #                 dtname_unit = colname.split('[')
-        #                 dtname = dtname_unit[0].rstrip(' ')
-        #                 unit = dtname_unit[1].rstrip(']')
-
-        #                 if ((not track_names) or (dtname in track_names)) and ((not exclude) or dtname not in exclude):
-        #                     subdf = df[['time', colname]]
-        #                     vals = subdf[~subdf[colname].isnull()].values
-        #                     if pd.api.types.is_numeric_dtype(df[colname]):
-        #                         trk = Track(dtname, TYPE_NUM, unit=unit)
-        #                         for i in range(len(vals)):
-        #                             trk.recs.append({'dt': vals[i,0], 'val': vals[i,1]})
-        #                     else:
-        #                         trk = Track(dtname, TYPE_STR, unit=unit)
-        #                         for i in range(len(vals)):
-        #                             trk.recs.append({'dt': vals[i,0], 'val': str(vals[i,1])})
-        #                     self.trks[dtname] = trk
-                        
-        #             self.dtend = float(df['time'].max())
-
-
-    quit()
-
     dtstart = datetime.datetime.now()
+    # dtstart = datetime.datetime.now()
 
-    dbname = 'mitdb'
-    dbname = 'mimic3wdb'
+    # dbname = 'mitdb'
+    # dbname = 'mimic3wdb'
     # ver = wfdb.io.download.get_version(dbname)
     # dbname = f'{dbname}/{ver}'
-    recs = wfdb.io.download.get_record_list(dbname)
+    #recs = wfdb.io.download.get_record_list(dbname)
 
     #urls = list_wfdb('mimic3wdb')
-    print(datetime.datetime.now() - dtstart)
+    # print(datetime.datetime.now() - dtstart)
 
-    print(recs)
-    print(len(recs))
-    quit()
+    # print(recs)
+    # print(len(recs))
+    # quit()
 
-    for url in urls:
-        print(f'Downloading {url}', end='...', flush=True)
-        VitalFile(url).to_vital(os.path.basename(url) + '.vital')
-        print('done')
-    quit()
+    # for url in urls:
+    #     print(f'Downloading {url}', end='...', flush=True)
+    #     VitalFile(url).to_vital(os.path.basename(url) + '.vital')
+    #     print('done')
+    # quit()
 
     # import urllib.request
     # from bs4 import BeautifulSoup
@@ -1874,19 +1785,24 @@ if __name__ == '__main__':
 
     # quit()
 
-    dtstart = datetime.datetime.now()
-    signals, fields = wfdb.rdsamp('81739927', pn_dir='mimic4wdb/0.1.0/waves/p100/p10014354/81739927')
-    print(datetime.datetime.now() - dtstart)
-    print(signals)
-    print(fields)
-    quit()
+    # dtstart = datetime.datetime.now()
+    # signals, fields = wfdb.rdsamp('81739927', pn_dir='mimic4wdb/0.1.0/waves/p100/p10014354/81739927')
+    # print(datetime.datetime.now() - dtstart)
+    # print(signals)
+    # print(fields)
+    # quit()
 
-    #vf = VitalFile('mitdb/1.0.0/100.hea', ['MLII', 'V5']).to_vital('mitdb_100.vital')
+    files = os.listdir("./Download")
+    for f in files:
+        print(f)
+        vf = VitalFile("./Download/" + f)
+        print(vf.get_track_names())
+    quit()
     # vf = VitalFile('https://physionet.org/files/mimic4wdb/0.1.0/waves/p100/p10014354/81739927/81739927_0001.hea', ['II', 'V'])
     # vf = VitalFile('https://physionet.org/files/mimic4wdb/0.1.0/waves/p100/p10014354/81739927/81739927.hea', ['II', 'V'])
     #vf = VitalFile(r"C:\Users\lucid\physionet.org\files\mimic4wdb\0.1.0\waves\p100\p10014354\81739927\81739927.hea")
-    vf.to_vital('mimic4.vital')
-    quit()
+    # vf.to_vital('mimic4.vital')
+    # quit()
 
     VitalFile('https://vitaldb.net/1.vital').anonymize().to_vital('anonymized.vital')
     quit()
