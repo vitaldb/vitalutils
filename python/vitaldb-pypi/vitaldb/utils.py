@@ -1,5 +1,4 @@
 import os
-import s3fs
 import gzip
 import wave
 import wfdb
@@ -8,7 +7,6 @@ import datetime
 import tempfile
 import numpy as np
 import pandas as pd
-import pyarrow.parquet as pq
 from copy import deepcopy
 from urllib import parse, request
 from struct import pack, unpack_from, Struct
@@ -339,7 +337,7 @@ class VitalFile:
     :param float dgmt: dgmt = ut - localtime in minutes. For KST, it is -540.
     """
     
-    def __init__(self, ipath, track_names=None, header_only=False, skip_records=None, exclude=None, userid=None, maxlen=None):
+    def __init__(self, ipath=None, track_names=None, header_only=False, skip_records=None, exclude=None, userid=None, maxlen=None):
         """Constructor of the VitalFile class.
         :param ipath: file path, list of file path, or caseid of open dataset.
         :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
@@ -373,7 +371,14 @@ class VitalFile:
         if exclude is not None:
             exclude = set(exclude)
 
-        if isinstance(ipath, int):
+        if ipath is None:
+            dt = datetime.datetime.now()
+            self.dtstart = dt.timestamp()
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+            dtutc = dt.timestamp()
+            self.dgmt = -int((dtutc - self.dtstart) / 60)  # dgmt = ut - localtime in minutes. For KST, it is -540
+            return
+        elif isinstance(ipath, int):
             if header_only:
                 raise NotImplementedError
             self.load_opendata(ipath, track_names, exclude)
@@ -406,11 +411,9 @@ class VitalFile:
                     for dtname in vf.order:
                         if dtname not in self.order:
                             self.order.append(dtname)
-
             # sorting tracks
             #for trk in self.trks.values():
             #    trk.recs.sort(key=lambda r:r['dt'])
-            
             return
 
         # check ipath is url
@@ -645,7 +648,7 @@ class VitalFile:
     
     del_tracks = remove_tracks
 
-    def add_track(self, dtname, recs, srate=0, unit='', mindisp=0, maxdisp=0, after=None):
+    def add_track(self, dtname, recs, srate=0, unit='', mindisp=0, maxdisp=0, after=None, col=None):
         if len(recs) == 0:
             return
 
@@ -671,7 +674,9 @@ class VitalFile:
             ntype = TYPE_WAV
         elif isinstance(recs[0]['val'], str):
             ntype = TYPE_STR
-        self.trks[dtname] = Track(tname, ntype, fmt=1, srate=srate, unit=unit, mindisp=mindisp, maxdisp=maxdisp, dname=dname, recs=recs)
+        
+        trk = Track(tname, ntype, fmt=1, srate=srate, unit=unit, mindisp=mindisp, maxdisp=maxdisp, dname=dname, recs=recs, col=col)
+        self.trks[dtname] = trk
 
         # change track order
         if after is not None:
@@ -680,6 +685,8 @@ class VitalFile:
             if dtname in self.order:  # remove if it already exists
                 self.order.remove(dtname)
             self.order.insert(self.order.index(after) + 1, dtname)
+        
+        return trk
 
     def anonymize(self, dt=datetime.datetime(2100,1,1)):
         """Move all datetimes to specific timepoint
@@ -1158,10 +1165,8 @@ class VitalFile:
         return
 
     def load_parquet(self, ipath, track_names, exclude):
-        filts = None
-        if track_names:
-            filts = [['tname', 'in', track_names]]
-        df = pq.read_table(ipath, filters=filts).to_pandas()
+        df = pd.read_parquet(ipath)
+        df = df['tname'].isin(track_names)
 
         # df = pd.read_parquet(ipath)
 
@@ -1224,10 +1229,6 @@ class VitalFile:
         
 
     def load_wfdb(self, ipath, track_names=None, header_only=False, exclude=None):
-        self.dtstart = 0
-        self.dtend = 0
-        self.dgmt = 0
-
         ipath = ipath.replace('\\', '/')
         
         isurl = not os.path.exists(ipath)
@@ -1371,14 +1372,10 @@ class VitalFile:
         # check if ipath is url
         iurl = parse.urlparse(ipath)
         if iurl.scheme and iurl.netloc:
-            if iurl.scheme == 's3':
-                fs = s3fs.S3FileSystem(anon=False)
-                f = fs.open(iurl.netloc + iurl.path, 'rb')
-            else:
-                response = request.urlopen(ipath)
-                f = tempfile.NamedTemporaryFile(delete=True)
-                shutil.copyfileobj(response, f)
-                f.seek(0)
+            response = request.urlopen(ipath)
+            f = tempfile.NamedTemporaryFile(delete=True)
+            shutil.copyfileobj(response, f)
+            f.seek(0)
         else:
             f = open(ipath, 'rb')
 
@@ -1696,6 +1693,138 @@ def list_wfdb(dbname):
 
 
 if __name__ == '__main__':
+    
+    srate = 500  # sampling rate for ecg
+
+    # sample data from the VitalDB open dataset
+    vf = VitalFile(1, ['ECG_II', 'HR'])
+    ecg = vf.to_numpy('ECG_II', 1/srate).flatten()  # ecg waveform (500Hz) = [     nan      nan      nan ... 0.33651  0.435255 0.237764]
+    hrs = vf.to_numpy('HR', 1).flatten()  # heart rates (1 sec) = [nan 88. nan ... nan nan nan]
+
+    # create a new vital file
+    vf = VitalFile()
+
+    # add waveform track (ecg)
+    recs = []  # 1 sec blocks for ecg track
+    for istart in range(0, len(ecg), int(srate)):
+        recs.append({'dt': vf.dtstart + istart / srate, 'val': ecg[istart:istart + int(srate)]})
+    vf.add_track('ECG_II', recs, srate=srate, unit='mV', mindisp=0, maxdisp=0, col=COLOR_GREEN)
+
+    # add numeric track (heart rate)
+    recs = []
+    for i in range(len(hrs)):
+        recs.append({'dt': vf.dtstart + i, 'val': hrs[i]})
+    vf.add_track('HR', recs, unit='/min', mindisp=0, maxdisp=150)
+
+    # add string track (events)
+    recs = [{'dt': vf.dtstart, 'val': 'Anesthesia Start'}, {'dt': vf.dtstart + len(ecg) / srate, 'val': 'Anesthesia End'}, ]
+    vf.add_track('EVENT', recs)
+
+    vf.to_vital('1.vital', compresslevel=9)
+    quit()
+
+        # for ich in range(len(channel_names)):
+        #     dtname = channel_names[ich]
+        #     trk = Track(dtname, TYPE_WAV, srate=srate)
+        #     self.trks[dtname] = trk
+            
+        #     dtend = self.dtstart + len(vals) / srate
+        #     if dtend > self.dtend:
+        #         self.dtend = dtend
+
+        #     # seperate with 1sec records
+        #     for istart in range(0, len(vals), int(srate)):
+        #         trk.recs.append({'dt': self.dtstart + istart / srate, 'val': vals[istart:istart+int(srate), ich]})
+
+        # # read numeric values (mimic3)
+        # numeric_filename = os.path.splitext(ipath)[0] + 'n.hea'
+        # if ipath.find('mimic3wdb') >= 0 or (not isurl and os.path.exists(numeric_filename)):
+        #     try:
+        #         # parse header for numeric value
+        #         if isurl:
+        #             hea = wfdb.rdheader(hea_name + 'n', pn_dir=pn_dir, rd_segments=True)
+        #         else:
+        #             hea = wfdb.rdheader(pn_dir + '/' + hea_name + 'n', rd_segments=True)
+        #     except:
+        #         pass
+        #     else:
+        #         if not hea.base_datetime:
+        #             dtstart = self.dtstart
+        #         else:
+        #             dtstart = float(hea.base_datetime.replace(tzinfo=datetime.timezone.utc).timestamp())
+        #             if abs(dtstart - self.dtstart) > 48 * 60 * 60:
+        #                 raise ValueError()
+        #             if dtstart < self.dtstart:
+        #                 self.dtstart = dtstart
+
+        #         # sig_name -> channel_names
+        #         channel_names = []
+        #         for dtname in hea.sig_name:
+        #             if dtname in self.trks:  # already loaded
+        #                 continue
+        #             if ((not track_names) or (dtname in track_names)) and ((not exclude) or dtname not in exclude):
+        #                 if dtname not in channel_names:
+        #                     channel_names.append(dtname)
+
+        #         # read numeric samples
+        #         if isurl:
+        #             vals, fields = wfdb.rdsamp(hea_name + 'n', pn_dir=pn_dir, channel_names=channel_names)
+        #         else:
+        #             vals, fields = wfdb.rdsamp(pn_dir + '/' + hea_name + 'n', channel_names=channel_names)
+                
+        #         srate = float(fields['fs'])
+        #         assert srate > 0
+
+        #         for ich in range(len(channel_names)):
+        #             dtname = channel_names[ich]
+        #             trk = Track(dtname, TYPE_NUM)
+        #             self.trks[dtname] = trk
+                    
+        #             dtend = dtstart + len(vals) / srate
+        #             if dtend > self.dtend:
+        #                 self.dtend = dtend
+
+        #             # read all values
+        #             for idx in range(len(vals)):
+        #                 if not np.isnan(vals[idx, ich]):
+        #                     trk.recs.append({'dt': dtstart + idx / srate, 'val': vals[idx, ich]})
+
+        # # read numeric values (mimic4)
+        # numeric_filename = os.path.splitext(ipath)[0] + 'n.csv.gz'
+        # if ipath.find('mimic4wdb') >= 0 or (not isurl and os.path.exists(numeric_filename)):
+        #     try:
+        #         df = pd.read_csv(numeric_filename, low_memory=False)
+        #     except:
+        #         pass
+        #     else:
+        #         if 'time' in df.columns:
+        #             df['time'] = hea.base_datetime.replace(tzinfo=datetime.timezone.utc).timestamp() + df['time'] / hea.counter_freq
+        #             for colname in df.columns:
+        #                 if colname == 'time':
+        #                     continue
+
+        #                 dtname_unit = colname.split('[')
+        #                 dtname = dtname_unit[0].rstrip(' ')
+        #                 unit = dtname_unit[1].rstrip(']')
+
+        #                 if ((not track_names) or (dtname in track_names)) and ((not exclude) or dtname not in exclude):
+        #                     subdf = df[['time', colname]]
+        #                     vals = subdf[~subdf[colname].isnull()].values
+        #                     if pd.api.types.is_numeric_dtype(df[colname]):
+        #                         trk = Track(dtname, TYPE_NUM, unit=unit)
+        #                         for i in range(len(vals)):
+        #                             trk.recs.append({'dt': vals[i,0], 'val': vals[i,1]})
+        #                     else:
+        #                         trk = Track(dtname, TYPE_STR, unit=unit)
+        #                         for i in range(len(vals)):
+        #                             trk.recs.append({'dt': vals[i,0], 'val': str(vals[i,1])})
+        #                     self.trks[dtname] = trk
+                        
+        #             self.dtend = float(df['time'].max())
+
+
+    quit()
+
     dtstart = datetime.datetime.now()
 
     dbname = 'mitdb'
