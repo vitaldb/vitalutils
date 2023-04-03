@@ -146,18 +146,3 @@ if __name__ == '__main__':
     DOWNLOAD_DIR = "Download"
     if not os.path.exists(DOWNLOAD_DIR):
         os.mkdir(DOWNLOAD_DIR)
-
-    # issue access token
-    if login(id="admin", pw="vital2469!", host="snuh.vitaldb.net", port=80):
-        files = tracklist(None, '2021-10-01')
-        print(files)
-        """ for f in files:
-            print("Downloading: " + f['filename'], end='...', flush=True)
-            opath = DOWNLOAD_DIR + '/' + f['filename']
-            if os.path.isfile(opath): # check if file exists
-                if os.stat(opath).st_size == int(f['filesize']):
-                    print('already done')
-                    continue
-                #os.utime(opath, (mtime, mtime))
-            download(f['filename'], opath)
-            print('done') """
