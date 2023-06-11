@@ -1730,6 +1730,8 @@ def list_wfdb(dbname):
 
 
 if __name__ == '__main__':
+    VitalFile('1.vital')
+    quit()
     srate = 500  # sampling rate for ecg
 
     # sample data from the VitalDB open dataset
