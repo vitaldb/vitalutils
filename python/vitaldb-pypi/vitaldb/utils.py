@@ -104,6 +104,9 @@ class Track:
         elif name in {'Resp', 'RR', 'RESP'}:
             return COLOR_YELLOW
         return COLOR_WHITE
+    
+    def __repr__(self):
+        return f'Track(\'{self.name}\', \'{self.type}\', \'{self.col}\', \'{self.montype}\', \'{self.dname}\', \'{self.unit}\', \'{self.fmt}\', \'{self.srate}\', \'{self.gain}\', \'{self.offset}\', \'{self.mindisp}\', \'{self.maxdisp}\', \'{self.recs}\')'    
 
 # 4 byte L (unsigned) l (signed)
 # 2 byte H (unsigned) h (signed)
@@ -336,7 +339,6 @@ class VitalFile:
     :param double dtend: flie end time
     :param float dgmt: dgmt = ut - localtime in minutes. For KST, it is -540.
     """
-    
     def __init__(self, ipath=None, track_names=None, header_only=False, skip_records=None, exclude=None, userid=None, maxlen=None):
         """Constructor of the VitalFile class.
         :param ipath: file path, list of file path, or caseid of open dataset.
@@ -350,6 +352,7 @@ class VitalFile:
         self.dtend = 0
         self.dgmt = 0
         self.order = []  # optional: order of dtname
+        self.ipath = ipath
 
         if skip_records is not None: 
             header_only = skip_records
@@ -444,6 +447,9 @@ class VitalFile:
                 raise NotImplementedError
             self.load_parquet(ipath, track_names, exclude)
 
+
+    def __repr__(self):
+        return f'VitalFile(\'{self.ipath}\', \'{self.track_names}\', \'{self.header_only}\')'
 
     def get_samples(self, track_names, interval, return_datetime=False, return_timestamp=False):
         """Get track samples.
@@ -945,13 +951,17 @@ class VitalFile:
             return False
         if not f.write(pack_dw(3)):  # version
             return False
-        if not f.write(pack_w(10)):  # header len
+        if not f.write(pack_w(26)):  # header len
             return False
         if not f.write(pack_s(self.dgmt)):  # dgmt = ut - localtime
             return False
         if not f.write(pack_dw(0)):  # instance id
             return False
         if not f.write(pack_dw(0)):  # program version
+            return False
+        if not f.write(pack_d(self.dtstart)):  # dtstart
+            return False
+        if not f.write(pack_d(self.dtend)):  # dtend
             return False
 
         # save devinfos
@@ -969,30 +979,43 @@ class VitalFile:
             if not f.write(pack_b(9) + pack_dw(len(ddata)) + ddata):
                 return False
 
-        # save trks
+        # save trkinfo
         tid = 0
         dtname_tids = {}
         for dtname, trk in self.trks.items():
-            #stime = time.time()
-
             # issue tid
             tid += 1
             dtname_tids[dtname] = tid
 
-            # find device id
+            # find did from dname
             dname = trk.dname
             did = 0
             if dname in dname_dids:
                 did = dname_dids[dname]
 
+            # calculate the length of recs
+            reclen = 0
+            for rec in trk.recs:
+                reclen += 17  # 1 (packet type) + 4 (rec len) + 2 (infolen) + 8 (dt) + 2 (tid)
+                if trk.type == 1:  # wav
+                    fmtcode, fmtlen = FMT_TYPE_LEN[trk.fmt]
+                    reclen += 4 + fmtlen * len(rec['val'])
+                elif trk.type == 2:  # num
+                    fmtcode, fmtlen = FMT_TYPE_LEN[trk.fmt]
+                    reclen += fmtlen
+                elif trk.type == 5:  # str
+                    reclen += 8 + len(rec['val'].encode('utf-8'))
+            
             ti = pack_w(tid) + pack_b(trk.type) + pack_b(trk.fmt) + pack_str(trk.name) \
                 + pack_str(trk.unit) + pack_f(trk.mindisp) + pack_f(trk.maxdisp) \
                 + pack_dw(trk.col) + pack_f(trk.srate) + pack_d(trk.gain) + pack_d(trk.offset) \
-                + pack_b(trk.montype) + pack_dw(did)
+                + pack_b(trk.montype) + pack_dw(did) + pack_dw(reclen)
             if not f.write(pack_b(0) + pack_dw(len(ti)) + ti):
                 return False
-            
-            # save recs
+
+        # save recs
+        for dtname, trk in self.trks.items():
+            tid = dtname_tids[dtname]
             for rec in trk.recs:
                 rdata = pack_w(10) + pack_d(rec['dt']) + pack_w(tid)  # infolen + dt + tid (= 12 bytes)
                 if trk.type == 1:  # wav
@@ -1002,12 +1025,8 @@ class VitalFile:
                     rdata += pack(fmtcode, rec['val'])
                 elif trk.type == 5:  # str
                     rdata += pack_dw(0) + pack_str(rec['val'])
-
                 if not f.write(pack_b(1) + pack_dw(len(rdata)) + rdata):
                     return False
-
-            #print(f'{dtname } @ {time.time()-stime}')
-
 
         # save trk order
         if len(self.order) > 0:
@@ -1392,39 +1411,30 @@ class VitalFile:
             return False
         headerlen = unpack_w(buf, 0)[0]
         header = f.read(headerlen)  # read header
-
         self.dgmt = unpack_s(header, 0)[0]  # dgmt = ut - localtime
+        if headerlen >= 26:
+            self.dtstart = unpack_d(header, 10)[0]
+            self.dtend = unpack_d(header, 18)[0]
+
+        # how many bytes to skip the records in this track
+        tid_reclens = {}  # tid -> reclen
 
         # parse body
         try:
             tid_dtnames = {}  # tid -> dtname for this file
             did_dnames = {}  # did -> dname for this file
             while True:
-                try:
-                    buf = f.read(5)
-                except:
-                    break
+                buf = f.read(5)
                 if buf == b'':
                     break
                 pos = 0
 
-                try:
-                    packet_type = unpack_b(buf, pos)[0]; pos += 1
-                except:
-                    break
-
-                try:
-                    packet_len = unpack_dw(buf, pos)[0]; pos += 4
-                except:
-                    break
-
+                packet_type = unpack_b(buf, pos)[0]; pos += 1
+                packet_len = unpack_dw(buf, pos)[0]; pos += 4
                 if packet_len > 1000000: # maximum packet size should be < 1MB
                     break
                 
-                try:
-                    buf = f.read(packet_len)
-                except:
-                    break
+                buf = f.read(packet_len)
                 if buf == b'':
                     break
                 pos = 0
@@ -1478,6 +1488,9 @@ class VitalFile:
                     if packet_len > pos:
                         did = unpack_dw(buf, pos)[0]
                         pos += 4
+                    if packet_len > pos:
+                        reclen = unpack_dw(buf, pos)[0]
+                        pos += 4
 
                     dname = ''
                     if did and did in did_dnames:
@@ -1504,6 +1517,9 @@ class VitalFile:
                                 if dtname.endswith(sel_dtname) or (dname + '/*' == sel_dtname):
                                     matched = False
                                     break
+                    
+                    tid_reclens[tid] = reclen
+
                     if not matched:
                         continue
                     
@@ -1519,6 +1535,9 @@ class VitalFile:
                     pos = 2 + infolen
 
                     if tid not in tid_dtnames:  # tid not to read
+                        if tid in tid_reclens:
+                            if tid_reclens[tid] > 5 + packet_len:
+                                f.seek(tid_reclens[tid] - (5 + packet_len), 1)
                         continue
                     dtname = tid_dtnames[tid]
 
@@ -1582,7 +1601,7 @@ class VitalFile:
                                 self.order.append(tid_dtnames[tid])
                         pos += cnt * 2
 
-        except EOFError:
+        except:
             pass
 
         # sorting tracks

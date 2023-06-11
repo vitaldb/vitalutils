@@ -1,8 +1,22 @@
+import os
+import time
+import vitaldb
 import pandas as pd
-import os
-import vitaldb
-import vitaldb
-import os
+
+dtstart = time.time()
+vf = vitaldb.VitalFile('new.vital', 'SNUADC/ECG_II,Solar8000/HR,FIO2')
+print(f'({time.time() - dtstart:.3f} sec)', flush=True, end='...')
+vf.to_vital('new_saved.vital')
+print(len(vf.trks['SNUADC/ECG_II'].recs))
+quit()
+
+vf = vitaldb.VitalFile('https://api.vitaldb.net/0001.vital')
+dtstart = time.time()
+print('saving', flush=True, end='...')
+vf.to_vital('new.vital')
+print('({:.3f} sec)'.format(time.time() - dtstart), flush=True, end='...')
+print('done')
+quit()
 
 OUTPUT_DIR = 'download'
 if not os.path.exists(OUTPUT_DIR):
@@ -109,7 +123,6 @@ vals = vitaldb.vital_recs("https://vitaldb.net/samples/00001.vital", 'ART_MBP', 
 print(vals)
 
 import pandas as pd
-import time
 
 ipath = '1.vital'
 opath = '1.parquet'

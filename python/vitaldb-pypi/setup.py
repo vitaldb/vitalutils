@@ -1,7 +1,7 @@
 import setuptools
 setuptools.setup(
     name="vitaldb",
-    version="1.3.3",
+    version="1.4.0",
     author="Hyung-Chul Lee",
     author_email="vital@snu.ac.kr",
     description="VitalDB Python Libray",
