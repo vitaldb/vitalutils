@@ -2,6 +2,8 @@ import os
 import shutil
 
 PROJECT_NAME = 'vitaldb'
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+print(os.getcwd())
 
 f = open("setup.py", "rt")
 ver = ''

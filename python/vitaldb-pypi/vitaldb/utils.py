@@ -1458,8 +1458,9 @@ class VitalFile:
                     tid = unpack_w(buf, pos)[0]; pos += 2
                     trktype = unpack_b(buf, pos)[0]; pos += 1
                     fmt = unpack_b(buf, pos)[0]; pos += 1
-                    if fmt not in FMT_TYPE_LEN: 
-                        continue
+                    if trktype == 1 or trktype == 2:
+                        if fmt not in FMT_TYPE_LEN: 
+                            continue
                     tname, pos = unpack_str(buf, pos)
 
                     if packet_len > pos:
@@ -1488,6 +1489,7 @@ class VitalFile:
                     if packet_len > pos:
                         did = unpack_dw(buf, pos)[0]
                         pos += 4
+                    reclen = 0
                     if packet_len > pos:
                         reclen = unpack_dw(buf, pos)[0]
                         pos += 4
@@ -1601,8 +1603,11 @@ class VitalFile:
                                 self.order.append(tid_dtnames[tid])
                         pos += cnt * 2
 
-        except:
+        except EOFError:
             pass
+        except Exception as e:
+            print(f'Error in reading file: {e}')
+            return False
 
         # sorting tracks
         # for trk in self.trks.values():

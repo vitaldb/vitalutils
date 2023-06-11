@@ -4,7 +4,8 @@ import vitaldb
 import pandas as pd
 
 dtstart = time.time()
-vf = vitaldb.VitalFile('new.vital', 'SNUADC/ECG_II,Solar8000/HR,FIO2')
+vf = vitaldb.VitalFile('https://api.vitaldb.net/0001.vital')
+#vf = vitaldb.VitalFile('https://api.vitaldb.net/0001.vital', 'SNUADC/ECG_II,Solar8000/HR,FIO2')
 print(f'({time.time() - dtstart:.3f} sec)', flush=True, end='...')
 vf.to_vital('new_saved.vital')
 print(len(vf.trks['SNUADC/ECG_II'].recs))
