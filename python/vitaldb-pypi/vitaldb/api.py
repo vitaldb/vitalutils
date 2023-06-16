@@ -123,11 +123,15 @@ def download(filename, localpath=None):
 
 
 def receive(vrcode, bedname=None, dtstart=None, dtend=None):
+    global access_token
+    if access_token is None:
+        raise Exception('Please login first')
+
     if isinstance(dtstart, datetime.datetime):
         dtstart = dtstart.timestamp()
     if isinstance(dtend, datetime.datetime):
         dtend = dtend.timestamp()
-    pars = {'vrcode':vrcode}
+    pars = {"access_token": access_token, 'vrcode':vrcode}
     if bedname:
         pars['bedname'] = bedname
     if dtstart:
@@ -138,7 +142,7 @@ def receive(vrcode, bedname=None, dtstart=None, dtend=None):
     res = requests.get(API_URL + "receive", params=pars)
     if 200 != res.status_code:
         raise Exception('API Server Error: ' + res.content.decode('utf-8'))
-    return json.loads(res.content)
+    return json.loads(gzip.decompress(res.content))
 
 
 if __name__ == '__main__':
