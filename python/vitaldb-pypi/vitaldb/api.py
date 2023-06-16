@@ -122,7 +122,7 @@ def download(filename, localpath=None):
     return True
 
 
-def receive(vrcode, bedname=None, dtstart=None, dtend=None):
+def receive(vrcode=None, bedname=None, dtstart=None, dtend=None):
     global access_token
     if access_token is None:
         raise Exception('Please login first')
