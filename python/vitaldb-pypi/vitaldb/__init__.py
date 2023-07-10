@@ -3,6 +3,7 @@ api = _api
 
 from .api import login
 from .api import filelist
+from .api import tracklist
 from .api import download
 from .api import receive
 from .utils import vital_recs
