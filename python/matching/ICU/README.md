@@ -1,5 +1,6 @@
 # ICU 병상 이동 데이터 전처리 및 ICU vital file 매칭
 
+
 ## 목차
 1. [준비할 데이터](#준비할-데이터)
 2. [전처리 과정](#전처리-과정)
@@ -9,6 +10,7 @@
     2-2. [bedmove table 정제](#3-bedmove-테이블을-admission-테이블-기준으로-정제)
 
 3. [매칭 알고리즘 원칙](#매칭-알고리즘-원칙)
+
 
 > ## 준비할 데이터
 * ### admission table 
@@ -32,7 +34,6 @@
     |bedin	| 병상에 들어온 시간
     |bedout | 병상에서 나간 시간
 
-</code></pre>
 
 * ### filelist table
     - 취득방법: Vitalserver API
@@ -64,6 +65,7 @@
     </code></pre>
 
 
+
 > ## 전처리 과정
 
 1. adt(filename 별 저장된 환자번호)취득이 불가능한 경우 중환자실 입실 후 병상 이동 정보를 이용합니다.
@@ -73,6 +75,7 @@
 >> #### (1) admission table - icuout 결측값 대체
 
 - 원인: 데이터 추출 기간 내에 퇴실하지 않은 환자, 퇴원, 사망, 또는 EMR 오류로 icuout 결측값이 발생합니다.
+
 - 과정
 1) icuin 기준으로 오름차순 정렬한다.
 2) 동일한 hid에서 icuout 결측값은 다음 icuin으로 대체한다. 다음 icuin이 존재하지 않으면 데이터 추출 기간의 마지막 날짜로 대체한다.
@@ -133,7 +136,8 @@ dfbm['bedout'] = dfbm.apply(FillBmNull, axis=1)
 
 >> #### (3) bedmove 테이블을 admission 테이블 기준으로 정제
 
-- bedmove 테이블은 병상이동을 한 당시에 기록되지 않았기 때문에 시간에 오류가 있을 수 있습니다. 따라서 admission table의 입퇴실 기록을 기준으로 bedin, bedout을 정제합니다.
+- bedmove 테이블은 병상이동을 한 당시에 기록되지 않았기 때문에 시간에 오류가 있을 수 있습니다. 
+  따라서 admission table의 입퇴실 기록을 기준으로 bedin, bedout을 정제합니다.
 
 * **bedmove, admission table 병합**
 
@@ -216,10 +220,11 @@ def CheckNullBedOut(x):
 df_merge.sort_values(by='bedin',inplace=True)
 df_merge = df_merge.groupby(['icuroom','bed'],as_index=False).agg({'hid':list, 'icuin':list,'icuout':list,'bedin':list, 'bedout':list, 'icuout_null':list, 'bedout_null':list})
 df_merge['bedout'] = df_merge.apply(CheckNullBedOut, axis=1)
-
 </code></pre>
 
+
 > ## 매칭 알고리즘 원칙
+
 
 1) 길이가 6분 이내의 파일은 삭제한다.
 2) valid column을 생성하고, trks 파일의 trks에 HR 과 SPO2가 모두 존재하지 않으면 0을, 둘 중 하나라도 존재하면 1을 할당한다.
