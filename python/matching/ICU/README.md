@@ -222,6 +222,8 @@ df_merge = df_merge.groupby(['icuroom','bed'],as_index=False).agg({'hid':list, '
 df_merge['bedout'] = df_merge.apply(CheckNullBedOut, axis=1)
 </code></pre>
 
+-----
+
 
 > ## 매칭 알고리즘 원칙
 
