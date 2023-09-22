@@ -1,232 +1,131 @@
 # ICU 병상 이동 데이터 전처리 및 ICU vital file 매칭
 
-
 ## 목차
 1. [준비할 데이터](#준비할-데이터)
 2. [전처리 과정](#전처리-과정)
-
-    2-1. [결측값 대체](#1-admission-table---icuout-결측값-대체)
-
-    2-2. [bedmove table 정제](#3-bedmove-테이블을-admission-테이블-기준으로-정제)
-
 3. [매칭 알고리즘 원칙](#매칭-알고리즘-원칙)
 
+## 1. 준비할 데이터
+### admission table 
+- 중환자실 입퇴실 정보를 포함합니다.
 
-> ## 준비할 데이터
-* ### admission table 
-    - 중환자실 입퇴실 정보
+|column|description|
+|--------|-----|
+|hid|환자번호|
+|icuroom | ICU type|
+|icuin   | 중환자실 입실시간|
+|icuout  | 중환자실 퇴실시간|
 
-    |column|description|
-    |--------|-----|
-    |hid|환자번호|
-    |icuroom | ICU type|
-    |icuin   | 중환자실 입실시간|
-    |icuout  | 중환자실 퇴실시간|
+### bedmove table 
+- ICU 입실 후 병상 이동 시간을 포함합니다.
 
-* ### bedmove table 
-    - ICU 입실 후 병상 이동 시간
-    
-    |column|description|
-    |--------|-----|
-    |icuroom| ICU type 
-    |bed	| 병상번호
-    |hid 	| 환자번호
-    |bedin	| 병상에 들어온 시간
-    |bedout | 병상에서 나간 시간
+|column|description|
+|--------|-----|
+|icuroom| ICU type 
+|bed	| 병상번호
+|hid 	| 환자번호
+|bedin	| 병상에 들어온 시간
+|bedout | 병상에서 나간 시간|
 
+### filelist table
+- Vitalserver API를 통해 취득됩니다.
 
-* ### filelist table
-    - 취득방법: Vitalserver API
+|column|description|
+|--------|-----|
+|filename| 파일 이름 (ex) bedname_yymmdd_hhmmss.vital
+|dtstart| 녹화 시작 시간
+|dtend 	| 녹화 종료 시간
+|adt1	| filename 별 저장된 매칭id1 (Intellivue, NihonKohden 환자 모니터에서만 취득 가능)
+|adt2 | filename 별 저장된 매칭id2 (한 파일에 최대 2명까지 기록됨)
 
-    |column|description|
-    |--------|-----|
-    |filename| 파일 이름 (ex) bedname_yymmdd_hhmmss.vital
-    |dtstart| 녹화 시작 시간
-    |dtend 	| 녹화 종료 시간
-    |adt1	| filename 별 저장된 매칭id1 (Intellivue, NihonKohden 환자 모니터에서만 취득 가능)
-    |adt2 | filename 별 저장된 매칭id2 (한 파일에 최대 2명까지 기록됨)
+### tracklist table
+- Vitalserver API를 통해 취득됩니다.
 
-* ### tracklist table
-    - 취득방법: Vitalserver API
+|column|description|
+|--------|-----|
+|filename| 파일 이름
+|dtstart| 녹화 시작 시간
+|dtend 	| 녹화 종료 시간
+|trks	| 트랙 리스트 (ex) [‘Intellivue/HR’,...]
 
-    |column|description|
-    |--------|-----|
-    |filename| 파일 이름
-    |dtstart| 녹화 시작 시간
-    |dtend 	| 녹화 종료 시간
-    |trks	| 트랙 리스트 (ex) [‘Intellivue/HR’,...]
+## 2. 전처리 과정
 
-
-    > Vital Server API를 통해 filelist, tracklist를 추출합니다.
-    <pre><code>
-    # 아래의 코드 실행 전에  pip install vitaldb 로 vitaldb library를 설치해주세요.
-    df_filelist = pd.DataFrame(vitaldb.api.filelist(bedname, dtstart, dtend, hid))
-    df_tracklist = pd.DataFrame(vitaldb.api.tracklist(bedname, dtstart, dtend))
-    </code></pre>
-
-
-
-> ## 전처리 과정
-
-1. adt(filename 별 저장된 환자번호)취득이 불가능한 경우 중환자실 입실 후 병상 이동 정보를 이용합니다.
+1. adt(filename 별 저장된 환자번호)취득이 불가능한 경우 중환자실 입퇴실 기록과 입실 후 병상 이동 기록을 이용합니다.
 2. Vital file과 환자 정보를 매칭하기 위해서는 중환자실 입실 후 병상 이동 정보에 대한 전처리 과정이 필요합니다.
 3. 전체 예시 코드를 보고 싶으시다면 01_refine_bedmoves.py 파일을 참고하세요.
 
->> #### (1) admission table - icuout 결측값 대체
+    ### class `PatientMovementRefinement` 
+    - ICU 환자의 이동 데이터를 정제하기 위한 목적으로 설계되었습니다. 이 클래스를 통해 병상 이동(`bedmove`) 및 입퇴실(`admission`) 데이터의 누락된 값, 잘못된 날짜 및 시간 데이터를 처리하고 정제할 수 있습니다.
 
-- 원인: 데이터 추출 기간 내에 퇴실하지 않은 환자, 퇴원, 사망, 또는 EMR 오류로 icuout 결측값이 발생합니다.
+    #### 속성
 
-- 과정
-1) icuin 기준으로 오름차순 정렬한다.
-2) 동일한 hid에서 icuout 결측값은 다음 icuin으로 대체한다. 다음 icuin이 존재하지 않으면 데이터 추출 기간의 마지막 날짜로 대체한다.
-3) icuout_null column을 생성하고 icuout이 결측값일 때 1, 결측값이 아닐 때 0으로 채운다.
+    - `start_date`: 정제할 데이터의 시작 날짜
+    - `end_date`: 정제할 데이터의 종료 날짜
+    - `dfbm`: `bedmove` 데이터프레임
+    - `dfadm`: `admission` 데이터프레임
 
-<pre><code>
-#line 58~74
-def FillAdmNull(x):
-    new=[]
+    #### 초기화 및 데이터 로딩
 
-    for i in range(len(x.icuout)):
-        if i == len(x.icuout)-1:
-            if str(x.icuout[i]) == 'NaT':
-                new.append(pd.to_datetime(end_date + ' 23:59:59'))
-            else:
-                new.append(x.icuout[i])
-        else:
-            if str(x.icuout[i]) == 'NaT' or x.icuout[i] > x.icuin[i+1]:
-                new.append(x.icuin[i+1])
-            else:
-                new.append(x.icuout[i])
-    return new
-
-dfadm.sort_values(by='icuin',inplace=True)
-dfadm = dfadm.groupby(['hid'],as_index=False).agg({'icuroom':list, 'icuin':list, 'icuout':list, 'icuout_null':list})
-dfadm['icuout'] = dfadm.apply(FillAdmNull, axis=1)
-
-</code></pre>
-
->> #### (2) bedmove table - bedout 결측값 대체
-
-1) bedin 기준으로 오름차순 정렬한다.
-2) 동일한 hid에서 bedout 결측값은 다음 bedin으로 대체한다. 다음 bedin이 존재하지 않으면 데이터 추출 기간의 마지막 날짜로 대체한다.
-3) bedout_null column을 생성하고 bedout이 결측값일 때 1, 결측값이 아닐 때 0으로 채운다.
-
-<pre><code>
-#line 40~55
-def FillBmNull(x):
-
-    new=[]
-    for i in range(len(x['bedout'])):
-        if i == len(x.bedout)-1:
-            if str(x.bedout[i]) == 'NaT':
-                new.append(pd.to_datetime(end_date + ' 23:59:59'))
-            else:
-                new.append(x.bedout[i])
-        elif str(x.bedout[i]) =='NaT':
-            new.append(x.bedin[i+1])
-        else:
-            new.append(x.bedout[i])
-    return new
-
-dfbm.sort_values(by='bedin',inplace=True)
-dfbm = dfbm.groupby(['hid'],as_index=False).agg({'icuroom':list,'bed':list,'bedin':list, 'bedout':list, 'bedout_null':list})
-dfbm['bedout'] = dfbm.apply(FillBmNull, axis=1)
-
-</code></pre>
-
->> #### (3) bedmove 테이블을 admission 테이블 기준으로 정제
-
-- bedmove 테이블은 병상이동을 한 당시에 기록되지 않았기 때문에 시간에 오류가 있을 수 있습니다. 
-  따라서 admission table의 입퇴실 기록을 기준으로 bedin, bedout을 정제합니다.
-
-* **bedmove, admission table 병합**
-
-1) hid와 icuroom이 같고, bedin을 기준으로 가장 가까운 시간을 값으로 하는 icuin을 찾아 두 테이블을 merge한다.
-2) hid와 icuroom이 같고, bedout을 기준으로 가장 가까운 시간을 값으로 하는 icuout을 찾아 두 테이블을 merge한다.
-3) 1-1, 1-2의 결과물을 concatenate한 후 중복을 제거한다.
-
-<pre><code>
-bed_in = pd.merge_asof(dfbm.sort_values('bedin'), dfadm.sort_values('icuin'), left_on='bedin', right_on='icuin', by=['hid' ,'icuroom'], direction="nearest")
-bed_out = pd.merge_asof(dfbm.sort_values('bedout'), dfadm.sort_values('icuout'), left_on='bedout', right_on='icuout', by=['hid' ,'icuroom'], direction="nearest")
-df_merge = pd.concat([bed_in, bed_out]).drop_duplicates()
-
-</code></pre>
-* **bedin 수정**
-4) bedin 기준으로 오름차순 정렬한다.
-5) 동일한 hid, icuroom, icuin, icuout에서 첫번째 bedin은 icuin으로 교체한다.
+    - **`__init__`**: 클래스 초기화 및 데이터 로딩 작업 수행
+    - **`create_directory`**: 지정된 날짜 기반의 디렉토리 생성
+    - **`load_data`**: `bedmove` 또는 `admission` 데이터 로딩
 
 
-<pre><code>
-#line 149~157
-def ChangeBedIn(x):
+    #### 결측치 처리
 
-    new_bedin = []
-    for i in range(len(x.bedin)):
-        if i==0:
-            new_bedin.append(x.icuin)
-        else:
-            new_bedin.append(x.bedin[i])
-    return new_bedin
+    - **`filler`**: 결측치 또는 잘못된 시간 데이터 처리
+    - **원인:** 데이터 추출 기간 내에 퇴실하지 않은 환자, 퇴원, 사망, 또는 EMR 오류로 인해 icuout 및 bedout의 결측값이나 잘못된 값이 발생한다.
+    - **과정:** 
+        1. 결측값이 있을 경우, 해당 환자의 다음 `icuin` 또는 `bedin` 시간으로 채운다.
+        2. 해당 환자의 `icuin` 또는 `bedin` 시간이 더 이상 없을 경우, 데이터 추출 기간의 마지막 날짜로 채운다.
 
-df_merge.sort_values(by='bedin',inplace=True)
-df_merge = df_merge.groupby(['icuroom','hid','icuin','icuout'],as_index=False).agg({'bed':list, 'bedin':list, 'bedout':list, 'icuout_null':list, 'bedout_null':list})
-df_merge['bedin'] = df_merge.apply(ChangeBedIn, axis=1)
+    #### 병상 이동 정제
 
+    - **`refine_bed_moves`**:
+    - **원인:** bedmove 테이블은 병상이동을 한 당시에 기록되지 않았기 때문에 bedin 및 bedout 의 잘못된 값이 발생한다.
+    - **과정:** 
+        1. `bedin` 및 `bedout`을 기준으로 가장 가까운 시간을 값으로 하는 `icuin` 및 `icuout`을 찾아 두 테이블을 merge한다. ( method: **`process_merged_data`** ) 
+        2. merge한 데이터에서 `bedin` 및 `bedout`을 `icuin` 및 `icuout`기준으로 수정한다.
 
-</code></pre>
+            1. 짧은 병상 이동 제거
+            - 함수: `_remove_short_bed_moves`
+            - 설명: ICU 입원 전에 발생하고 1시간 미만의 초기 병상 이동을 제거
 
-* **bedout 수정**
-6) 동일한 hid, icuroom, icuin, icuout에서 bedout이 다음 bedin 보다 크다면 bedout은 다음 bedin으로 교체한다.
-7) 동일한 hid, icuroom, icuin, icuout에서 마지막 bedout은 icuout_null=1이고 bedout_null=0일 때를 제외하고 icuout으로 교체한다.
+            2. bedin 시간 조정
+            - 함수: `_adjust_bed_in`
+            - 설명: 첫 번째 `bedin` 시간을 `icuin` 시간과 일치하도록 조정
 
-<pre><code>
-#line 160~174
-def ChangeBedOut(x):
+            3. bedout 시간 조정
+            - 함수: `_adjust_bed_out`
+            - 설명: 다음 `bedin` 시간과 일관성을 유지하도록 `bedout` 시간을 조정합니다. 마지막 `bedout` 시간은 `icuout` 시간과 일치하도록 조정
 
-    new_bedout = []
-    for i in range(len(x.bedout)):
-        if i == len(x.bedout) -1:
-            if (x.icuout_null[i] == 1.0) and (x.bedout_null[i] == 0.0):
-                new_bedout.append(x.bedout[i])
-            else:
-                new_bedout.append(x.icuout)
-        else:
-            if x.bedout[i] != x.bedin[i+1]:
-                new_bedout.append(x.bedin[i+1])
-            else:
-                new_bedout.append(x.bedout[i])
-    return new_bedout
-
-df_merge['bedout'] = df_merge.apply(ChangeBedOut, axis=1)
-
-</code></pre>
-
-* **결측값이었던 값 수정**
-8) bedin 기준으로 오름차순 정렬한다.
-9) 동일한 icuroom, bed에서 bedout_null = 1이거나 icuout_null = 1이고 bedout이 다음 bedin 보다 크거나 같다면 bedout은 다음 bedin으로 수정한다.
-
-<pre><code>
-#line 178~186
-def CheckNullBedOut(x):
-
-    new = []
-    for i in range(len(x.bedout)):
-        if i != len(x.bedout)-1 and x.bedin[i+1] <= x.bedout[i] and (x.bedout_null[i] == 1.0 or x.icuout_null[i] == 1.0):
-            new.append(x.bedin[i+1])
-        else:
-            new.append(x.bedout[i])
-    return new
-
-df_merge.sort_values(by='bedin',inplace=True)
-df_merge = df_merge.groupby(['icuroom','bed'],as_index=False).agg({'hid':list, 'icuin':list,'icuout':list,'bedin':list, 'bedout':list, 'icuout_null':list, 'bedout_null':list})
-df_merge['bedout'] = df_merge.apply(CheckNullBedOut, axis=1)
-</code></pre>
-
------
+            4. null bedout 시간 확인 및 조정
+            - 함수: `_check_null_bed_out`
+            - 설명: 결측치 처리에서 대체한 `bedout` 시간이 다음 `bedin` 시간과 충돌한다면,  `bedout` 시간을 수정
 
 
-> ## 매칭 알고리즘 원칙
+    #### 결과 저장
 
+    - **`refine_and_save_moves`**: 정제된 데이터를 CSV 파일로 저장
+
+    #### 실행방법
+
+    1. 필요한 라이브러리 및 패키지 설치
+    2. 원본 데이터 준비 (`bedmove`, `admission`)
+    3. 클래스를 사용하여 데이터 정제 및 결과 저장
+
+    ```python
+    # 예제 코드
+    refiner = PatientMovementRefinement('2020-01-01', '2023-07-31') # 추출시작날짜, 추출종료날짜
+    refiner.refine_data()
+    refiner.find_missing_bedmoves()
+    refiner.process_merged_data()
+    refined_df = refiner.refine_bed_moves(refiner.df_merge)
+    refiner.refine_and_save_moves(refined_df, "저장할 파일 경로")
+    ```
+
+
+## 매칭 알고리즘 원칙
 
 1) 길이가 6분 이내의 파일은 삭제한다.
 2) valid column을 생성하고, trks 파일의 trks에 HR 과 SPO2가 모두 존재하지 않으면 0을, 둘 중 하나라도 존재하면 1을 할당한다.
