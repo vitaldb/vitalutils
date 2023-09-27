@@ -125,20 +125,22 @@ class PatientMovementRefinement:
     def refine_bed_moves(self, df):
         print(f"[{datetime.now()}] Refining bedmoves...")
         
-        df.sort_values(by='bedin', inplace=True)
         
         # Group and apply 1)_remove_short_bed_moves method
+        df.sort_values(by='bedin', inplace=True)
         df_grouped = df.groupby(['icuroom', 'hid', 'icuin', 'icuout'], as_index=False).agg(list)
         df_grouped['bedin'] = df_grouped.apply(self._remove_short_bed_moves, axis=1)
         df_grouped = self._explode_rows(df_grouped, ['bed', 'bedin', 'bedout', 'bedout_null_check', 'icuout_null_check'])
 
         # Group and apply 2)/3)_adjust_bed_in/out method
+        df_grouped.sort_values(by='bedin', inplace=True)
         df_grouped = df_grouped.groupby(['icuroom', 'hid', 'icuin', 'icuout'], as_index=False).agg(list)
         df_grouped['bedin'] = df_grouped.apply(self._adjust_bed_in, axis=1)
         df_grouped['bedout'] = df_grouped.apply(self._adjust_bed_out, axis=1)
         df_grouped = self._explode_rows(df_grouped, ['bed', 'bedin', 'bedout', 'bedout_null_check', 'icuout_null_check'])
 
         # Group and apply 4)_check_null_bed_out method
+        df_grouped.sort_values(by='bedin', inplace=True)
         df_grouped = df_grouped.groupby(['icuroom', 'bed'], as_index=False).agg(list)
         df_grouped['bedout'] = df_grouped.apply(self._check_null_bed_out, axis=1)
         df_grouped = self._explode_rows(df_grouped, ['hid', 'icuin', 'icuout', 'bedin', 'bedout', 'bedout_null_check', 'icuout_null_check'])
@@ -201,7 +203,7 @@ class PatientMovementRefinement:
         filtered_df = exploded_df.loc[exploded_df['bedin'].notnull()]
         return filtered_df
 
-    def refine_and_save_moves(self, df, moves_filename):
+    def refine_and_save_moves(self, df):
         """Refine the icuroom names, generate location ID, and save the refined data to a CSV file."""
         # Replace icuroom names
         replacements = {'PEICU':'PICU', 'RICU':'CPICU', 'SICU':'SICU1', 'DICU1':'DICU'}
@@ -215,15 +217,18 @@ class PatientMovementRefinement:
         # Filter the necessary columns
         df = df[['hid', 'icuroom', 'location_id', 'bedin', 'bedout']]
         # Save the dataframe to a CSV file
-        df.to_csv(moves_filename, index=False, encoding='utf-8-sig')
-        print(f"[{datetime.now()}] Data refinement and saving to {moves_filename} completed!")
+        df.to_csv(f"{self.moves_dir}/moves_{self.period_str}.csv", index=False, encoding='utf-8-sig')
+        print(f"[{datetime.now()}] Data refinement and saving completed!")
+        self.refined_data = df
+        return self.refined_data
 
 # Usage
 if __name__ == "__main__":
-    # Create a refiner instance, refine the data, and save the refined data to a CSV file.
+    #Create a refiner instance, refine the data, and save the refined data to a CSV file.
     refiner = PatientMovementRefinement('2020-01-01', '2023-07-31')
     refiner.refine_data()
     refiner.find_missing_bedmoves()
     refiner.process_merged_data()
     refined_df = refiner.refine_bed_moves(refiner.df_merge)
-    refiner.refine_and_save_moves(refined_df, f"{refiner.moves_dir}/moves_{refiner.period_str}.csv")
+    refiner.refine_and_save_moves(refined_df)
+
