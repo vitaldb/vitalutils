@@ -440,6 +440,8 @@ class VitalFile:
 
         if ext == '.vital':
             self.load_vital(ipath, track_names, header_only, exclude, maxlen)
+        elif ext == '.csv':
+            self.load_csv(ipath, track_names, exclude)
         elif ext == '.hea':
             self.load_wfdb(ipath, track_names, header_only, exclude)
         elif ext == '.parquet':
@@ -1384,6 +1386,76 @@ class VitalFile:
                         
                     self.dtend = float(df['time'].max())
 
+    def load_csv(self, ipath, track_names=None, exclude=None, interval=None):
+        # Read csv to dataframe
+        df = pd.read_csv(ipath, low_memory=False)
+        
+        # Read dtstart and dtend if the input file includes Time column
+        if 'Time' in df:
+            # Convert datetime to int64 format if necessary
+            if isinstance(df.dtypes['Time'], datetime.datetime):
+                df['Time'] = df['Time'].astype('int64') // 10 ** 9
+            # Set dtstart and dtend based on Time column
+            self.dtstart = df['Time'].min()
+            self.dtend = df['Time'].max()
+        else:
+            # Handle case when Time column is not present
+            if interval is None:
+                raise ValueError('Please input interval or include Time column (datetime or unix timestamp) in the csv file.')
+            else:
+                # Create Time column based on interval and set dtend
+                df['Time'] = df.index * interval
+                self.dtend = len(df.index) * interval
+
+        # Convert 'Time' column to integer and group dataframe by 'Time(int)'
+        df['Time(int)'] = df['Time'].astype('int')
+        df_by_sec = df.groupby('Time(int)').agg(lambda x: list(x))
+        srate = df_by_sec.iloc[:, 0].map(len).max()
+        
+        # Get list of column names
+        track_names = df.columns.to_list()
+        for dtname in track_names:
+            # Skip 'Time' and 'Time(int)' columns
+            if dtname in ['Time', 'Time(int)']:
+                continue
+            # Skip columns not in track_names list or excluded by exclude list
+            if track_names and dtname not in track_names:
+                continue
+            if exclude and dtname in exclude:
+                continue
+
+            # Split column name into device and track name
+            dname, tname = dtname.split('/') if '/' in dtname else ('', dtname)
+            if dname not in self.devs:
+                # Create device object if it doesn't exist
+                self.devs[dname] = Device(dname)
+            
+            # Get list of non-NaN indices
+            nnan_index_list = df[~df[dtname].isnull()].index.tolist()
+            real_srate = (len(nnan_index_list) / len(df.index)) * srate
+            
+            if real_srate > 5:
+                # If real sampling rate is greater than 5, treat as TYPE_WAV
+                ntype = TYPE_WAV
+                # Create records with non-zero values
+                recs = [{'dt': dt[0], 'val': np.array(vals, dtype=np.float32)}
+                        for dt, vals in zip(df_by_sec['Time'], df_by_sec[dtname])]
+                # Remove records with all zero values
+                recs = [x for x in recs if np.count_nonzero(x['val']) > 0]
+                # Create track object and add to self.trks dictionary
+                self.trks[dtname] = Track(tname, ntype, srate=srate, dname=dname, recs=recs)
+            else:
+                # Determine data type (TYPE_STR or TYPE_NUM) based on the first non-NaN value
+                if isinstance(df[dtname][nnan_index_list[0]], str):
+                    ntype = TYPE_STR
+                else:
+                    ntype = TYPE_NUM
+                # Create records with non-NaN values
+                recs = [{'dt': df['Time'][index], 'val': df[dtname][index]} for index in nnan_index_list]
+                # Create track object and add to self.trks dictionary
+                self.trks[dtname] = Track(tname, ntype, srate=0, dname=dname, recs=recs)
+
+
     # track_names: list of dtname to read. If track_names is None, all tracks will be loaded
     # header_only: read track names only
     # exclude: track names to exclude
@@ -1730,7 +1802,11 @@ def list_wfdb(dbname):
 
 
 if __name__ == '__main__':
-    VitalFile('1.vital')
+    a = VitalFile('101_231023_074744.vital')
+    print(a.trks['Intellivue/PLETH'].recs[0])
+    b = VitalFile('101_231023_074744.csv')
+    print(b.trks['Intellivue/PLETH'].recs[0])
+    b.to_vital('test.vital')
     quit()
     srate = 500  # sampling rate for ecg
 
