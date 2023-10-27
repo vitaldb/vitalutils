@@ -9,6 +9,10 @@ from .api import receive
 from .utils import vital_recs
 from .utils import vital_trks
 from .utils import VitalFile
+from .utils import read_csv
+from .utils import read_vital
+from .utils import read_wfdb
+from .utils import read_parquet
 from .dataset import load_case
 from .dataset import find_cases
 
