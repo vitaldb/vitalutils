@@ -3,6 +3,12 @@ import time
 import vitaldb
 import pandas as pd
 
+vf = vitaldb.read_csv('test.csv', interval=1/100)
+vf.to_vital('test.vital')
+quit()
+vf = vitaldb.read_vital('101_231023_074744.vital')
+vf.to_csv('test.csv', track_names=vf.get_track_names(), interval=1/100)
+quit()
 dtstart = time.time()
 vf = vitaldb.VitalFile('https://api.vitaldb.net/0001.vital')
 #vf = vitaldb.VitalFile('https://api.vitaldb.net/0001.vital', 'SNUADC/ECG_II,Solar8000/HR,FIO2')
