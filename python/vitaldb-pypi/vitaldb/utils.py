@@ -339,7 +339,7 @@ class VitalFile:
     :param double dtend: flie end time
     :param float dgmt: dgmt = ut - localtime in minutes. For KST, it is -540.
     """
-    def __init__(self, ipath=None, track_names=None, header_only=False, skip_records=None, exclude=None, userid=None, maxlen=None):
+    def __init__(self, ipath=None, track_names=None, header_only=False, skip_records=None, exclude=None, userid=None, maxlen=None, interval=None):
         """Constructor of the VitalFile class.
         :param ipath: file path, list of file path, or caseid of open dataset.
         :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
@@ -441,7 +441,7 @@ class VitalFile:
         if ext == '.vital':
             self.load_vital(ipath, track_names, header_only, exclude, maxlen)
         elif ext == '.csv':
-            self.load_csv(ipath, track_names, exclude)
+            self.load_csv(ipath, track_names, exclude, interval)
         elif ext == '.hea':
             self.load_wfdb(ipath, track_names, header_only, exclude)
         elif ext == '.parquet':
@@ -1451,7 +1451,7 @@ class VitalFile:
                 else:
                     ntype = TYPE_NUM
                 # Create records with non-NaN values
-                recs = [{'dt': df['Time'][index], 'val': df[dtname][index]} for index in nnan_index_list]
+                recs = [{'dt': df['Time'][i], 'val': df[dtname][i]} for i in nnan_index_list]
                 # Create track object and add to self.trks dictionary
                 self.trks[dtname] = Track(tname, ntype, srate=0, dname=dname, recs=recs)
 
@@ -1802,11 +1802,21 @@ def list_wfdb(dbname):
 
 
 if __name__ == '__main__':
-    a = VitalFile('101_231023_074744.vital')
-    print(a.trks['Intellivue/PLETH'].recs[0])
-    b = VitalFile('101_231023_074744.csv')
-    print(b.trks['Intellivue/PLETH'].recs[0])
-    b.to_vital('test.vital')
+    # testing load csv with vitalfiles
+    files = os.listdir("./test_csv")
+    for f in files:
+        print(f)
+        try:
+            vf = VitalFile("./test_csv/" + f, interval=1/100)
+            vf.to_vital("./test_vital/" + f[:-4] + '.vital')
+        except Exception as e:
+            print(e)
+    quit()
+    files = os.listdir("./test")
+    for f in files:
+        print(f)
+        vf = VitalFile("./test/" + f)
+        vf.to_csv("./test_csv/" + f[:-6] + '.csv', track_names=vf.get_track_names(), interval=1/100)
     quit()
     srate = 500  # sampling rate for ecg
 
