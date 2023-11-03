@@ -799,7 +799,6 @@ class VitalFile:
 
             return ret
 
-
     def to_pandas(self, track_names, interval, return_datetime=False, return_timestamp=False):
         """
         :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
@@ -899,34 +898,76 @@ class VitalFile:
 
         # save wave tracks
         df = self.to_pandas(wav_track_names, interval, return_timestamp=True)
-        wav_vals = df.values[:, 1:]
+        p_signal = df.values[:, 1:]
 
         # estimate gain and offset
         for itrk in range(len(wav_track_names)):
+            # new version written by Benjamin Moody
             if wav_gains[itrk] == 0:
-                minval = np.nanmin(wav_vals[:,itrk])
-                maxval = np.nanmax(wav_vals[:,itrk])
-                if minval == maxval:
-                    newgain = 1
-                else:
-                    # Format 16: -32768 to +32767
-                    # mapping: minval to maxval -> -32767 to 32766
-                    newgain = float(32766 - (-32767)) / (maxval - minval)
-                # physionet: cnt = val * gain + baseline
-                # -32767 = minval * gain + baseline
-                newoffset = -32767 - int(round(minval * newgain))
-                # wav_cnts = wav_vals * newgain + newoffset
-                wav_gains[itrk] = newgain
-                wav_offsets[itrk] = newoffset
+                max_sample = 32767  # 2 ** (16 - 1) - 1
+                min_sample = -32767 # -(2 ** (16 - 1) - 1)
+                n_sample_values = max_sample - min_sample + 1
 
-        wfdb.wrsamp(os.path.basename(opath),
-            write_dir=os.path.dirname(opath),
-            fs=float(1/interval), units=wav_units, 
-            sig_name=wav_track_names, 
-            p_signal=wav_vals, 
-            adc_gain=wav_gains,
-            baseline=wav_offsets,
-            fmt=['16'] * len(wav_track_names))
+                values = np.unique(p_signal[:,itrk])
+                values = values[np.isfinite(values)]
+                track_gain = 1
+                track_offset = 0
+                for n in range(len(values), n_sample_values):
+                    gain = (values[-1] - values[0]) / (n - 1)
+                    offset = values[0] - (gain * min_sample)
+                    conv_values = np.round((values - offset) / gain)
+                    diff = np.abs(conv_values * gain + offset - values)
+                    if diff.max() < gain * 0.05:
+                        track_gain = gain
+                        track_offset = offset
+                        break
+                if track_gain == 1 and track_offset == 0:
+                    track_gain = (values[-1] - values[0]) / (n_sample_values - 1)
+                    track_offset = values[0] - (gain * min_sample)
+    
+                wav_gains[itrk] = 1 / track_gain
+                wav_offsets[itrk] = int(round(-track_offset / track_gain))
+
+        # old version written by Hyung-Chul Lee
+        #         minval = np.nanmin(p_signal[:,itrk])
+        #         maxval = np.nanmax(p_signal[:,itrk])
+        #         if minval == maxval:
+        #             newgain = 1
+        #         else:
+        #             # Format 16: -32768 to +32767
+        #             # mapping: minval to maxval -> -32767 to 32766
+        #             newgain = float(32766 - (-32767)) / (maxval - minval)
+        #         # physionet: cnt = val * gain + baseline
+        #         # -32767 = minval * gain + baseline
+        #         newoffset = -32767 - int(round(minval * newgain))
+        #         # wav_cnts = p_signal * newgain + newoffset
+        #         wav_gains[itrk] = newgain
+        #         wav_offsets[itrk] = newoffset
+
+        d_signal = p_signal * wav_gains + wav_offsets
+        d_signal = np.round(d_signal)
+        d_signal[np.isnan(p_signal)] = -32768
+        d_signal = d_signal.astype('int16')
+
+        if sum((np.array(wav_gains) == 1) & (np.array(wav_offsets) == 0)) > 0:  # some tracks have no gain and offset
+            wfdb.wrsamp(os.path.basename(opath),
+                write_dir=os.path.dirname(opath),
+                fs=float(1/interval), units=wav_units, 
+                sig_name=wav_track_names, 
+                p_signal=p_signal, # save as physical signal
+                adc_gain=wav_gains,
+                baseline=wav_offsets,
+                fmt=['16'] * len(wav_track_names))
+        else:
+            wfdb.wrsamp(os.path.basename(opath),
+                write_dir=os.path.dirname(opath),
+                fs=float(1/interval), units=wav_units, 
+                sig_name=wav_track_names, 
+                d_signal=d_signal, # save as digital signal
+                adc_gain=wav_gains,
+                baseline=wav_offsets,
+                fmt=['16'] * len(wav_track_names))
+        
 
         # df.rename(columns={'Time':'time'}, inplace=True)
         # df['time'] = (df['time'] - self.dtstart)
@@ -1855,6 +1896,21 @@ def read_parquet(ipath, track_names=None, exclude=None):
     return vf
 
 if __name__ == '__main__':
+    vf = VitalFile(1, ['ART', 'EEG1_WAV'])
+    vf.to_wfdb('1', interval=1/500)
+    vals = vf.to_numpy(['ART','EEG1_WAV'], 1/500)
+    print(vals[10000:-10000])
+    print(np.nanmin(vals, axis=0))
+    print(np.nanmax(vals, axis=0))
+    print(np.nanmax(vals, axis=0) - np.nanmin(vals, axis=0))
+    print()
+    vals, trks = wfdb.rdsamp('1')
+    print(vals[10000:-10000])
+    print(np.nanmin(vals, axis=0))
+    print(np.nanmax(vals, axis=0))
+    print(np.nanmax(vals, axis=0) - np.nanmin(vals, axis=0))
+    quit()
+
     # testing load csv with vitalfiles
     files = os.listdir("./test_csv")
     for f in files:
@@ -1970,21 +2026,6 @@ if __name__ == '__main__':
     # quit()
 
     VitalFile('https://vitaldb.net/1.vital').anonymize().to_vital('anonymized.vital')
-    quit()
-
-    vf = VitalFile('1.vital', ['ART', 'EEG1_WAV'])
-    vf.to_wfdb('1', interval=1/500)
-    vals = vf.to_numpy(['ART','EEG1_WAV'], 1/500)
-    print(vals[10000:-10000])
-    print(np.nanmin(vals, axis=0))
-    print(np.nanmax(vals, axis=0))
-    print(np.nanmax(vals, axis=0) - np.nanmin(vals, axis=0))
-    print()
-    vals, trks = wfdb.rdsamp('1')
-    print(vals[10000:-10000])
-    print(np.nanmin(vals, axis=0))
-    print(np.nanmax(vals, axis=0))
-    print(np.nanmax(vals, axis=0) - np.nanmin(vals, axis=0))
     quit()
 
     import pyvital.filters.ecg_hrv as f
