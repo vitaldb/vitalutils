@@ -451,7 +451,7 @@ class VitalFile:
 
 
     def __repr__(self):
-        return f'VitalFile(\'{self.ipath}\', \'{self.track_names}\', \'{self.header_only}\')'
+        return f'VitalFile(\'{self.ipath}\', \'{self.get_track_names()}\', \'{self.header_only}\')'
 
     def get_samples(self, track_names, interval, return_datetime=False, return_timestamp=False):
         """Get track samples.
