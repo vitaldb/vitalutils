@@ -451,7 +451,7 @@ class VitalFile:
 
 
     def __repr__(self):
-        return f'VitalFile(\'{self.ipath}\', \'{self.get_track_names()}\', \'{self.header_only}\')'
+        return f'VitalFile(\'{self.ipath}\', \'{self.get_track_names()}\')'
 
     def get_samples(self, track_names, interval, return_datetime=False, return_timestamp=False):
         """Get track samples.
@@ -1150,6 +1150,9 @@ class VitalFile:
         
         if not caseid:
             raise ValueError('caseid should be greater than zero')
+
+        if (track_names is None) and (exclude is None):
+            self.load_vital(f'https://api.vitaldb.net/{caseid}.vital')
             return
 
         if dftrks is None:  # for cache
