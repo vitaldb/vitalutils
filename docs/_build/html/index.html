@@ -77,16 +77,48 @@
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="matching/modules.html">ICU</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="matching/matching_hid_vitalfiles.html">matching_hid_vitalfiles module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="matching/refine_bedmoves.html">refine_bedmoves module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="matching/matching_hid_vitalfiles.html">matching_hid_vitalfiles module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="matching/matching_hid_vitalfiles.html#matching_hid_vitalfiles.VitalFileMatcher"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="matching/refine_bedmoves.html">refine_bedmoves module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="matching/refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="vitaldb/vitaldb.html">vitaldb package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="vitaldb/vitaldb.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb-api-module">vitaldb.api module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb-dataset-module">vitaldb.dataset module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb-utils-module">vitaldb.utils module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="vitaldb/vitaldb.html#module-contents">Module contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="vitaldb/vitaldb.html#module-vitaldb.api">vitaldb.api module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.api.download"><code class="docutils literal notranslate"><span class="pre">download()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.api.filelist"><code class="docutils literal notranslate"><span class="pre">filelist()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.api.login"><code class="docutils literal notranslate"><span class="pre">login()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.api.receive"><code class="docutils literal notranslate"><span class="pre">receive()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.api.setserver"><code class="docutils literal notranslate"><span class="pre">setserver()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.api.tracklist"><code class="docutils literal notranslate"><span class="pre">tracklist()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="vitaldb/vitaldb.html#module-vitaldb.dataset">vitaldb.dataset module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.dataset.find_cases"><code class="docutils literal notranslate"><span class="pre">find_cases()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.dataset.load_case"><code class="docutils literal notranslate"><span class="pre">load_case()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.dataset.load_trk"><code class="docutils literal notranslate"><span class="pre">load_trk()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.dataset.load_trks"><code class="docutils literal notranslate"><span class="pre">load_trks()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="vitaldb/vitaldb.html#module-vitaldb.utils">vitaldb.utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.utils.Device"><code class="docutils literal notranslate"><span class="pre">Device</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.utils.Track"><code class="docutils literal notranslate"><span class="pre">Track</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile"><code class="docutils literal notranslate"><span class="pre">VitalFile</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.utils.list_wfdb"><code class="docutils literal notranslate"><span class="pre">list_wfdb()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.utils.read_csv"><code class="docutils literal notranslate"><span class="pre">read_csv()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.utils.read_parquet"><code class="docutils literal notranslate"><span class="pre">read_parquet()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.utils.read_vital"><code class="docutils literal notranslate"><span class="pre">read_vital()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.utils.read_wfdb"><code class="docutils literal notranslate"><span class="pre">read_wfdb()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.utils.vital_recs"><code class="docutils literal notranslate"><span class="pre">vital_recs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="vitaldb/vitaldb.html#vitaldb.utils.vital_trks"><code class="docutils literal notranslate"><span class="pre">vital_trks()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="vitaldb/vitaldb.html#module-vitaldb">Module contents</a></li>
 </ul>
 </li>
 </ul>

@@ -47,7 +47,21 @@
               <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">ICU</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="matching_hid_vitalfiles.html">matching_hid_vitalfiles module</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">refine_bedmoves module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">refine_bedmoves module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#refine_bedmoves.PatientMovementRefinement"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#refine_bedmoves.PatientMovementRefinement.__init__"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#refine_bedmoves.PatientMovementRefinement.create_directory"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.create_directory()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#refine_bedmoves.PatientMovementRefinement.find_missing_bedmoves"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.find_missing_bedmoves()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#refine_bedmoves.PatientMovementRefinement.load_data"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.load_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#refine_bedmoves.PatientMovementRefinement.process_merged_data"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.process_merged_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#refine_bedmoves.PatientMovementRefinement.refine_and_save_moves"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.refine_and_save_moves()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#refine_bedmoves.PatientMovementRefinement.refine_bed_moves"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.refine_bed_moves()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#refine_bedmoves.PatientMovementRefinement.refine_data"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.refine_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#refine_bedmoves.PatientMovementRefinement.refine_dataframe"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.refine_dataframe()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../vitaldb/vitaldb.html">vitaldb package</a></li>
@@ -78,8 +92,63 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="refine-bedmoves-module">
-<h1>refine_bedmoves module<a class="headerlink" href="#refine-bedmoves-module" title="Link to this heading"></a></h1>
+  <section id="module-refine_bedmoves">
+<span id="refine-bedmoves-module"></span><h1>refine_bedmoves module<a class="headerlink" href="#module-refine_bedmoves" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="refine_bedmoves.PatientMovementRefinement">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">refine_bedmoves.</span></span><span class="sig-name descname"><span class="pre">PatientMovementRefinement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refine_bedmoves.PatientMovementRefinement" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="refine_bedmoves.PatientMovementRefinement.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refine_bedmoves.PatientMovementRefinement.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refine_bedmoves.PatientMovementRefinement.create_directory">
+<span class="sig-name descname"><span class="pre">create_directory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#refine_bedmoves.PatientMovementRefinement.create_directory" title="Link to this definition"></a></dt>
+<dd><p>Create directory based on start and end dates.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refine_bedmoves.PatientMovementRefinement.find_missing_bedmoves">
+<span class="sig-name descname"><span class="pre">find_missing_bedmoves</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#refine_bedmoves.PatientMovementRefinement.find_missing_bedmoves" title="Link to this definition"></a></dt>
+<dd><p>Find patients who are in the admission table but missing in the bedmove table.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refine_bedmoves.PatientMovementRefinement.load_data">
+<span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refine_bedmoves.PatientMovementRefinement.load_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refine_bedmoves.PatientMovementRefinement.process_merged_data">
+<span class="sig-name descname"><span class="pre">process_merged_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#refine_bedmoves.PatientMovementRefinement.process_merged_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refine_bedmoves.PatientMovementRefinement.refine_and_save_moves">
+<span class="sig-name descname"><span class="pre">refine_and_save_moves</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refine_bedmoves.PatientMovementRefinement.refine_and_save_moves" title="Link to this definition"></a></dt>
+<dd><p>Refine the icuroom names, generate location ID, and save the refined data to a CSV file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refine_bedmoves.PatientMovementRefinement.refine_bed_moves">
+<span class="sig-name descname"><span class="pre">refine_bed_moves</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refine_bedmoves.PatientMovementRefinement.refine_bed_moves" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refine_bedmoves.PatientMovementRefinement.refine_data">
+<span class="sig-name descname"><span class="pre">refine_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#refine_bedmoves.PatientMovementRefinement.refine_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refine_bedmoves.PatientMovementRefinement.refine_dataframe">
+<span class="sig-name descname"><span class="pre">refine_dataframe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_col</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_to_fill</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refine_bedmoves.PatientMovementRefinement.refine_dataframe" title="Link to this definition"></a></dt>
+<dd><p>Refine the dataframe by filling missing or invalid data.</p>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 

@@ -1,8 +1,7 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath(".."))
-
-extensions = ['myst_parser', 'sphinx.ext.autodoc']
+sys.path.insert(0, os.path.abspath("../python/vitaldb-pypi"))
+sys.path.insert(0, os.path.abspath("../python/matching/ICU"))
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -18,8 +17,7 @@ author = 'VitalLab'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
-
-extensions = ['myst_parser']
+extensions = ['myst_parser', 'sphinx.ext.autodoc']
 source_suffix = {
     '.rst': 'restructuredtext',
     '.txt': 'markdown',
@@ -34,3 +32,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+
+autodoc_default_options = {
+    'special-members': '__init__'
+}

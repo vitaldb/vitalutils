@@ -21,7 +21,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="prev" title="Welcome to VitalUtils!" href="../index.html" /> 
+    <link rel="prev" title="refine_bedmoves module" href="../matching/refine_bedmoves.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -44,12 +44,83 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../matching/modules.html">ICU</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">vitaldb package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#vitaldb-api-module">vitaldb.api module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#vitaldb-dataset-module">vitaldb.dataset module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#vitaldb-utils-module">vitaldb.utils module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-vitaldb.api">vitaldb.api module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.api.download"><code class="docutils literal notranslate"><span class="pre">download()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.api.filelist"><code class="docutils literal notranslate"><span class="pre">filelist()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.api.login"><code class="docutils literal notranslate"><span class="pre">login()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.api.receive"><code class="docutils literal notranslate"><span class="pre">receive()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.api.setserver"><code class="docutils literal notranslate"><span class="pre">setserver()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.api.tracklist"><code class="docutils literal notranslate"><span class="pre">tracklist()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-vitaldb.dataset">vitaldb.dataset module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.dataset.find_cases"><code class="docutils literal notranslate"><span class="pre">find_cases()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.dataset.load_case"><code class="docutils literal notranslate"><span class="pre">load_case()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.dataset.load_trk"><code class="docutils literal notranslate"><span class="pre">load_trk()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.dataset.load_trks"><code class="docutils literal notranslate"><span class="pre">load_trks()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-vitaldb.utils">vitaldb.utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.utils.Device"><code class="docutils literal notranslate"><span class="pre">Device</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.Device.__init__"><code class="docutils literal notranslate"><span class="pre">Device.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.utils.Track"><code class="docutils literal notranslate"><span class="pre">Track</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.Track.__init__"><code class="docutils literal notranslate"><span class="pre">Track.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.Track.find_color"><code class="docutils literal notranslate"><span class="pre">Track.find_color()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.utils.VitalFile"><code class="docutils literal notranslate"><span class="pre">VitalFile</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.__init__"><code class="docutils literal notranslate"><span class="pre">VitalFile.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.add_track"><code class="docutils literal notranslate"><span class="pre">VitalFile.add_track()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.anonymize"><code class="docutils literal notranslate"><span class="pre">VitalFile.anonymize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.crop"><code class="docutils literal notranslate"><span class="pre">VitalFile.crop()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.del_device"><code class="docutils literal notranslate"><span class="pre">VitalFile.del_device()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.del_devices"><code class="docutils literal notranslate"><span class="pre">VitalFile.del_devices()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.del_track"><code class="docutils literal notranslate"><span class="pre">VitalFile.del_track()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.del_tracks"><code class="docutils literal notranslate"><span class="pre">VitalFile.del_tracks()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.find_track"><code class="docutils literal notranslate"><span class="pre">VitalFile.find_track()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.get_dt"><code class="docutils literal notranslate"><span class="pre">VitalFile.get_dt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.get_samples"><code class="docutils literal notranslate"><span class="pre">VitalFile.get_samples()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.get_track_names"><code class="docutils literal notranslate"><span class="pre">VitalFile.get_track_names()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.get_track_samples"><code class="docutils literal notranslate"><span class="pre">VitalFile.get_track_samples()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.load_csv"><code class="docutils literal notranslate"><span class="pre">VitalFile.load_csv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.load_opendata"><code class="docutils literal notranslate"><span class="pre">VitalFile.load_opendata()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.load_parquet"><code class="docutils literal notranslate"><span class="pre">VitalFile.load_parquet()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.load_vital"><code class="docutils literal notranslate"><span class="pre">VitalFile.load_vital()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.load_wfdb"><code class="docutils literal notranslate"><span class="pre">VitalFile.load_wfdb()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.remove_device"><code class="docutils literal notranslate"><span class="pre">VitalFile.remove_device()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.remove_devices"><code class="docutils literal notranslate"><span class="pre">VitalFile.remove_devices()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.remove_track"><code class="docutils literal notranslate"><span class="pre">VitalFile.remove_track()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.remove_tracks"><code class="docutils literal notranslate"><span class="pre">VitalFile.remove_tracks()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.rename_device"><code class="docutils literal notranslate"><span class="pre">VitalFile.rename_device()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.rename_devices"><code class="docutils literal notranslate"><span class="pre">VitalFile.rename_devices()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.rename_track"><code class="docutils literal notranslate"><span class="pre">VitalFile.rename_track()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.rename_tracks"><code class="docutils literal notranslate"><span class="pre">VitalFile.rename_tracks()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.run_filter"><code class="docutils literal notranslate"><span class="pre">VitalFile.run_filter()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.save_vital"><code class="docutils literal notranslate"><span class="pre">VitalFile.save_vital()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.to_csv"><code class="docutils literal notranslate"><span class="pre">VitalFile.to_csv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.to_numpy"><code class="docutils literal notranslate"><span class="pre">VitalFile.to_numpy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.to_pandas"><code class="docutils literal notranslate"><span class="pre">VitalFile.to_pandas()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.to_parquet"><code class="docutils literal notranslate"><span class="pre">VitalFile.to_parquet()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.to_vital"><code class="docutils literal notranslate"><span class="pre">VitalFile.to_vital()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.to_wav"><code class="docutils literal notranslate"><span class="pre">VitalFile.to_wav()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vitaldb.utils.VitalFile.to_wfdb"><code class="docutils literal notranslate"><span class="pre">VitalFile.to_wfdb()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.utils.list_wfdb"><code class="docutils literal notranslate"><span class="pre">list_wfdb()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.utils.read_csv"><code class="docutils literal notranslate"><span class="pre">read_csv()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.utils.read_parquet"><code class="docutils literal notranslate"><span class="pre">read_parquet()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.utils.read_vital"><code class="docutils literal notranslate"><span class="pre">read_vital()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.utils.read_wfdb"><code class="docutils literal notranslate"><span class="pre">read_wfdb()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.utils.vital_recs"><code class="docutils literal notranslate"><span class="pre">vital_recs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.utils.vital_trks"><code class="docutils literal notranslate"><span class="pre">vital_trks()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-vitaldb">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -83,17 +154,401 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="vitaldb-api-module">
-<h2>vitaldb.api module<a class="headerlink" href="#vitaldb-api-module" title="Link to this heading"></a></h2>
+<section id="module-vitaldb.api">
+<span id="vitaldb-api-module"></span><h2>vitaldb.api module<a class="headerlink" href="#module-vitaldb.api" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.api.download">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.api.</span></span><span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">localpath</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.api.download" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.api.filelist">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.api.</span></span><span class="sig-name descname"><span class="pre">filelist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bedname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtstart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">notimestamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unixtimestamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.api.filelist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.api.login">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.api.</span></span><span class="sig-name descname"><span class="pre">login</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.api.login" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.api.receive">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.api.</span></span><span class="sig-name descname"><span class="pre">receive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vrcode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bedname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtstart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.api.receive" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.api.setserver">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.api.</span></span><span class="sig-name descname"><span class="pre">setserver</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.api.setserver" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.api.tracklist">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.api.</span></span><span class="sig-name descname"><span class="pre">tracklist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bedname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtstart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.api.tracklist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </section>
-<section id="vitaldb-dataset-module">
-<h2>vitaldb.dataset module<a class="headerlink" href="#vitaldb-dataset-module" title="Link to this heading"></a></h2>
+<section id="module-vitaldb.dataset">
+<span id="vitaldb-dataset-module"></span><h2>vitaldb.dataset module<a class="headerlink" href="#module-vitaldb.dataset" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.dataset.find_cases">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.dataset.</span></span><span class="sig-name descname"><span class="pre">find_cases</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">track_names</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.dataset.find_cases" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.dataset.load_case">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.dataset.</span></span><span class="sig-name descname"><span class="pre">load_case</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">caseid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.dataset.load_case" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.dataset.load_trk">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.dataset.</span></span><span class="sig-name descname"><span class="pre">load_trk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.dataset.load_trk" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.dataset.load_trks">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.dataset.</span></span><span class="sig-name descname"><span class="pre">load_trks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.dataset.load_trks" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </section>
-<section id="vitaldb-utils-module">
-<h2>vitaldb.utils module<a class="headerlink" href="#vitaldb-utils-module" title="Link to this heading"></a></h2>
+<section id="module-vitaldb.utils">
+<span id="vitaldb-utils-module"></span><h2>vitaldb.utils module<a class="headerlink" href="#module-vitaldb.utils" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="vitaldb.utils.Device">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">vitaldb.utils.</span></span><span class="sig-name descname"><span class="pre">Device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">typename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.Device" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.Device.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">typename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.Device.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="vitaldb.utils.Track">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">vitaldb.utils.</span></span><span class="sig-name descname"><span class="pre">Track</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">montype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fmt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">srate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mindisp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxdisp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.Track" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.Track.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">montype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fmt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">srate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mindisp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxdisp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.Track.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.Track.find_color">
+<span class="sig-name descname"><span class="pre">find_color</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.Track.find_color" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">vitaldb.utils.</span></span><span class="sig-name descname"><span class="pre">VitalFile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_records</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxlen</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A VitalFile class.
+:param dict devs: device info
+:param dict trks: track info &amp; recs
+:param double dtstart: file start time
+:param double dtend: flie end time
+:param float dgmt: dgmt = ut - localtime in minutes. For KST, it is -540.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_records</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxlen</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.__init__" title="Link to this definition"></a></dt>
+<dd><p>Constructor of the VitalFile class.
+:param ipath: file path, list of file path, or caseid of open dataset.
+:param track_names: list of track names, eg) [‘SNUADC/ECG’, ‘Solar 8000/HR’]
+:param header_only: read track names, dtstart, dtend, and dgmt only
+:param skip_records: alias for header_only</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.add_track">
+<span class="sig-name descname"><span class="pre">add_track</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">srate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mindisp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxdisp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">after</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.add_track" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.anonymize">
+<span class="sig-name descname"><span class="pre">anonymize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">datetime.datetime(2100,</span> <span class="pre">1,</span> <span class="pre">1,</span> <span class="pre">0,</span> <span class="pre">0)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.anonymize" title="Link to this definition"></a></dt>
+<dd><p>Move all datetimes to specific timepoint
+:param dt: datetime or unix timestamp to move. Time zone of dt will be overwitten by UTC</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.crop">
+<span class="sig-name descname"><span class="pre">crop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtfrom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.crop" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.del_device">
+<span class="sig-name descname"><span class="pre">del_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.del_device" title="Link to this definition"></a></dt>
+<dd><p>remove track by name
+:param dname: device name. eg) SNUADC/ECG</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.del_devices">
+<span class="sig-name descname"><span class="pre">del_devices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dnames</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.del_devices" title="Link to this definition"></a></dt>
+<dd><p>remove devices by name
+:param dnames: list of device name. eg) [‘SNUADC/ECG’]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.del_track">
+<span class="sig-name descname"><span class="pre">del_track</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.del_track" title="Link to this definition"></a></dt>
+<dd><p>remove track by name
+:param dtname: track name. eg) SNUADC/ECG</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.del_tracks">
+<span class="sig-name descname"><span class="pre">del_tracks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtnames</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.del_tracks" title="Link to this definition"></a></dt>
+<dd><p>remove tracks by name
+:param dtnames: list of track names. eg) [‘SNUADC/ECG’]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.find_track">
+<span class="sig-name descname"><span class="pre">find_track</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.find_track" title="Link to this definition"></a></dt>
+<dd><p>Find track from dtname
+:param dtname: device and track name. eg) SNUADC/ECG_II</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.get_dt">
+<span class="sig-name descname"><span class="pre">get_dt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">day</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hour</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minute</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">second</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.get_dt" title="Link to this definition"></a></dt>
+<dd><p>get unix timestamp based on the file’s timezone</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.get_samples">
+<span class="sig-name descname"><span class="pre">get_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">track_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_datetime</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_timestamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.get_samples" title="Link to this definition"></a></dt>
+<dd><p>Get track samples.
+:param track_names: list of track names, eg) [‘SNUADC/ECG’, ‘Solar 8000/HR’]
+:param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500
+:return: [[samples of track1], [samples of track2]…]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.get_track_names">
+<span class="sig-name descname"><span class="pre">get_track_names</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.get_track_names" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.get_track_samples">
+<span class="sig-name descname"><span class="pre">get_track_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.get_track_samples" title="Link to this definition"></a></dt>
+<dd><p>Get samples of each track.
+:param dtname: track name
+:param interval: interval of samples in sec. if None, maximum resolution. if no resolution, 1/500</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.load_csv">
+<span class="sig-name descname"><span class="pre">load_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.load_csv" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.load_opendata">
+<span class="sig-name descname"><span class="pre">load_opendata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">caseid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.load_opendata" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.load_parquet">
+<span class="sig-name descname"><span class="pre">load_parquet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.load_parquet" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.load_vital">
+<span class="sig-name descname"><span class="pre">load_vital</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxlen</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.load_vital" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.load_wfdb">
+<span class="sig-name descname"><span class="pre">load_wfdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.load_wfdb" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.remove_device">
+<span class="sig-name descname"><span class="pre">remove_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.remove_device" title="Link to this definition"></a></dt>
+<dd><p>remove track by name
+:param dname: device name. eg) SNUADC/ECG</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.remove_devices">
+<span class="sig-name descname"><span class="pre">remove_devices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dnames</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.remove_devices" title="Link to this definition"></a></dt>
+<dd><p>remove devices by name
+:param dnames: list of device name. eg) [‘SNUADC/ECG’]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.remove_track">
+<span class="sig-name descname"><span class="pre">remove_track</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.remove_track" title="Link to this definition"></a></dt>
+<dd><p>remove track by name
+:param dtname: track name. eg) SNUADC/ECG</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.remove_tracks">
+<span class="sig-name descname"><span class="pre">remove_tracks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtnames</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.remove_tracks" title="Link to this definition"></a></dt>
+<dd><p>remove tracks by name
+:param dtnames: list of track names. eg) [‘SNUADC/ECG’]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.rename_device">
+<span class="sig-name descname"><span class="pre">rename_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oldname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">newname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.rename_device" title="Link to this definition"></a></dt>
+<dd><p>rename tracks
+:param oldname: device name
+:param newname: target name</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.rename_devices">
+<span class="sig-name descname"><span class="pre">rename_devices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.rename_devices" title="Link to this definition"></a></dt>
+<dd><p>rename devices
+:param mapping: {oldname : newname} eg) {‘SNUADC’: ‘SUPER_NICE_ADC’}</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.rename_track">
+<span class="sig-name descname"><span class="pre">rename_track</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.rename_track" title="Link to this definition"></a></dt>
+<dd><p>rename tracks
+:param dtname: track name. only first matching tracks will be renamed
+:param target: target name. it should not include the device name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.rename_tracks">
+<span class="sig-name descname"><span class="pre">rename_tracks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.rename_tracks" title="Link to this definition"></a></dt>
+<dd><p>rename tracks
+:param mapping: {oldname : newname} eg) {‘ECG_II’: ‘ECG_2’}</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.run_filter">
+<span class="sig-name descname"><span class="pre">run_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.run_filter" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.save_vital">
+<span class="sig-name descname"><span class="pre">save_vital</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">opath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compresslevel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.save_vital" title="Link to this definition"></a></dt>
+<dd><p>save as vital file
+:param opath: file path to save.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.to_csv">
+<span class="sig-name descname"><span class="pre">to_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">opath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_datetime</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_timestamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.to_csv" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>track_names</strong> – list of track names, eg) [‘SNUADC/ECG’, ‘Solar 8000/HR’]</p></li>
+<li><p><strong>interval</strong> – interval of samples in sec. if None, maximum resolution. if no resolution, 1/500</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.to_numpy">
+<span class="sig-name descname"><span class="pre">to_numpy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">track_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_datetime</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_timestamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.to_numpy" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>track_names</strong> – list of track names, eg) [‘SNUADC/ECG’, ‘Solar 8000/HR’]</p></li>
+<li><p><strong>interval</strong> – interval of samples in sec. if None, maximum resolution. if no resolution, 1/500</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.to_pandas">
+<span class="sig-name descname"><span class="pre">to_pandas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">track_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_datetime</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_timestamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.to_pandas" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>track_names</strong> – list of track names, eg) [‘SNUADC/ECG’, ‘Solar 8000/HR’]</p></li>
+<li><p><strong>interval</strong> – interval of samples in sec. if None, maximum resolution. if no resolution, 1/500</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.to_parquet">
+<span class="sig-name descname"><span class="pre">to_parquet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">opath</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.to_parquet" title="Link to this definition"></a></dt>
+<dd><p>save as parquet file</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.to_vital">
+<span class="sig-name descname"><span class="pre">to_vital</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">opath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compresslevel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.to_vital" title="Link to this definition"></a></dt>
+<dd><p>save as vital file
+:param opath: file path to save.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.to_wav">
+<span class="sig-name descname"><span class="pre">to_wav</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">opath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">srate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.to_wav" title="Link to this definition"></a></dt>
+<dd><p>Save as wave file
+:param opath: file path to save.
+:param track_names: list of track names, eg) [‘SNUADC/ECG’, ‘Solar 8000/HR’]
+:param srate: sample frequency. eg) 500</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vitaldb.utils.VitalFile.to_wfdb">
+<span class="sig-name descname"><span class="pre">to_wfdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">opath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.VitalFile.to_wfdb" title="Link to this definition"></a></dt>
+<dd><p>save as wfdb files</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.utils.list_wfdb">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.utils.</span></span><span class="sig-name descname"><span class="pre">list_wfdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dbname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.list_wfdb" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.utils.read_csv">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.utils.</span></span><span class="sig-name descname"><span class="pre">read_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.read_csv" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.utils.read_parquet">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.utils.</span></span><span class="sig-name descname"><span class="pre">read_parquet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.read_parquet" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.utils.read_vital">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.utils.</span></span><span class="sig-name descname"><span class="pre">read_vital</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxlen</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.read_vital" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.utils.read_wfdb">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.utils.</span></span><span class="sig-name descname"><span class="pre">read_wfdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.read_wfdb" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.utils.vital_recs">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.utils.</span></span><span class="sig-name descname"><span class="pre">vital_recs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_timestamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_datetime</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_pandas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.vital_recs" title="Link to this definition"></a></dt>
+<dd><p>Constructor of the VitalFile class.
+:param ipath: file path to read
+:param interval: interval of each sample. if None, maximum resolution. if there is no wave tracks, 1 sec
+:param return_timestamp: return unix timestamp
+:param return_datetime: return datetime of each sample at first column
+:param return_pandas: return pandas dataframe</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.utils.vital_trks">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.utils.</span></span><span class="sig-name descname"><span class="pre">vital_trks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipath</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.utils.vital_trks" title="Link to this definition"></a></dt>
+<dd><p>Read track names from the vital file
+:param ipath: file path to read</p>
+</dd></dl>
+
 </section>
-<section id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<section id="module-vitaldb">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-vitaldb" title="Link to this heading"></a></h2>
 </section>
 </section>
 
@@ -101,7 +556,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../index.html" class="btn btn-neutral float-left" title="Welcome to VitalUtils!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../matching/refine_bedmoves.html" class="btn btn-neutral float-left" title="refine_bedmoves module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>
