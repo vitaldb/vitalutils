@@ -21,7 +21,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="matching_hid_vitalfiles module" href="matching_hid_vitalfiles.html" />
+    <link rel="next" title="ICUVitalFileMatcher module" href="ICUVitalFileMatcher.html" />
     <link rel="prev" title="Welcome to VitalUtils!" href="../index.html" /> 
 </head>
 
@@ -46,8 +46,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">ICU</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="matching_hid_vitalfiles.html">matching_hid_vitalfiles module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="refine_bedmoves.html">refine_bedmoves module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ICUVitalFileMatcher.html">ICUVitalFileMatcher module</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../vitaldb/vitaldb.html">vitaldb package</a></li>
@@ -81,27 +80,30 @@
 <h1>ICU<a class="headerlink" href="#icu" title="Link to this heading"></a></h1>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="matching_hid_vitalfiles.html">matching_hid_vitalfiles module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="matching_hid_vitalfiles.html#matching_hid_vitalfiles.VitalFileMatcher"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="matching_hid_vitalfiles.html#matching_hid_vitalfiles.VitalFileMatcher.__init__"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher.__init__()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="matching_hid_vitalfiles.html#matching_hid_vitalfiles.VitalFileMatcher.match_vital_files"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher.match_vital_files()</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="ICUVitalFileMatcher.html">ICUVitalFileMatcher module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement"><code class="docutils literal notranslate"><span class="pre">MovementRefinement</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.__init__"><code class="docutils literal notranslate"><span class="pre">MovementRefinement.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.adjust_bedmoves"><code class="docutils literal notranslate"><span class="pre">MovementRefinement.adjust_bedmoves()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.adjust_null_bedout"><code class="docutils literal notranslate"><span class="pre">MovementRefinement.adjust_null_bedout()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.fill_merge_data"><code class="docutils literal notranslate"><span class="pre">MovementRefinement.fill_merge_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.fill_missing_out_times"><code class="docutils literal notranslate"><span class="pre">MovementRefinement.fill_missing_out_times()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.filter_bedmoves"><code class="docutils literal notranslate"><span class="pre">MovementRefinement.filter_bedmoves()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.filter_check_necessary"><code class="docutils literal notranslate"><span class="pre">MovementRefinement.filter_check_necessary()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.load_data"><code class="docutils literal notranslate"><span class="pre">MovementRefinement.load_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.process_and_save_bedmoves"><code class="docutils literal notranslate"><span class="pre">MovementRefinement.process_and_save_bedmoves()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.__init__"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.create_new_hid_columns"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher.create_new_hid_columns()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.get_filelist_by_bedroom"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher.get_filelist_by_bedroom()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.match_files_with_patients"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher.match_files_with_patients()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.match_vital_files"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher.match_vital_files()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.prepare_bedmove_data"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher.prepare_bedmove_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.process_icuroom"><code class="docutils literal notranslate"><span class="pre">VitalFileMatcher.process_icuroom()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="refine_bedmoves.html">refine_bedmoves module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.__init__"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.__init__()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.create_directory"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.create_directory()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.find_missing_bedmoves"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.find_missing_bedmoves()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.load_data"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.load_data()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.process_merged_data"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.process_merged_data()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.refine_and_save_moves"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.refine_and_save_moves()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.refine_bed_moves"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.refine_bed_moves()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.refine_data"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.refine_data()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.refine_dataframe"><code class="docutils literal notranslate"><span class="pre">PatientMovementRefinement.refine_dataframe()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="ICUVitalFileMatcher.html#ICUVitalFileMatcher.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -113,7 +115,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../index.html" class="btn btn-neutral float-left" title="Welcome to VitalUtils!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="matching_hid_vitalfiles.html" class="btn btn-neutral float-right" title="matching_hid_vitalfiles module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="ICUVitalFileMatcher.html" class="btn btn-neutral float-right" title="ICUVitalFileMatcher module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

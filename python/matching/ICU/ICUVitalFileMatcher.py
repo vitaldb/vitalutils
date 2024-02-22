@@ -1,10 +1,9 @@
 import pandas as pd
-import os
 import numpy as np
 from datetime import datetime, timedelta
 import vitaldb
 import multiprocessing
-from multiprocessing import Pool, cpu_count, freeze_support
+from multiprocessing import Pool, freeze_support
 
 pd.options.mode.chained_assignment = None  # 경고 메시지 무시
 

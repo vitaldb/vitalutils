@@ -79,6 +79,7 @@
  | <a href="#D"><strong>D</strong></a>
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
+ | <a href="#I"><strong>I</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#P"><strong>P</strong></a>
@@ -91,10 +92,10 @@
 <h2 id="_">_</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="matching/matching_hid_vitalfiles.html#matching_hid_vitalfiles.VitalFileMatcher.__init__">__init__() (matching_hid_vitalfiles.VitalFileMatcher method)</a>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.__init__">__init__() (ICUVitalFileMatcher.MovementRefinement method)</a>
 
       <ul>
-        <li><a href="matching/refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.__init__">(refine_bedmoves.PatientMovementRefinement method)</a>
+        <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.__init__">(ICUVitalFileMatcher.VitalFileMatcher method)</a>
 </li>
         <li><a href="vitaldb/vitaldb.html#vitaldb.utils.Device.__init__">(vitaldb.utils.Device method)</a>
 </li>
@@ -111,8 +112,12 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.add_track">add_track() (vitaldb.utils.VitalFile method)</a>
 </li>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.adjust_bedmoves">adjust_bedmoves() (ICUVitalFileMatcher.MovementRefinement method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.adjust_null_bedout">adjust_null_bedout() (ICUVitalFileMatcher.MovementRefinement method)</a>
+</li>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.anonymize">anonymize() (vitaldb.utils.VitalFile method)</a>
 </li>
   </ul></td>
@@ -121,7 +126,7 @@
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="matching/refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.create_directory">create_directory() (refine_bedmoves.PatientMovementRefinement method)</a>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.create_new_hid_columns">create_new_hid_columns() (ICUVitalFileMatcher.VitalFileMatcher method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -155,13 +160,19 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="vitaldb/vitaldb.html#vitaldb.api.filelist">filelist() (in module vitaldb.api)</a>
 </li>
-      <li><a href="vitaldb/vitaldb.html#vitaldb.dataset.find_cases">find_cases() (in module vitaldb.dataset)</a>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.fill_merge_data">fill_merge_data() (ICUVitalFileMatcher.MovementRefinement method)</a>
+</li>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.fill_missing_out_times">fill_missing_out_times() (ICUVitalFileMatcher.MovementRefinement method)</a>
+</li>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.filter_bedmoves">filter_bedmoves() (ICUVitalFileMatcher.MovementRefinement method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="vitaldb/vitaldb.html#vitaldb.utils.Track.find_color">find_color() (vitaldb.utils.Track method)</a>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.filter_check_necessary">filter_check_necessary() (ICUVitalFileMatcher.MovementRefinement method)</a>
 </li>
-      <li><a href="matching/refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.find_missing_bedmoves">find_missing_bedmoves() (refine_bedmoves.PatientMovementRefinement method)</a>
+      <li><a href="vitaldb/vitaldb.html#vitaldb.dataset.find_cases">find_cases() (in module vitaldb.dataset)</a>
+</li>
+      <li><a href="vitaldb/vitaldb.html#vitaldb.utils.Track.find_color">find_color() (vitaldb.utils.Track method)</a>
 </li>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.find_track">find_track() (vitaldb.utils.VitalFile method)</a>
 </li>
@@ -173,14 +184,29 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.get_dt">get_dt() (vitaldb.utils.VitalFile method)</a>
 </li>
-      <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.get_samples">get_samples() (vitaldb.utils.VitalFile method)</a>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.get_filelist_by_bedroom">get_filelist_by_bedroom() (ICUVitalFileMatcher.VitalFileMatcher method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.get_samples">get_samples() (vitaldb.utils.VitalFile method)</a>
+</li>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.get_track_names">get_track_names() (vitaldb.utils.VitalFile method)</a>
 </li>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.get_track_samples">get_track_samples() (vitaldb.utils.VitalFile method)</a>
 </li>
+  </ul></td>
+</tr></table>
+
+<h2 id="I">I</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li>
+    ICUVitalFileMatcher
+
+      <ul>
+        <li><a href="matching/ICUVitalFileMatcher.html#module-ICUVitalFileMatcher">module</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -193,7 +219,7 @@
 </li>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.load_csv">load_csv() (vitaldb.utils.VitalFile method)</a>
 </li>
-      <li><a href="matching/refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.load_data">load_data() (refine_bedmoves.PatientMovementRefinement method)</a>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.load_data">load_data() (ICUVitalFileMatcher.MovementRefinement method)</a>
 </li>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.load_opendata">load_opendata() (vitaldb.utils.VitalFile method)</a>
 </li>
@@ -217,22 +243,17 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="matching/matching_hid_vitalfiles.html#matching_hid_vitalfiles.VitalFileMatcher.match_vital_files">match_vital_files() (matching_hid_vitalfiles.VitalFileMatcher method)</a>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.main">main() (in module ICUVitalFileMatcher)</a>
 </li>
-      <li>
-    matching_hid_vitalfiles
-
-      <ul>
-        <li><a href="matching/matching_hid_vitalfiles.html#module-matching_hid_vitalfiles">module</a>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.match_files_with_patients">match_files_with_patients() (ICUVitalFileMatcher.VitalFileMatcher method)</a>
 </li>
-      </ul></li>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.match_vital_files">match_vital_files() (ICUVitalFileMatcher.VitalFileMatcher method)</a>
+</li>
       <li>
     module
 
       <ul>
-        <li><a href="matching/matching_hid_vitalfiles.html#module-matching_hid_vitalfiles">matching_hid_vitalfiles</a>
-</li>
-        <li><a href="matching/refine_bedmoves.html#module-refine_bedmoves">refine_bedmoves</a>
+        <li><a href="matching/ICUVitalFileMatcher.html#module-ICUVitalFileMatcher">ICUVitalFileMatcher</a>
 </li>
         <li><a href="vitaldb/vitaldb.html#module-vitaldb">vitaldb</a>
 </li>
@@ -244,16 +265,22 @@
 </li>
       </ul></li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement">MovementRefinement (class in ICUVitalFileMatcher)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="matching/refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement">PatientMovementRefinement (class in refine_bedmoves)</a>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.prepare_bedmove_data">prepare_bedmove_data() (ICUVitalFileMatcher.VitalFileMatcher method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="matching/refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.process_merged_data">process_merged_data() (refine_bedmoves.PatientMovementRefinement method)</a>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.MovementRefinement.process_and_save_bedmoves">process_and_save_bedmoves() (ICUVitalFileMatcher.MovementRefinement method)</a>
+</li>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher.process_icuroom">process_icuroom() (ICUVitalFileMatcher.VitalFileMatcher method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -271,27 +298,12 @@
 </li>
       <li><a href="vitaldb/vitaldb.html#vitaldb.api.receive">receive() (in module vitaldb.api)</a>
 </li>
-      <li><a href="matching/refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.refine_and_save_moves">refine_and_save_moves() (refine_bedmoves.PatientMovementRefinement method)</a>
-</li>
-      <li><a href="matching/refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.refine_bed_moves">refine_bed_moves() (refine_bedmoves.PatientMovementRefinement method)</a>
-</li>
-      <li>
-    refine_bedmoves
-
-      <ul>
-        <li><a href="matching/refine_bedmoves.html#module-refine_bedmoves">module</a>
-</li>
-      </ul></li>
-      <li><a href="matching/refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.refine_data">refine_data() (refine_bedmoves.PatientMovementRefinement method)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="matching/refine_bedmoves.html#refine_bedmoves.PatientMovementRefinement.refine_dataframe">refine_dataframe() (refine_bedmoves.PatientMovementRefinement method)</a>
-</li>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.remove_device">remove_device() (vitaldb.utils.VitalFile method)</a>
 </li>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.remove_devices">remove_devices() (vitaldb.utils.VitalFile method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.remove_track">remove_track() (vitaldb.utils.VitalFile method)</a>
 </li>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile.remove_tracks">remove_tracks() (vitaldb.utils.VitalFile method)</a>
@@ -386,7 +398,7 @@
       </ul></li>
       <li><a href="vitaldb/vitaldb.html#vitaldb.utils.VitalFile">VitalFile (class in vitaldb.utils)</a>
 </li>
-      <li><a href="matching/matching_hid_vitalfiles.html#matching_hid_vitalfiles.VitalFileMatcher">VitalFileMatcher (class in matching_hid_vitalfiles)</a>
+      <li><a href="matching/ICUVitalFileMatcher.html#ICUVitalFileMatcher.VitalFileMatcher">VitalFileMatcher (class in ICUVitalFileMatcher)</a>
 </li>
   </ul></td>
 </tr></table>
