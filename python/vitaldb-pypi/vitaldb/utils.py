@@ -11,31 +11,31 @@ from copy import deepcopy
 from urllib import parse, request
 from struct import pack, unpack_from, Struct
 
-unpack_b = Struct('<b').unpack_from
-unpack_w = Struct('<H').unpack_from
-unpack_s = Struct('<h').unpack_from
-unpack_f = Struct('<f').unpack_from
-unpack_d = Struct('<d').unpack_from
-unpack_dw = Struct('<L').unpack_from
-pack_b = Struct('<b').pack
-pack_w = Struct('<H').pack
-pack_s = Struct('<h').pack
-pack_f = Struct('<f').pack
-pack_d = Struct('<d').pack
-pack_dw = Struct('<L').pack
+_unpack_b = Struct('<b').unpack_from
+_unpack_w = Struct('<H').unpack_from
+_unpack_s = Struct('<h').unpack_from
+_unpack_f = Struct('<f').unpack_from
+_unpack_d = Struct('<d').unpack_from
+_unpack_dw = Struct('<L').unpack_from
+_pack_b = Struct('<b').pack
+_pack_w = Struct('<H').pack
+_pack_s = Struct('<h').pack
+_pack_f = Struct('<f').pack
+_pack_d = Struct('<d').pack
+_pack_dw = Struct('<L').pack
 
 
-def unpack_str(buf, pos):
-    strlen = unpack_dw(buf, pos)[0]
+def _unpack_str(buf, pos):
+    strlen = _unpack_dw(buf, pos)[0]
     pos += 4
     val = buf[pos:pos + strlen].decode('utf-8', 'ignore')
     pos += strlen
     return val, pos
 
 
-def pack_str(s):
+def _pack_str(s):
     sutf = s.encode('utf-8')
-    return pack_dw(len(sutf)) + sutf
+    return _pack_dw(len(sutf)) + sutf
 
 
 # open dataset trks
@@ -506,15 +506,15 @@ class VitalFile:
             dtfrom = self.dtstart
         elif dtfrom < 0:
             dtfrom = self.dtend + dtfrom
-        #elif dtfrom < 946684800:
-        #    dtfrom = self.dtstart + dtfrom
+        elif dtfrom < 946684800:
+            dtfrom = self.dtstart + dtfrom
 
         if dtend is None:
             dtend = self.dtend
         elif dtend < 0:
             dtend = self.dtend + dtend
-        #elif dtend < 946684800:
-        #    dtend = self.dtstart + dtend
+        # elif dtend < 946684800:
+        #     dtend = self.dtstart + dtend
 
         if dtend < dtfrom:
             return
@@ -998,19 +998,19 @@ class VitalFile:
         # save header
         if not f.write(b'VITA'):  # check sign
             return False
-        if not f.write(pack_dw(3)):  # version
+        if not f.write(_pack_dw(3)):  # version
             return False
-        if not f.write(pack_w(26)):  # header len
+        if not f.write(_pack_w(26)):  # header len
             return False
-        if not f.write(pack_s(self.dgmt)):  # dgmt = ut - localtime
+        if not f.write(_pack_s(self.dgmt)):  # dgmt = ut - localtime
             return False
-        if not f.write(pack_dw(0)):  # instance id
+        if not f.write(_pack_dw(0)):  # instance id
             return False
-        if not f.write(pack_dw(0)):  # program version
+        if not f.write(_pack_dw(0)):  # program version
             return False
-        if not f.write(pack_d(self.dtstart)):  # dtstart
+        if not f.write(_pack_d(self.dtstart)):  # dtstart
             return False
-        if not f.write(pack_d(self.dtend)):  # dtend
+        if not f.write(_pack_d(self.dtend)):  # dtend
             return False
 
         # save devinfos
@@ -1024,8 +1024,8 @@ class VitalFile:
             did += 1
             dname_dids[dname] = did
 
-            ddata = pack_dw(did) + pack_str(dev.type) + pack_str(dev.name) + pack_str(dev.port)
-            if not f.write(pack_b(9) + pack_dw(len(ddata)) + ddata):
+            ddata = _pack_dw(did) + _pack_str(dev.type) + _pack_str(dev.name) + _pack_str(dev.port)
+            if not f.write(_pack_b(9) + _pack_dw(len(ddata)) + ddata):
                 return False
 
         # save trkinfo
@@ -1055,33 +1055,33 @@ class VitalFile:
                 elif trk.type == 5:  # str
                     reclen += 8 + len(rec['val'].encode('utf-8'))
             
-            ti = pack_w(tid) + pack_b(trk.type) + pack_b(trk.fmt) + pack_str(trk.name) \
-                + pack_str(trk.unit) + pack_f(trk.mindisp) + pack_f(trk.maxdisp) \
-                + pack_dw(trk.col) + pack_f(trk.srate) + pack_d(trk.gain) + pack_d(trk.offset) \
-                + pack_b(trk.montype) + pack_dw(did) + pack_dw(reclen)
-            if not f.write(pack_b(0) + pack_dw(len(ti)) + ti):
+            ti = _pack_w(tid) + _pack_b(trk.type) + _pack_b(trk.fmt) + _pack_str(trk.name) \
+                + _pack_str(trk.unit) + _pack_f(trk.mindisp) + _pack_f(trk.maxdisp) \
+                + _pack_dw(trk.col) + _pack_f(trk.srate) + _pack_d(trk.gain) + _pack_d(trk.offset) \
+                + _pack_b(trk.montype) + _pack_dw(did) + _pack_dw(reclen)
+            if not f.write(_pack_b(0) + _pack_dw(len(ti)) + ti):
                 return False
 
         # save recs
         for dtname, trk in self.trks.items():
             tid = dtname_tids[dtname]
             for rec in trk.recs:
-                rdata = pack_w(10) + pack_d(rec['dt']) + pack_w(tid)  # infolen + dt + tid (= 12 bytes)
+                rdata = _pack_w(10) + _pack_d(rec['dt']) + _pack_w(tid)  # infolen + dt + tid (= 12 bytes)
                 if trk.type == 1:  # wav
-                    rdata += pack_dw(len(rec['val'])) + rec['val'].tobytes()
+                    rdata += _pack_dw(len(rec['val'])) + rec['val'].tobytes()
                 elif trk.type == 2:  # num
                     fmtcode, fmtlen = FMT_TYPE_LEN[trk.fmt]
                     rdata += pack(fmtcode, rec['val'])
                 elif trk.type == 5:  # str
-                    rdata += pack_dw(0) + pack_str(rec['val'])
-                if not f.write(pack_b(1) + pack_dw(len(rdata)) + rdata):
+                    rdata += _pack_dw(0) + _pack_str(rec['val'])
+                if not f.write(_pack_b(1) + _pack_dw(len(rdata)) + rdata):
                     return False
 
         # save trk order
         if len(self.order) > 0:
             tids = np.array([dtname_tids[dtname] for dtname in self.order], dtype=np.dtype('H'))
-            cdata = pack_b(5) + pack_w(len(tids)) + tids.tobytes()
-            if not f.write(pack_b(6) + pack_dw(len(cdata)) + cdata):
+            cdata = _pack_b(5) + _pack_w(len(tids)) + tids.tobytes()
+            if not f.write(_pack_b(6) + _pack_dw(len(cdata)) + cdata):
                 return False
 
         f.close()
@@ -1138,7 +1138,7 @@ class VitalFile:
                     row['wval'] = vals.tobytes()
                     row['nval'] = trk.srate
                 elif trk.type == 2:  # num
-                    # row['val'] = pack_f(np.float32(rec['val']))
+                    # row['val'] = _pack_f(np.float32(rec['val']))
                     row['nval'] = rec['val']
                 elif trk.type == 5:  # str
                     row['sval'] = rec['val']
@@ -1288,7 +1288,7 @@ class VitalFile:
             rec = {'dt': row['dt']}
             if trk.type == 1:  # wav
                 rec['val'] = np.frombuffer(row['wval'], dtype=np.float32)
-                # rec['val'] = np.array(Struct('<{}f'.format(len(row['wval']) // 4)).unpack_from(row['wval'], 0), dtype=np.float32)
+                # rec['val'] = np.array(Struct('<{}f'.format(len(row['wval']) // 4))._unpack_from(row['wval'], 0), dtype=np.float32)
                 # TODO: dtend may be incorrect
             elif trk.type == 2:  # num
                 rec['val'] = row['nval']
@@ -1557,12 +1557,12 @@ class VitalFile:
         buf = f.read(2)
         if buf == b'':
             return False
-        headerlen = unpack_w(buf, 0)[0]
+        headerlen = _unpack_w(buf, 0)[0]
         header = f.read(headerlen)  # read header
-        self.dgmt = unpack_s(header, 0)[0]  # dgmt = ut - localtime
+        self.dgmt = _unpack_s(header, 0)[0]  # dgmt = ut - localtime
         if headerlen >= 26:
-            self.dtstart = unpack_d(header, 10)[0]
-            self.dtend = unpack_d(header, 18)[0]
+            self.dtstart = _unpack_d(header, 10)[0]
+            self.dtend = _unpack_d(header, 18)[0]
 
         # how many bytes to skip the records in this track
         tid_reclens = {}  # tid -> reclen
@@ -1577,8 +1577,8 @@ class VitalFile:
                     break
                 pos = 0
 
-                packet_type = unpack_b(buf, pos)[0]; pos += 1
-                packet_len = unpack_dw(buf, pos)[0]; pos += 4
+                packet_type = _unpack_b(buf, pos)[0]; pos += 1
+                packet_len = _unpack_dw(buf, pos)[0]; pos += 4
                 if packet_len > 1000000: # maximum packet size should be < 1MB
                     break
                 
@@ -1588,12 +1588,12 @@ class VitalFile:
                 pos = 0
 
                 if packet_type == 9:  # devinfo
-                    did = unpack_dw(buf, pos)[0]; pos += 4
-                    devtype, pos = unpack_str(buf, pos)
-                    name, pos = unpack_str(buf, pos)
+                    did = _unpack_dw(buf, pos)[0]; pos += 4
+                    devtype, pos = _unpack_str(buf, pos)
+                    name, pos = _unpack_str(buf, pos)
                     port = ''
                     if len(buf) > pos + 4:  # port is optional
-                        port, pos = unpack_str(buf, pos)
+                        port, pos = _unpack_str(buf, pos)
                     if not name:
                         name = devtype
                     self.devs[name] = Device(name, devtype, port)
@@ -1603,43 +1603,43 @@ class VitalFile:
                     montype = 0
                     unit = ''
                     gain = offset = srate = mindisp = maxdisp = 0.0
-                    tid = unpack_w(buf, pos)[0]; pos += 2
-                    trktype = unpack_b(buf, pos)[0]; pos += 1
-                    fmt = unpack_b(buf, pos)[0]; pos += 1
+                    tid = _unpack_w(buf, pos)[0]; pos += 2
+                    trktype = _unpack_b(buf, pos)[0]; pos += 1
+                    fmt = _unpack_b(buf, pos)[0]; pos += 1
                     if trktype == 1 or trktype == 2:
                         if fmt not in FMT_TYPE_LEN: 
                             continue
-                    tname, pos = unpack_str(buf, pos)
+                    tname, pos = _unpack_str(buf, pos)
 
                     if packet_len > pos:
-                        unit, pos = unpack_str(buf, pos)
+                        unit, pos = _unpack_str(buf, pos)
                     if packet_len > pos:
-                        mindisp = unpack_f(buf, pos)[0]
+                        mindisp = _unpack_f(buf, pos)[0]
                         pos += 4
                     if packet_len > pos:
-                        maxdisp = unpack_f(buf, pos)[0]
+                        maxdisp = _unpack_f(buf, pos)[0]
                         pos += 4
                     if packet_len > pos:
-                        col = unpack_dw(buf, pos)[0]
+                        col = _unpack_dw(buf, pos)[0]
                         pos += 4
                     if packet_len > pos:
-                        srate = unpack_f(buf, pos)[0]
+                        srate = _unpack_f(buf, pos)[0]
                         pos += 4
                     if packet_len > pos:
-                        gain = unpack_d(buf, pos)[0]
+                        gain = _unpack_d(buf, pos)[0]
                         pos += 8
                     if packet_len > pos:
-                        offset = unpack_d(buf, pos)[0]
+                        offset = _unpack_d(buf, pos)[0]
                         pos += 8
                     if packet_len > pos:
-                        montype = unpack_b(buf, pos)[0]
+                        montype = _unpack_b(buf, pos)[0]
                         pos += 1
                     if packet_len > pos:
-                        did = unpack_dw(buf, pos)[0]
+                        did = _unpack_dw(buf, pos)[0]
                         pos += 4
                     reclen = 0
                     if packet_len > pos:
-                        reclen = unpack_dw(buf, pos)[0]
+                        reclen = _unpack_dw(buf, pos)[0]
                         pos += 4
 
                     dname = ''
@@ -1679,9 +1679,9 @@ class VitalFile:
                     if len(buf) < pos + 12:
                         continue
 
-                    infolen = unpack_w(buf, pos)[0]; pos += 2
-                    dt = unpack_d(buf, pos)[0]; pos += 8
-                    tid = unpack_w(buf, pos)[0]; pos += 2
+                    infolen = _unpack_w(buf, pos)[0]; pos += 2
+                    dt = _unpack_d(buf, pos)[0]; pos += 8
+                    tid = _unpack_w(buf, pos)[0]; pos += 2
                     pos = 2 + infolen
 
                     if tid not in tid_dtnames:  # tid not to read
@@ -1715,7 +1715,7 @@ class VitalFile:
                         fmtcode, fmtlen = FMT_TYPE_LEN[trk.fmt]
                         if len(buf) < pos + 4:
                             continue
-                        nsamp = unpack_dw(buf, pos)[0]; pos += 4
+                        nsamp = _unpack_dw(buf, pos)[0]; pos += 4
                         if len(buf) < pos + nsamp * fmtlen:
                             continue
                         samps = np.ndarray((nsamp,), buffer=buf, offset=pos, dtype=np.dtype(fmtcode)); pos += nsamp * fmtlen
@@ -1734,15 +1734,15 @@ class VitalFile:
                         pos += 4  # skip
                         if len(buf) < pos + 4:
                             continue
-                        s, pos = unpack_str(buf, pos)
+                        s, pos = _unpack_str(buf, pos)
                         trk.recs.append({'dt': dt, 'val': s})
                 elif packet_type == 6:  # cmd
-                    cmd = unpack_b(buf, pos)[0]; pos += 1
+                    cmd = _unpack_b(buf, pos)[0]; pos += 1
                     if cmd == 6:  # reset events
                         if 'EVENT' in self.trks:
                             self.trks['EVENT'].recs = []
                     elif cmd == 5:  # trk order
-                        cnt = unpack_w(buf, pos)[0]
+                        cnt = _unpack_w(buf, pos)[0]
                         pos += 2
                         tids = np.ndarray((cnt,), buffer=buf, offset=pos, dtype=np.dtype('H'))
                         self.order = []
