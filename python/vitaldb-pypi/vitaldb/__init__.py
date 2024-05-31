@@ -13,8 +13,11 @@ from .utils import read_csv
 from .utils import read_vital
 from .utils import read_wfdb
 from .utils import read_parquet
+from .dataset import load_clinical_data
+from .dataset import load_lab_data
 from .dataset import load_case
 from .dataset import find_cases
+from .dataset import get_track_names
 
 # tname = 'BIS/BIS'
 # caseids = set()
