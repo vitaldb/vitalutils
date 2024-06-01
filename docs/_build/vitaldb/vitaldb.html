@@ -58,7 +58,10 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#module-vitaldb.dataset">vitaldb.dataset module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#vitaldb.dataset.find_cases"><code class="docutils literal notranslate"><span class="pre">find_cases()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.dataset.get_track_names"><code class="docutils literal notranslate"><span class="pre">get_track_names()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#vitaldb.dataset.load_case"><code class="docutils literal notranslate"><span class="pre">load_case()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.dataset.load_clinical_data"><code class="docutils literal notranslate"><span class="pre">load_clinical_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vitaldb.dataset.load_lab_data"><code class="docutils literal notranslate"><span class="pre">load_lab_data()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#vitaldb.dataset.load_trk"><code class="docutils literal notranslate"><span class="pre">load_trk()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#vitaldb.dataset.load_trks"><code class="docutils literal notranslate"><span class="pre">load_trks()</span></code></a></li>
 </ul>
@@ -193,12 +196,66 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="vitaldb.dataset.find_cases">
 <span class="sig-prename descclassname"><span class="pre">vitaldb.dataset.</span></span><span class="sig-name descname"><span class="pre">find_cases</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">track_names</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.dataset.find_cases" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Return a list of caseID for cases with the given tracklist.</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>track_names (list or string): a list of track names or a string with track names separated by comma</p>
+</dd>
+<dt>Returns:</dt><dd><p>List: caseIDs</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.dataset.get_track_names">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.dataset.</span></span><span class="sig-name descname"><span class="pre">get_track_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">caseids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.dataset.get_track_names" title="Link to this definition"></a></dt>
+<dd><p>Return a list of track names of the specified caseIDs</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>caseids (list, optional): caseIDs from 1 to 6388. Defaults to [], which returns track names of all caseID.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Dataframe: track names by caseID</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="vitaldb.dataset.load_case">
 <span class="sig-prename descclassname"><span class="pre">vitaldb.dataset.</span></span><span class="sig-name descname"><span class="pre">load_case</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">caseid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.dataset.load_case" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Load case data with the given track names in a 2D numpy array. Row by time and Column by track.</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>caseid (int): caseID from 1 to 6388
+track_names (list or string):  a list of track names or a string with track names separated by comma
+interval (int, optional): time interval (= 1 / sample rate). Defaults to 1.</p>
+</dd>
+<dt>Returns:</dt><dd><p>ndarray: 2D numpy array. Row by time and Column by track.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.dataset.load_clinical_data">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.dataset.</span></span><span class="sig-name descname"><span class="pre">load_clinical_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">caseids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.dataset.load_clinical_data" title="Link to this definition"></a></dt>
+<dd><p>Load clinical information for the specified caseIDs and specified parameters into a dataframe.</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>caseids (list, optional): caseIDs from 1 to 6388. Defaults to [], which returns clinical information of all caseID.
+params (list, optional): parameter list to filter clinical information. Please refer to “Parameter List” section from vitaldb.net/dataset Overview</p>
+</dd>
+<dt>Returns:</dt><dd><p>Dataframe: clinical information.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vitaldb.dataset.load_lab_data">
+<span class="sig-prename descclassname"><span class="pre">vitaldb.dataset.</span></span><span class="sig-name descname"><span class="pre">load_lab_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">caseids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vitaldb.dataset.load_lab_data" title="Link to this definition"></a></dt>
+<dd><p>Load lab results for the specified caseIDs and specified parameters into a dataframe.</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>caseids (list, optional): caseIDs from 1 to 6388. Defaults to [], which returns lab results of all caseID.
+params (list, optional): parameter list to filter lab results. Please refer to “Parameter List” section from vitaldb.net/dataset Overview</p>
+</dd>
+<dt>Returns:</dt><dd><p>Dataframe: lab results</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="vitaldb.dataset.load_trk">
