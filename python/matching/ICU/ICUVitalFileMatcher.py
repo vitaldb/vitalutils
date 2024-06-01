@@ -24,18 +24,18 @@ class MovementRefinement:
 
         Table Structures:
         - bedmove table (병상 이동 정보):
-            - WD_DEPT_CD (str): ICU room code.
-            - BED_NO (str): Bed number.
-            - IN_DTM (datetime): Time of bed entry.
-            - OUT_DTM (datetime): Time of bed exit.
-            - Note: Data provided by 이지케어텍 API.
+        - WD_DEPT_CD (str): ICU room code.
+        - BED_NO (str): Bed number.
+        - IN_DTM (datetime): Time of bed entry.
+        - OUT_DTM (datetime): Time of bed exit.
+        - Note: Data provided by 이지케어텍 API.
 
         - admission table (ICU 입퇴실 정보):
-            - 환자번호 (str): Patient ID.
-            - 입실병동 (str): ICU room code.
-            - 입실시간 (datetime): Time of ICU admission.
-            - 퇴실시간 (datetime): Time of ICU discharge.
-            - Note: Admission times are from EMR.
+        - 환자번호 (str): Patient ID.
+        - 입실병동 (str): ICU room code.
+        - 입실시간 (datetime): Time of ICU admission.
+        - 퇴실시간 (datetime): Time of ICU discharge.
+        - Note: Admission times are from EMR.
         """
         print(f"[{datetime.now()}] Loading {dtype} data...")
         if dtype == 'bedmove':
@@ -105,7 +105,7 @@ class MovementRefinement:
 
         Returns:
         - (DataFrame, DataFrame): A tuple of DataFrames, where the first DataFrame contains the filtered valid bed movement records for the specific ICU stay period,
-                                and the second DataFrame contains records that need further checks.
+        and the second DataFrame contains records that need further checks.
         """      
         hid, icuroom, icuin, icuout = group_keys
 
@@ -170,8 +170,8 @@ class MovementRefinement:
 
         Parameters:
         - group (DataFrame): The bed movement records for a specific patient.
-        - group_keys (tuple): A tuple containing the patient's ID (hid), ICU room code (icuroom), 
-                            ICU admission time (icuin), and ICU discharge time (icuout). 
+        - group_keys (tuple): A tuple containing the patient's ID (hid), ICU room code (icuroom),
+        ICU admission time (icuin), and ICU discharge time (icuout). 
 
         Returns:
         - DataFrame: The adjusted bed movement records for the patient.
@@ -219,9 +219,10 @@ class MovementRefinement:
 
         Parameters:
         - merged_data (DataFrame): The DataFrame containing merged bed movement and ICU stay records, 
-                                with columns for patient ID ('hid'), ICU room code ('icuroom'), 
-                                ICU admission time ('icuin'), and ICU discharge time ('icuout'), 
-                                bed number ('bed'), bed entry time ('bedin'), and bed exit time ('bedout').
+        with columns for patient ID ('hid'), ICU room code ('icuroom'), 
+        ICU admission time ('icuin'), and ICU discharge time ('icuout'), 
+        bed number ('bed'), bed entry time ('bedin'), and bed exit time ('bedout').
+
         Returns:
         - DataFrame: The final processed DataFrame of bed movement records.
 
@@ -439,7 +440,6 @@ class VitalFileMatcher:
         return df
 
 def main():
-
     """
     Main script to automate the refinement of bed movement data and its matching with vital files.
     
@@ -449,7 +449,7 @@ def main():
     3. Launch the Bed Movement Refinement process, if chosen.
     4. Execute the Vital File Matching process, if selected, using the refined bed movement data or directly from specified file paths.
 
-    *** Customization Options:
+    ** Customization Options:
     - Enable/disable movement refinement or vital file matching processes.
     - Specify file paths for admission data, initial bed movement data, and the location for saving refined bed movement data.
     - Set the number of processes for parallel execution to enhance performance.
@@ -457,7 +457,6 @@ def main():
     Before Running:
     Ensure to update all placeholders for file paths and VitalDB credentials with your specific details to ensure the script runs smoothly.
     """
-
     # Initial setup: Define whether to use specific processes and set file paths
     use_movement_refinement = True     # Set to False to skip movement refinement process
     use_vitalfile_matcher = True       # Set to False to skip vital file matching process

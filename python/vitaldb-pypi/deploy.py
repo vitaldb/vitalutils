@@ -3,6 +3,9 @@ import shutil
 
 PROJECT_NAME = 'vitaldb'
 
+# change directory
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 # generate docs
 os.system("sphinx-apidoc -f -o ../../docs/matching ../matching/ICU")
 os.system("sphinx-apidoc -f -o ../../docs/vitaldb vitaldb")
@@ -19,6 +22,7 @@ for line in f.readlines():
 if not ver:
     print('version not found in setup.py')
     quit()
+
 os.system('python setup.py bdist_wheel')
 
 # upload to pypi

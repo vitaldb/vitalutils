@@ -5,7 +5,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ICUVitalFileMatcher module &mdash; VitalUtils  documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
   
@@ -16,7 +16,7 @@
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
         <script src="../_static/documentation_options.js?v=5929fcd5"></script>
-        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
         <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -121,10 +121,8 @@
 (hid, icuroom, icuin, icuout).</p>
 <p>Parameters:
 - group (DataFrame): The bed movement records for a specific patient.
-- group_keys (tuple): A tuple containing the patient’s ID (hid), ICU room code (icuroom),</p>
-<blockquote>
-<div><p>ICU admission time (icuin), and ICU discharge time (icuout).</p>
-</div></blockquote>
+- group_keys (tuple): A tuple containing the patient’s ID (hid), ICU room code (icuroom),
+ICU admission time (icuin), and ICU discharge time (icuout).</p>
 <p>Returns:
 - DataFrame: The adjusted bed movement records for the patient.</p>
 </dd></dl>
@@ -157,10 +155,8 @@ It selects records where bed movement times (‘bedin’ and ‘bedout’) overl
 - group_keys (tuple): Tuple containing hid, icuroom, icuin, and icuout.
 - check_necessary (DataFrame): DataFrame to accumulate records that require further check.</p>
 <p>Returns:
-- (DataFrame, DataFrame): A tuple of DataFrames, where the first DataFrame contains the filtered valid bed movement records for the specific ICU stay period,</p>
-<blockquote>
-<div><p>and the second DataFrame contains records that need further checks.</p>
-</div></blockquote>
+- (DataFrame, DataFrame): A tuple of DataFrames, where the first DataFrame contains the filtered valid bed movement records for the specific ICU stay period,
+and the second DataFrame contains records that need further checks.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -174,28 +170,19 @@ It selects records where bed movement times (‘bedin’ and ‘bedout’) overl
 <dd><p>Parameters:
 dtype: Type of data to load. ‘bedmove’ or ‘admission’.</p>
 <p>Table Structures:
-- bedmove table (병상 이동 정보):</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>WD_DEPT_CD (str): ICU room code.</p></li>
-<li><p>BED_NO (str): Bed number.</p></li>
-<li><p>IN_DTM (datetime): Time of bed entry.</p></li>
-<li><p>OUT_DTM (datetime): Time of bed exit.</p></li>
-<li><p>Note: Data provided by 이지케어텍 API.</p></li>
-</ul>
-</div></blockquote>
+- bedmove table (병상 이동 정보):
+- WD_DEPT_CD (str): ICU room code.
+- BED_NO (str): Bed number.
+- IN_DTM (datetime): Time of bed entry.
+- OUT_DTM (datetime): Time of bed exit.
+- Note: Data provided by 이지케어텍 API.</p>
 <ul class="simple">
-<li><dl class="simple">
-<dt>admission table (ICU 입퇴실 정보):</dt><dd><ul>
+<li><p>admission table (ICU 입퇴실 정보):</p></li>
 <li><p>환자번호 (str): Patient ID.</p></li>
 <li><p>입실병동 (str): ICU room code.</p></li>
 <li><p>입실시간 (datetime): Time of ICU admission.</p></li>
 <li><p>퇴실시간 (datetime): Time of ICU discharge.</p></li>
 <li><p>Note: Admission times are from EMR.</p></li>
-</ul>
-</dd>
-</dl>
-</li>
 </ul>
 </dd></dl>
 
@@ -208,12 +195,10 @@ It then checks for any records that require further examination and processes th
 After filtering, it adjusts the bed movement records to ensure they accurately reflect the actual bed movements during the ICU stay. 
 Finally, it consolidates the results and saves them to a CSV file.</p>
 <p>Parameters:
-- merged_data (DataFrame): The DataFrame containing merged bed movement and ICU stay records,</p>
-<blockquote>
-<div><p>with columns for patient ID (‘hid’), ICU room code (‘icuroom’), 
+- merged_data (DataFrame): The DataFrame containing merged bed movement and ICU stay records, 
+with columns for patient ID (‘hid’), ICU room code (‘icuroom’), 
 ICU admission time (‘icuin’), and ICU discharge time (‘icuout’), 
 bed number (‘bed’), bed entry time (‘bedin’), and bed exit time (‘bedout’).</p>
-</div></blockquote>
 <p>Returns:
 - DataFrame: The final processed DataFrame of bed movement records.</p>
 </dd></dl>
@@ -298,7 +283,7 @@ Modify the ‘icuroom’ filed in the bedmovement data to match the VR names use
 2. Retrieve unique patient IDs from admission data for later validation.
 3. Launch the Bed Movement Refinement process, if chosen.
 4. Execute the Vital File Matching process, if selected, using the refined bed movement data or directly from specified file paths.</p>
-<p><a href="#id1"><span class="problematic" id="id2">**</span></a>* Customization Options:
+<p>** Customization Options:
 - Enable/disable movement refinement or vital file matching processes.
 - Specify file paths for admission data, initial bed movement data, and the location for saving refined bed movement data.
 - Set the number of processes for parallel execution to enhance performance.</p>
