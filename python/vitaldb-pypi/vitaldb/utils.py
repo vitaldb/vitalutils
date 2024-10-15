@@ -28,6 +28,11 @@ _pack_dw = Struct('<L').pack
 def _unpack_str(buf, pos):
     strlen = _unpack_dw(buf, pos)[0]
     pos += 4
+
+    # fix 64bit len
+    if _unpack_dw(buf, pos)[0] == 0:
+        pos += 4
+
     val = buf[pos:pos + strlen].decode('utf-8', 'ignore')
     pos += strlen
     return val, pos
@@ -1587,12 +1592,36 @@ class VitalFile:
                     break
                 pos = 0
 
+                # fix 64bit integer bug
+                fix64 = False
+                if _unpack_dw(buf, pos)[0] == 0:
+                    buf += f.read(4)
+                    pos += 4
+                    packet_len += 4
+                    fix64 = True
+
                 if packet_type == 9:  # devinfo
                     did = _unpack_dw(buf, pos)[0]; pos += 4
+                    if fix64:
+                        buf += f.read(4)
+                        packet_len += 4
+                        pos += 4
+
+                    if fix64:
+                        buf += f.read(4)
+                        packet_len += 4
                     devtype, pos = _unpack_str(buf, pos)
+
+                    if fix64:
+                        buf += f.read(4)
+                        packet_len += 4
                     name, pos = _unpack_str(buf, pos)
+
                     port = ''
                     if len(buf) > pos + 4:  # port is optional
+                        if fix64:
+                            buf += f.read(4)
+                            packet_len += 4
                         port, pos = _unpack_str(buf, pos)
                     if not name:
                         name = devtype
@@ -1609,9 +1638,16 @@ class VitalFile:
                     if trktype == 1 or trktype == 2:
                         if fmt not in FMT_TYPE_LEN: 
                             continue
+
+                    if fix64:
+                        buf += f.read(4)
+                        packet_len += 4
                     tname, pos = _unpack_str(buf, pos)
 
                     if packet_len > pos:
+                        if fix64:
+                            buf += f.read(4)
+                            packet_len += 4
                         unit, pos = _unpack_str(buf, pos)
                     if packet_len > pos:
                         mindisp = _unpack_f(buf, pos)[0]
@@ -1622,6 +1658,8 @@ class VitalFile:
                     if packet_len > pos:
                         col = _unpack_dw(buf, pos)[0]
                         pos += 4
+                        if fix64:
+                            pos += 4
                     if packet_len > pos:
                         srate = _unpack_f(buf, pos)[0]
                         pos += 4
@@ -1637,6 +1675,8 @@ class VitalFile:
                     if packet_len > pos:
                         did = _unpack_dw(buf, pos)[0]
                         pos += 4
+                        if fix64:
+                            pos += 4
                     reclen = 0
                     if packet_len > pos:
                         reclen = _unpack_dw(buf, pos)[0]
@@ -1683,6 +1723,8 @@ class VitalFile:
                     dt = _unpack_d(buf, pos)[0]; pos += 8
                     tid = _unpack_w(buf, pos)[0]; pos += 2
                     pos = 2 + infolen
+                    if fix64:
+                        pos += 4
 
                     if tid not in tid_dtnames:  # tid not to read
                         if tid in tid_reclens:
@@ -1732,6 +1774,8 @@ class VitalFile:
                         trk.recs.append({'dt': dt, 'val': val})
                     elif trk.type == 5:  # str
                         pos += 4  # skip
+                        if fix64:
+                            buf += f.read(4)
                         if len(buf) < pos + 4:
                             continue
                         s, pos = _unpack_str(buf, pos)
@@ -1905,6 +1949,10 @@ def read_parquet(ipath, track_names=None, exclude=None):
     return vf
 
 if __name__ == '__main__':
+    # vf = VitalFile(r"C:\Users\lucid\Desktop\1.vital")
+    # vf.to_vital(r"C:\Users\lucid\Desktop\repaired_1.vital")
+    # quit()
+    
     vf = VitalFile(1, ['ART', 'EEG1_WAV'])
     vf.to_wfdb('1', interval=1/500)
     vals = vf.to_numpy(['ART','EEG1_WAV'], 1/500)
