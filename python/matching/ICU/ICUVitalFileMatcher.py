@@ -146,11 +146,11 @@ class MovementRefinement:
 
     def filter_check_necessary(self, results_df, check_necessary_df):
 
-        merged_df = pd.merge(check_necessary_df, results_df, on=['bedin', 'bedout'], how='left', indicator=True)
+        merged_df = pd.merge(check_necessary_df, results_df, on=['icuin', 'icuout'], how='left', indicator=True)
         left_only_rows = merged_df[merged_df['_merge'] == 'left_only']
 
         selected_columns = {
-            col: col.rstrip('_x') for col in left_only_rows.columns if col.endswith('_x') or col in ['bedin', 'bedout']
+            col: col.rstrip('_x') for col in left_only_rows.columns if col.endswith('_x') or col in ['icuin', 'icuout']
         }
         selected_rows = left_only_rows.rename(columns=selected_columns)[list(selected_columns.values())]
         new_rows = selected_rows[check_necessary_df.columns]
@@ -186,7 +186,7 @@ class MovementRefinement:
                     group.at[group.index[0], 'bedout'] = icuout
                 else:
                     group.at[group.index[0], 'bedin'] = icuin
-                    group.at[group.index[0], 'bedout'] = icuout                        
+                    group.at[group.index[0], 'bedout'] = icuout
 
             elif len(group) > 1:
                 # Adjust the bedout time of each record to the bedin time of the next record.
