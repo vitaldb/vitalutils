@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="./static/css/style.css" rel="stylesheet">
+    <link href="./static/css/template.min.css" rel="stylesheet">
+    <link href="./static/css/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+</head>
+<body style="font-size:14px;">
+
+    <div id="div_preview" style="width:100%; height: 100%; overflow-y: auto; overflow-x: hidden; display: none;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+            <tr>
+                <td id="span_preview_caseid"></td>
+                <td align="right">
+                    <span id="span_status"></span> 
+                    <div id="btn_preview" style="display:none;">
+                        <button type="button" id="fit_width" class="btn btn-gray btn-sm"
+                            style="background:#505050;margin:5px;height:25px;line-height:1px;text-decoration:none;" 
+                            onclick="fit(0)">Fit Width</button>
+                        <button type="button" id="fit_100px" class="btn btn-gray btn-sm"
+                            style="background:#505050;margin:5px;height:25px;line-height:1px;text-decoration:none;" 
+                            onclick="fit(1)">100 Pixel/s</button>
+                        <button type="button" id="convert_view" class="btn btn-gray btn-sm"
+                            style="background:#505050;margin:5px;height:25px;line-height:1px;text-decoration:none;" 
+                            onclick="draw_moniview()">Monitor View</button>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <canvas id="file_preview" style="width:100%; height:100%;">Your web browser does not support HTML5 Canvas</canvas>
+        <canvas id="moni_preview" style="width:100%; height:100%;">Your web browser does not support HTML5 Canvas</canvas>
+
+        <div id="moni_control" style="position:absolute;z-index:3;bottom:0px;left:0px;display:none;">
+            <div class="row">
+                <div class="col-12">
+                    <input id="moni_slider" type="range" min="0" max="0" value="0" 
+                        onchange="slide_to(this.value)" oninput="slide_on(this.value)">
+                </div>
+            </div>
+            <div class="row" style="margin: 0 0 7px 5px;">
+                <button type="button" class="btn btn-transparent" title="Go to the beginning" onclick="rewind(get_caselen())">
+                    <i class="fa fa-fast-backward" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-transparent" title="Rewind 1 frame" onclick="rewind()">
+                    <i class="fa fa-step-backward" aria-hidden="true"></i>
+                </button>
+                <button id="moni_pause" type="button" class="btn btn-transparent" onclick="pause_resume()" style="display: none;">
+                    <i class="fa fa-pause" aria-hidden="true"></i>
+                </button>
+                <button id="moni_resume" type="button" class="btn btn-transparent" onclick="pause_resume()">
+                    <i class="fa fa-play" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-transparent" title="Proceed 1 frame" onclick="proceed()">
+                    <i class="fa fa-step-forward" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-transparent" title="Go to the end" onclick="proceed(get_caselen())">
+                    <i class="fa fa-fast-forward" aria-hidden="true"></i>
+                </button>
+                <span id="casetime" style="color:#FFFFFF;padding:10px 12px;"></span>
+                <label for="play-speed" class="d-inline-block ml-auto" style="color:white;margin:0;padding: 10px 15px;">Play Speed</label>
+                <select class="form-control form-control-sm sel-dark d-inline-block play-speed" id="play-speed" 
+                    onchange="set_playspeed(this.value)" style="width:100px; margin:3px 5px;">
+                    <option value="1">x1</option>
+                    <option value="2">x2</option>
+                    <option value="4">x4</option>
+                    <option value="6">x6</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="drop_message" style="display:none;">📂 Drop a <b>.vital</b> file here or <u>click to select</u> for preview</div>
+    <input type="file" id="file_input" accept=".vital" style="display:none;">
+    <div id="drop_overlay" style="display:none;">📂 Drop a .vital file here for preview</div>
+
+    <script src="./static/js/jquery.min.js"></script>
+    <script src="./static/js/bootstrap.min.js"></script>
+    <script src="./static/js/webviewer.js"></script>
+    <script src="./static/js/pako.min.js"></script>
+
+</body>
+</html>
