@@ -95,9 +95,9 @@ const montypes = {
     99:"PTC_CNT",
 };
 
-var view = "track";
 var files = {};
 var vf;
+var view = "track";
 
 function get_filename(url){
 	var filename = null;
@@ -538,7 +538,6 @@ function preloader(filename, msg='LOADING...', percentage=0){
 			}
 			canvas.width = canvas.clientWidth = canvas.style.width = parseInt(canvas.parentNode.parentNode.clientWidth);
 			canvas.height = window.innerHeight - 33;
-			console.log(canvas.width, canvas.height)
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 			ctx.fillStyle = '#181818';
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1097,6 +1096,7 @@ var dragx = -1;
 var dragy = -1;
 var offset = -35;
 var is_zooming = false;
+var fit = 0;
 
 $('#file_preview').bind('mouseup', function(e) {
 	if(!$("#file_preview").is(":visible")) return;
@@ -1158,9 +1158,9 @@ function stotime(seconds){
 	return ("0" + hh).slice(-2) + ":" + ("0" + mm).slice(-2) + ":" + ("0" + ss).slice(-2);
 }
 
-function draw_time(fit=false){
+function draw_time(){
 	var caselen = get_caselen();
-	tw = fit? (caselen * 100):(canvas_file.width - HEADER_WIDTH);
+	if(!is_zooming) tw = (fit == 1)? (caselen * 100):(canvas_file.width - HEADER_WIDTH);
 	var ty = 0;
 
 	// Time ruler 배경 및 제목
@@ -1196,7 +1196,7 @@ function draw_time(fit=false){
 	}
 }
 
-VitalFile.prototype.draw_track = function(tid, fit) {
+VitalFile.prototype.draw_track = function(tid) {
 	var t = this.trks[tid];
 	// 아직 데이터가 로딩되지 않았으면 그리지 못함
 	/* if (!t.hasOwnProperty('data')) {
@@ -1207,7 +1207,7 @@ VitalFile.prototype.draw_track = function(tid, fit) {
     var th = t.th;
 
 	var caselen = get_caselen();
-	tw = fit? (caselen * 100):(canvas_file.width - HEADER_WIDTH);
+	if(!is_zooming) tw = (fit == 1)? (caselen * 100):(canvas_file.width - HEADER_WIDTH);
 
 	// 배경을 지움
 	ctx_file.fillStyle='#181818';
@@ -1334,11 +1334,11 @@ function get_ctx_height(){
 	return canvas_file.clientHeight;
 }
 
-function draw_all_tracks(fit) {
-	draw_time(fit);
+function draw_all_tracks() {
+	draw_time();
 	for (let i in vf.sorted_tids){
 		var tid = vf.sorted_tids[i];
-		vf.draw_track(tid, fit);
+		vf.draw_track(tid);
 	}
 }
 
@@ -1347,7 +1347,8 @@ function fit_trackview(i) {
 	// fit 100px: i = 1
 	is_zooming = false;
 	tx = HEADER_WIDTH;
-	draw_all_tracks(i);
+	fit = i;
+	draw_all_tracks();
 	return true;
 }
 
@@ -1357,7 +1358,7 @@ function onResizeWindowT() {
 	canvas_file.width = canvas_file.clientWidth = canvas_file.style.width = parseInt(canvas_file.parentNode.parentNode.clientWidth);
 	$("#div_preview").css("width", canvas_file.width + "px");
 	init_canvas()
-	draw_all_tracks(!is_zooming);
+	draw_all_tracks();
 }
 
 $(document).ready(function() {
@@ -1464,7 +1465,7 @@ VitalFile.prototype.draw_trackview = function(){
 
 	is_zooming = false;
 	init_canvas()
-	draw_all_tracks(true);
+	draw_all_tracks();
 
 	if (this.sorted_tids.length > 0) {
 		$("#span_preview_caseid").html(this.filename);
