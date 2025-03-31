@@ -9,22 +9,18 @@
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 </head>
 
-<body style="font-size:14px;">
+<body>
 
-    <div id="div_preview" style="width:100%; height: 100%; overflow-y: auto; overflow-x: hidden; display: none;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+    <div id="div_preview" style="display: none;">
+        <table width="100%" cellpadding="0" cellspacing="0">
             <tr>
                 <td>
-                    <div class="file-history-container"
-                        style="display:inline-block; position:relative; margin-right:15px;">
-                        <button id="current_file_btn" class="btn btn-gray btn-sm dropdown-toggle"
-                            style="background:#505050; margin:5px; height:25px; line-height:1px; text-decoration:none; min-width:200px; text-align:left; padding-right:25px;">
+                    <div class="file-history-container">
+                        <button id="current_file_btn" class="btn btn-gray btn-sm dropdown-toggle">
                             <span id="span_preview_caseid"></span>
-                            <i class="fa fa-caret-down"
-                                style="position:absolute; right:10px; top:50%; transform:translateY(-50%);"></i>
+                            <i class="fa fa-caret-down caret-icon"></i>
                         </button>
-                        <div id="file_history_dropdown"
-                            style="display:none; position:absolute; background:#2a2a2a; border:1px solid #444; border-radius:4px; max-height:300px; overflow-y:auto; width:100%; z-index:100;">
+                        <div id="file_history_dropdown">
                             <div id="file_history_items">
                             </div>
                         </div>
@@ -32,18 +28,19 @@
                 </td>
                 <td align="right">
                     <div id="btn_preview" style="display:none;">
-                        <button type="button" id="select_file" class="btn btn-gray btn-sm"
-                            style="background:#505050;margin:5px;height:25px;line-height:1px;text-decoration:none;"
-                            onclick="document.getElementById('file_input').click()">Select Files</button>
-                        <button type="button" id="fit_width" class="btn btn-gray btn-sm"
-                            style="background:#505050;margin:5px;height:25px;line-height:1px;text-decoration:none;"
-                            onclick="VitalFileViewer.fitTrackview(0)">Fit Width</button>
-                        <button type="button" id="fit_100px" class="btn btn-gray btn-sm"
-                            style="background:#505050;margin:5px;height:25px;line-height:1px;text-decoration:none;"
-                            onclick="VitalFileViewer.fitTrackview(1)">100 Pixel/s</button>
+                        <button type="button" id="select_file" class="btn btn-gray btn-sm">
+                            Select Files
+                        </button>
+                        <button type="button" id="fit_width" class="btn btn-gray btn-sm">
+                            Fit Width
+                        </button>
+                        <button type="button" id="fit_100px" class="btn btn-gray btn-sm">
+                            100 Pixel/s
+                        </button>
                         <button type="button" id="convert_view" class="btn btn-gray btn-sm"
-                            style="background:#505050;margin:5px;height:25px;line-height:1px;text-decoration:none;"
-                            onclick="window.vf.draw_moniview()">Monitor View</button>
+                            onclick="window.vf.draw_moniview()">
+                            Monitor View
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -52,48 +49,39 @@
             </tr>
         </table>
 
-        <canvas id="file_preview" style="width:100%; height:100%;">Your web browser does not support HTML5
+        <canvas id="file_preview">Your web browser does not support HTML5
             Canvas</canvas>
-        <canvas id="moni_preview" style="width:100%; height:100%;">Your web browser does not support HTML5
+        <canvas id="moni_preview">Your web browser does not support HTML5
             Canvas</canvas>
 
-        <div id="moni_control" style="position:absolute;z-index:3;bottom:0px;left:0px;display:none;">
+        <div id="moni_control" style="display:none;">
             <div class="row">
                 <div class="col-12">
-                    <input id="moni_slider" type="range" min="0" max="0" value="0"
-                        onchange="VitalFileViewer.slideTo(this.value)" oninput="VitalFileViewer.slideOn(this.value)">
+                    <input id="moni_slider" type="range" min="0" max="0" value="0">
                 </div>
             </div>
-            <div class="row" style="margin: 0 0 7px 5px;">
-                <button type="button" class="btn btn-transparent" title="Go to the beginning"
-                    onclick="VitalFileViewer.rewind(VitalFileViewer.getCaselen())">
+            <div class="row compact">
+                <button type="button" class="btn btn-transparent" title="Go to the beginning" id="btn_rewind_start">
                     <i class="fa fa-fast-backward" aria-hidden="true"></i>
                 </button>
-                <button type="button" class="btn btn-transparent" title="Rewind 1 frame"
-                    onclick="VitalFileViewer.rewind()">
+                <button type="button" class="btn btn-transparent" title="Rewind 1 frame" id="btn_rewind">
                     <i class="fa fa-step-backward" aria-hidden="true"></i>
                 </button>
-                <button id="moni_pause" type="button" class="btn btn-transparent"
-                    onclick="VitalFileViewer.pauseResume()" style="display: none;">
+                <button id="moni_pause" type="button" class="btn btn-transparent" style="display: none;">
                     <i class="fa fa-pause" aria-hidden="true"></i>
                 </button>
-                <button id="moni_resume" type="button" class="btn btn-transparent"
-                    onclick="VitalFileViewer.pauseResume()">
+                <button id="moni_resume" type="button" class="btn btn-transparent">
                     <i class="fa fa-play" aria-hidden="true"></i>
                 </button>
-                <button type="button" class="btn btn-transparent" title="Proceed 1 frame"
-                    onclick="VitalFileViewer.proceed()">
+                <button type="button" class="btn btn-transparent" title="Proceed 1 frame" id="btn_proceed">
                     <i class="fa fa-step-forward" aria-hidden="true"></i>
                 </button>
-                <button type="button" class="btn btn-transparent" title="Go to the end"
-                    onclick="VitalFileViewer.proceed(VitalFileViewer.getCaselen())">
+                <button type="button" class="btn btn-transparent" title="Go to the end" id="btn_proceed_end">
                     <i class="fa fa-fast-forward" aria-hidden="true"></i>
                 </button>
-                <span id="casetime" style="color:#FFFFFF;padding:10px 12px;"></span>
-                <label for="play-speed" class="d-inline-block ml-auto"
-                    style="color:white;margin:0;padding: 10px 15px;">Play Speed</label>
-                <select class="form-control form-control-sm sel-dark d-inline-block play-speed" id="play-speed"
-                    onchange="VitalFileViewer.setPlayspeed(this.value)" style="width:100px; margin:3px 5px;">
+                <span id="casetime"></span>
+                <label for="play-speed" class="d-inline-block ml-auto label-play-speed">Play Speed</label>
+                <select class="form-control form-control-sm sel-dark d-inline-block play-speed" id="play-speed">
                     <option value="1">x1</option>
                     <option value="2">x2</option>
                     <option value="4">x4</option>
@@ -105,35 +93,15 @@
 
     <div id="drop_message" style="display:none;">
         📂 Drop <b>.vital</b> file(s) here or <u>click to select</u> for preview
-        <div style="font-size:14px; margin-top:10px; color:#aaa;">You can select multiple files at once</div>
+        <div class="subtitle">You can select multiple files at once</div>
     </div>
     <input type="file" id="file_input" accept=".vital" multiple style="display:none;">
     <div id="drop_overlay" style="display:none;">
         📂 Drop .vital file(s) here for preview
-        <div style="font-size:18px; margin-top:10px; color:#ccc;">Multiple files supported</div>
+        <div class="subtitle">Multiple files supported</div>
     </div>
 
-    <!-- Script to handle file batches -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Add batch processing status
-            const originalStatus = document.getElementById('span_status');
-
-            if (originalStatus) {
-                // Create processing status container
-                const processingContainer = document.createElement('div');
-                processingContainer.id = 'processing_status';
-                processingContainer.style.display = 'none';
-                processingContainer.style.marginTop = '10px';
-                processingContainer.style.padding = '8px 12px';
-                processingContainer.style.backgroundColor = 'rgba(0,0,0,0.5)';
-                processingContainer.style.borderRadius = '4px';
-                processingContainer.style.color = '#fff';
-                originalStatus.parentNode.appendChild(processingContainer);
-            }
-        });
-    </script>
-
+    <!-- Application scripts -->
     <script src="./static/js/app/main.js"></script>
 
 </body>

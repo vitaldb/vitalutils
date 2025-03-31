@@ -211,7 +211,7 @@ const Utils = (function () {
     function preloader(filename, message = 'LOADING...', percentage = 0) {
         return new Promise(resolve => {
             setTimeout(function () {
-                let canvas, ctx;
+                let $canvas, ctx;
 
                 // Select the appropriate canvas based on view mode
                 if (window.view === "moni") {
@@ -223,7 +223,7 @@ const Utils = (function () {
                     $("#convert_view")
                         .attr("onclick", "window.vf.draw_trackview()")
                         .html("Track View");
-                    canvas = document.getElementById('moni_preview');
+                    $canvas = $('#moni_preview');
                 } else {
                     $("#moni_preview").hide();
                     $("#moni_control").hide();
@@ -233,16 +233,20 @@ const Utils = (function () {
                     $("#convert_view")
                         .attr("onclick", "window.vf.draw_moniview()")
                         .html("Monitor View");
-                    canvas = document.getElementById('file_preview');
+                    $canvas = $('#file_preview');
                 }
 
+                const canvas = $canvas[0];
                 ctx = canvas.getContext('2d');
 
                 // Set canvas size
-                canvas.style.width = '100%';
-                canvas.style.height = '100%';
-                canvas.width = parseInt(canvas.parentNode.parentNode.clientWidth);
-                canvas.height = window.innerHeight - 33;
+                $canvas.css({
+                    width: '100%',
+                    height: '100%'
+                });
+
+                canvas.width = parseInt($canvas.parent().parent().width());
+                canvas.height = $(window).height() - 33;
 
                 // Clear and draw background
                 ctx.clearRect(0, 0, canvas.width, canvas.height);

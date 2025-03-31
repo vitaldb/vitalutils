@@ -670,8 +670,8 @@ VitalFile.prototype = {
             .html("Monitor View");
 
         // Initialize track view
-        const canvas = document.getElementById('file_preview');
-        TrackView.initialize(this, canvas);
+        const $canvas = $('#file_preview');
+        TrackView.initialize(this, $canvas[0]);
 
         // Update UI if tracks were found
         if (this.sortedTids.length > 0) {
@@ -690,8 +690,8 @@ VitalFile.prototype = {
         window.vf = this;
 
         // Get canvas and initialize monitor view
-        const canvas = document.getElementById('moni_preview');
-        MonitorView.initialize(this, canvas);
+        const $canvas = $('#moni_preview');
+        MonitorView.initialize(this, $canvas[0]);
 
         // Show monitor view elements
         $("#span_preview_caseid").html(this.filename);

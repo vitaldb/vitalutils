@@ -186,10 +186,9 @@ const MonitorView = (function () {
      * Get the appropriate text color for a parameter
      * @param {Object} group - The parameter group
      * @param {Array} values - Parameter values
-     * @param {number} index - Current value index
      * @returns {string} - Color hex code
      */
-    function getParameterColor(group, values, index) {
+    function getParameterColor(group, values) {
         // Default to group color
         let color = group.fgColor;
 
@@ -198,7 +197,7 @@ const MonitorView = (function () {
             return "#00FFFF";
         }
 
-        if (group.name && group.name.substring(0, 5) === 'AGENT' && values.length > 1 && index === 1) {
+        if (group.name && group.name.indexOf('AGENT') > -1 && values.length > 1) {
             const colorMap = {
                 'DES': '#2296E6',
                 'ISO': '#DDA0DD',
@@ -344,7 +343,7 @@ const MonitorView = (function () {
         for (let idx = 0; idx < layout.length && idx < processedValues.length; idx++) {
             const layoutElement = layout[idx];
             const { name, value } = processedValues[idx];
-            const color = getParameterColor(group, processedValues, idx);
+            const color = getParameterColor(group, processedValues);
 
             // Draw value
             if (layoutElement.value) {

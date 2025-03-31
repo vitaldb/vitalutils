@@ -9,17 +9,17 @@ const VitalFileViewer = (function () {
      * Toggle file history dropdown visibility
      */
     function toggleFileHistory() {
-        const dropdown = document.getElementById('file_history_dropdown');
-        if (dropdown.style.display == 'none') {
+        const $dropdown = $('#file_history_dropdown');
+        if ($dropdown.css('display') === 'none') {
             updateFileHistoryDropdown();
-            dropdown.style.display = 'block';
+            $dropdown.show();
             // Add click outside listener
             setTimeout(() => {
-                document.addEventListener('click', closeFileHistoryOnClickOutside);
+                $(document).on('click', closeFileHistoryOnClickOutside);
             }, 0);
         } else {
-            dropdown.style.display = 'none';
-            document.removeEventListener('click', closeFileHistoryOnClickOutside);
+            $dropdown.hide();
+            $(document).off('click', closeFileHistoryOnClickOutside);
         }
     }
 
@@ -28,12 +28,12 @@ const VitalFileViewer = (function () {
      * @param {Event} event - Click event
      */
     function closeFileHistoryOnClickOutside(event) {
-        const dropdown = document.getElementById('file_history_dropdown');
-        const button = document.getElementById('current_file_btn');
+        const $dropdown = $('#file_history_dropdown');
+        const $button = $('#current_file_btn');
 
-        if (!dropdown.contains(event.target) && !button.contains(event.target)) {
-            dropdown.style.display = 'none';
-            document.removeEventListener('click', closeFileHistoryOnClickOutside);
+        if (!$dropdown[0].contains(event.target) && !$button[0].contains(event.target)) {
+            $dropdown.hide();
+            $(document).off('click', closeFileHistoryOnClickOutside);
         }
     }
 
@@ -41,86 +41,98 @@ const VitalFileViewer = (function () {
      * Update the file history dropdown with loaded files
      */
     function updateFileHistoryDropdown() {
-        const historyContainer = document.getElementById('file_history_items');
-        historyContainer.innerHTML = '';
+        const $historyContainer = $('#file_history_items');
+        $historyContainer.empty();
 
         // Check if files exist in window object
         if (window.files && Object.keys(window.files).length > 0) {
             // Add each file to the dropdown
             Object.keys(window.files).forEach(filename => {
-                const item = document.createElement('div');
-                item.className = 'file-history-item';
-                item.style.padding = '8px 10px';
-                item.style.borderBottom = '1px solid #444';
-                item.style.cursor = 'pointer';
-                item.style.whiteSpace = 'nowrap';
-                item.style.overflow = 'hidden';
-                item.style.textOverflow = 'ellipsis';
+                const $item = $('<div>')
+                    .addClass('file-history-item')
+                    .css({
+                        padding: '8px 10px',
+                        borderBottom: '1px solid #444',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                    });
 
                 // Highlight current file
                 if (window.vf && window.vf.filename === filename) {
-                    item.style.backgroundColor = '#444';
+                    $item.css('backgroundColor', '#444');
                 }
 
                 // Hover effect
-                item.onmouseover = function () {
-                    if (window.vf && window.vf.filename !== filename) {
-                        this.style.backgroundColor = '#3a3a3a';
+                $item.hover(
+                    function () {
+                        if (window.vf && window.vf.filename !== filename) {
+                            $(this).css('backgroundColor', '#3a3a3a');
+                        }
+                    },
+                    function () {
+                        if (window.vf && window.vf.filename !== filename) {
+                            $(this).css('backgroundColor', '');
+                        }
                     }
-                };
-                item.onmouseout = function () {
-                    if (window.vf && window.vf.filename !== filename) {
-                        this.style.backgroundColor = '';
-                    }
-                };
+                );
 
                 // Switch to this file when clicked
-                item.onclick = function () {
+                $item.on('click', function () {
                     switchToFile(filename);
-                    document.getElementById('file_history_dropdown').style.display = 'none';
-                };
+                    $('#file_history_dropdown').hide();
+                });
 
                 // Create item with filename and delete button
-                const fileText = document.createElement('span');
-                fileText.textContent = filename;
-                fileText.style.color = '#fff';
-                item.appendChild(fileText);
+                const $fileText = $('<span>')
+                    .text(filename)
+                    .css('color', '#fff');
+
+                $item.append($fileText);
 
                 // Add delete button
-                const deleteBtn = document.createElement('i');
-                deleteBtn.className = 'fa fa-times';
-                deleteBtn.style.float = 'right';
-                deleteBtn.style.color = '#aaa';
-                deleteBtn.style.marginLeft = '10px';
-                deleteBtn.style.padding = '3px 0';
-                deleteBtn.title = 'Remove from history';
+                const $deleteBtn = $('<i>')
+                    .addClass('fa fa-times')
+                    .css({
+                        float: 'right',
+                        color: '#aaa',
+                        marginLeft: '10px',
+                        padding: '3px 0'
+                    })
+                    .attr('title', 'Remove from history');
 
-                deleteBtn.onmouseover = function (e) {
-                    this.style.color = '#ff6b6b';
-                    e.stopPropagation();
-                };
-                deleteBtn.onmouseout = function (e) {
-                    this.style.color = '#aaa';
-                    e.stopPropagation();
-                };
+                $deleteBtn.hover(
+                    function (e) {
+                        $(this).css('color', '#ff6b6b');
+                        e.stopPropagation();
+                    },
+                    function (e) {
+                        $(this).css('color', '#aaa');
+                        e.stopPropagation();
+                    }
+                );
 
-                deleteBtn.onclick = function (e) {
+                $deleteBtn.on('click', function (e) {
                     removeFileFromHistory(filename);
                     e.stopPropagation();
-                };
+                });
 
-                item.appendChild(deleteBtn);
-                historyContainer.appendChild(item);
+                $item.append($deleteBtn);
+                $historyContainer.append($item);
             });
         } else {
             // No files in history
-            const noFiles = document.createElement('div');
-            noFiles.style.padding = '10px';
-            noFiles.style.color = '#aaa';
-            noFiles.style.fontStyle = 'italic';
-            noFiles.style.textAlign = 'center';
-            noFiles.textContent = 'No files in history';
-            historyContainer.appendChild(noFiles);
+            const $noFiles = $('<div>')
+                .css({
+                    padding: '10px',
+                    color: '#aaa',
+                    fontStyle: 'italic',
+                    textAlign: 'center'
+                })
+                .text('No files in history');
+
+            $historyContainer.append($noFiles);
         }
     }
 
@@ -229,17 +241,17 @@ const VitalFileViewer = (function () {
      * Process a batch of files sequentially
      * @param {Array} files - Array of files to process
      * @param {number} index - Current file index
-     * @param {HTMLElement} statusElement - Element to display status
+     * @param {jQuery} $statusElement - Element to display status
      * @returns {Promise} - Resolves when all files are processed
      */
-    async function processFileBatch(files, index, statusElement) {
+    async function processFileBatch(files, index, $statusElement) {
         // All files processed
         if (index >= files.length) {
-            if (statusElement) {
+            if ($statusElement && $statusElement.length) {
                 // Update complete message and fade out
-                statusElement.innerHTML = `Completed processing ${files.length} files`;
+                $statusElement.html(`Completed processing ${files.length} files`);
                 setTimeout(() => {
-                    $(statusElement).fadeOut(1000);
+                    $statusElement.fadeOut(1000);
                 }, 2000);
             }
             return;
@@ -248,8 +260,8 @@ const VitalFileViewer = (function () {
         const file = files[index];
 
         // Update status for multiple files
-        if (statusElement && files.length > 1) {
-            statusElement.innerHTML = `Processing ${index + 1}/${files.length}: ${file.name}`;
+        if ($statusElement && $statusElement.length && files.length > 1) {
+            $statusElement.html(`Processing ${index + 1}/${files.length}: ${file.name}`);
         }
 
         try {
@@ -262,7 +274,7 @@ const VitalFileViewer = (function () {
             }
 
             // Process next file
-            await processFileBatch(files, index + 1, statusElement);
+            await processFileBatch(files, index + 1, $statusElement);
 
         } catch (error) {
             console.error(`Error processing file ${file.name}:`, error);
@@ -273,7 +285,7 @@ const VitalFileViewer = (function () {
             }
 
             // Continue with next file after error
-            await processFileBatch(files, index + 1, statusElement);
+            await processFileBatch(files, index + 1, $statusElement);
         }
     }
 
@@ -293,10 +305,10 @@ const VitalFileViewer = (function () {
         }
 
         // Display processing status if multiple files
-        const processingContainer = document.getElementById('processing_status');
-        if (vitalFiles.length > 1 && processingContainer) {
-            processingContainer.innerHTML = `Processing 0/${vitalFiles.length} files...`;
-            processingContainer.style.display = 'block';
+        const $processingContainer = $('#processing_status');
+        if (vitalFiles.length > 1 && $processingContainer.length) {
+            $processingContainer.html(`Processing 0/${vitalFiles.length} files...`);
+            $processingContainer.show();
         }
 
         // Make sure playback is paused
@@ -308,7 +320,7 @@ const VitalFileViewer = (function () {
         }
 
         // Process files
-        processFileBatch(vitalFiles, 0, processingContainer);
+        processFileBatch(vitalFiles, 0, $processingContainer);
 
         // Hide drop message
         $("#drop_message").hide();
@@ -317,7 +329,7 @@ const VitalFileViewer = (function () {
     // Initialize the app when document is ready
     function initializeApp() {
         // Set up window resize event handlers
-        window.addEventListener('resize', function () {
+        $(window).on('resize', function () {
             if (window.view === "moni") {
                 MonitorView.onResize();
             } else {
@@ -331,26 +343,26 @@ const VitalFileViewer = (function () {
         }
 
         // Set up drag and drop file handling
-        const dropOverlay = $("#drop_overlay");
-        const dropMessage = $("#drop_message");
-        const fileInput = $("#file_input");
+        const $dropOverlay = $("#drop_overlay");
+        const $dropMessage = $("#drop_message");
+        const $fileInput = $("#file_input");
 
-        dropMessage.show();
-        dropOverlay.show();
+        $dropMessage.show();
+        $dropOverlay.show();
 
-        dropMessage.on("click", function () {
-            fileInput.click();
+        $dropMessage.on("click", function () {
+            $fileInput.click();
         });
 
-        fileInput.on("change", function (event) {
+        $fileInput.on("change", function (event) {
             handleFileInput(event.target.files);
         });
 
         $(document).on("dragenter", function (event) {
             event.preventDefault();
             event.stopPropagation();
-            dropOverlay.addClass("active");
-            dropMessage.addClass("d-none");
+            $dropOverlay.addClass("active");
+            $dropMessage.addClass("d-none");
         });
 
         $(document).on("dragover", function (event) {
@@ -362,16 +374,16 @@ const VitalFileViewer = (function () {
             event.preventDefault();
             event.stopPropagation();
             if (event.originalEvent.clientX === 0 && event.originalEvent.clientY === 0) {
-                dropOverlay.removeClass("active");
-                dropMessage.removeClass("d-none");
+                $dropOverlay.removeClass("active");
+                $dropMessage.removeClass("d-none");
             }
         });
 
         $(document).on("drop", function (event) {
             event.preventDefault();
             event.stopPropagation();
-            dropOverlay.removeClass("active");
-            dropMessage.removeClass("d-none");
+            $dropOverlay.removeClass("active");
+            $dropMessage.removeClass("d-none");
 
             let files = event.originalEvent.dataTransfer.files;
             if (files.length > 0) {
@@ -394,14 +406,77 @@ const VitalFileViewer = (function () {
         });
 
         // Start observing span_preview_caseid for changes
-        const fileNameElement = document.getElementById('span_preview_caseid');
-        if (fileNameElement) {
-            observer.observe(fileNameElement, { childList: true });
+        const $fileNameElement = $('#span_preview_caseid');
+        if ($fileNameElement.length) {
+            observer.observe($fileNameElement[0], { childList: true });
         }
     }
 
     // Initialize the app
     $(document).ready(function () {
+        // Add batch processing status
+        const $originalStatus = $('#span_status');
+
+        if ($originalStatus.length) {
+            // Create processing status container
+            const $processingContainer = $('<div>')
+                .attr('id', 'processing_status')
+                .css({
+                    'display': 'none',
+                    'margin-top': '10px',
+                    'padding': '8px 12px',
+                    'background-color': 'rgba(0,0,0,0.5)',
+                    'border-radius': '4px',
+                    'color': '#fff'
+                });
+
+            $originalStatus.parent().append($processingContainer);
+        }
+
+        // Set up button click handlers
+        $('#select_file').on('click', function () {
+            $('#file_input').click();
+        });
+
+        $('#fit_width').on('click', function () {
+            TrackView.fitTrackview(0);
+        });
+
+        $('#fit_100px').on('click', function () {
+            TrackView.fitTrackview(1);
+        });
+
+        // Monitor view controls
+        $('#moni_slider').on('change', function () {
+            MonitorView.slideTo(this.value);
+        }).on('input', function () {
+            MonitorView.slideOn(this.value);
+        });
+
+        $('#btn_rewind_start').on('click', function () {
+            MonitorView.rewind(MonitorView.getCaselen());
+        });
+
+        $('#btn_rewind').on('click', function () {
+            MonitorView.rewind();
+        });
+
+        $('#moni_pause, #moni_resume').on('click', function () {
+            MonitorView.pauseResume();
+        });
+
+        $('#btn_proceed').on('click', function () {
+            MonitorView.proceed();
+        });
+
+        $('#btn_proceed_end').on('click', function () {
+            MonitorView.proceed(MonitorView.getCaselen());
+        });
+
+        $('#play-speed').on('change', function () {
+            MonitorView.setPlayspeed(this.value);
+        });
+
         // Set default view
         window.view = "track";
 
@@ -411,34 +486,6 @@ const VitalFileViewer = (function () {
 
     // Public API for external interaction
     return {
-        // Monitor view controls
-        pauseResume: function (pause) {
-            return MonitorView.pauseResume(pause);
-        },
-        rewind: function (seconds) {
-            return MonitorView.rewind(seconds);
-        },
-        proceed: function (seconds) {
-            return MonitorView.proceed(seconds);
-        },
-        slideTo: function (seconds) {
-            return MonitorView.slideTo(seconds);
-        },
-        slideOn: function (seconds) {
-            return MonitorView.slideOn(seconds);
-        },
-        setPlayspeed: function (val) {
-            return MonitorView.setPlayspeed(val);
-        },
-        getCaselen: function () {
-            return MonitorView.getCaselen();
-        },
-
-        // Track view controls
-        fitTrackview: function (type) {
-            return TrackView.fitTrackview(type);
-        },
-
         // File history controls
         toggleFileHistory: toggleFileHistory,
         updateFileHistoryDropdown: updateFileHistoryDropdown,
