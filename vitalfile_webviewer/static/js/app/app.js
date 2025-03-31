@@ -426,7 +426,6 @@ const VitalFileViewer = (function () {
                     'margin-top': '10px',
                     'padding': '8px 12px',
                     'background-color': 'rgba(0,0,0,0.5)',
-                    'border-radius': '4px',
                     'color': '#fff'
                 });
 
