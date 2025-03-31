@@ -128,6 +128,10 @@ const Utils = (function () {
             setTimeout(function () {
                 let canvas, ctx;
 
+                // Clear any previous content and ensure preview container is visible
+                $("#div_preview").css('display', '');
+                $("#span_preview_caseid").html(filename);
+
                 if (window.view === "moni") {
                     $("#file_preview").hide();
                     $("#fit_width").hide();
@@ -148,8 +152,13 @@ const Utils = (function () {
                     ctx = canvas.getContext('2d');
                 }
 
+                // Set canvas dimensions based on container
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
                 canvas.width = parseInt(canvas.parentNode.parentNode.clientWidth);
                 canvas.height = window.innerHeight - 33;
+
+                // Clear and draw loading screen
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = '#181818';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -166,8 +175,6 @@ const Utils = (function () {
                     ctx.fillRect((canvas.width - 300) / 2, (canvas.height) / 2, pw, 3);
                 }
 
-                $("#span_preview_caseid").html(filename);
-                $("#div_preview").css('display', '');
                 resolve();
             }, 100);
         });

@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="./static/css/style.css" rel="stylesheet">
-    <link href="./static/css/template.min.css" rel="stylesheet">
     <link href="./static/css/font-awesome/css/font-awesome.min.css" rel="stylesheet">
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 </head>
@@ -19,6 +18,9 @@
                 <td align="right">
                     <span id="span_status"></span>
                     <div id="btn_preview" style="display:none;">
+                        <button type="button" id="select_file" class="btn btn-gray btn-sm"
+                            style="background:#505050;margin:5px;height:25px;line-height:1px;text-decoration:none;"
+                            onclick="document.getElementById('file_input').click()">Select File</button>
                         <button type="button" id="fit_width" class="btn btn-gray btn-sm"
                             style="background:#505050;margin:5px;height:25px;line-height:1px;text-decoration:none;"
                             onclick="VitalFileViewer.fitTrackview(0)">Fit Width</button>
@@ -89,10 +91,7 @@
     <input type="file" id="file_input" accept=".vital" style="display:none;">
     <div id="drop_overlay" style="display:none;">📂 Drop a .vital file here for preview</div>
 
-    <script src="./static/js/jquery.min.js"></script>
-    <script src="./static/js/bootstrap.min.js"></script>
-    <script src="./static/js/pako.min.js"></script>
-    <script src="./static/js/main.js"></script>
+    <script src="./static/js/app/main.js"></script>
 
 </body>
 

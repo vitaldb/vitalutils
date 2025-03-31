@@ -425,12 +425,12 @@ const MonitorView = (function () {
 
     // Event handlers
     function onResizeWindow() {
-        const ratio = vf.canvas_height / canvas_width;
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight - 28;
         canvas.style.width = window.innerWidth + 'px';
         canvas.style.height = (window.innerHeight - 28) + 'px';
         canvas_width = canvas.width;
+        draw();
     }
 
     function pauseResume(pause = null) {

@@ -1,47 +1,162 @@
+/* Basic reset and box model */
 * {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
 }
-#moni_control{
-    width:100%;
-    padding:10px;
-    background:rgba(24, 24, 24, .3);
-    display:none
+
+/* Body styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    text-align: left;
+    background-color: #fff;
 }
-#moni_control button{
-    cursor:pointer
+
+/* Row and column layout */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: -15px;
+    margin-left: -15px;
 }
-input[type=range]{
-    -webkit-appearance:none;
-    width:100%;
-    height:5px;
-    border-radius:2px;
-    background:#d3d3d3;
-    margin-bottom:15px;
-    -moz-box-shadow:inset 0 1px 1px #000;
-    -webkit-box-shadow:inset 0 1px 1px #000;
-    box-shadow:inset 0 1px 1px #000
+
+.col-12 {
+    position: relative;
+    width: 100%;
+    min-height: 1px;
+    padding-right: 15px;
+    padding-left: 15px;
+    flex: 0 0 100%;
+    max-width: 100%;
 }
-input[type=range]:focus{
-    outline:none
+
+/* Button styles */
+.btn {
+    display: inline-block;
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    user-select: none;
+    border: 1px solid transparent;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: .25rem;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+    cursor: pointer;
 }
-input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none;
-    appearance:none;
-    width:24px;
-    height:24px;
-    border:0;
-    background:url("../img/bottom-handle.png") no-repeat 50%;
-    cursor:pointer;
+
+.btn:focus,
+.btn:hover {
+    text-decoration: none;
 }
-input[type=range]::-moz-range-thumb{
-    width:24px;
-    height:24px;
-    border:0;
-    background:url("../img/bottom-handle.png") no-repeat 50%;
-    cursor:pointer;
+
+.btn-sm {
+    padding: .25rem .5rem;
+    font-size: .875rem;
+    line-height: 1.5;
+    border-radius: .2rem;
 }
-/* 드래그 앤 드롭 기본 메시지 */
+
+.btn-gray {
+    color: #fff;
+    background-color: #505050;
+    border-color: #444;
+}
+
+.btn-gray:hover {
+    background-color: #5a5a5a;
+    border-color: #545454;
+}
+
+.btn-transparent {
+    color: #fff;
+    background-color: transparent;
+    border-color: transparent;
+}
+
+.btn-transparent:hover {
+    color: #fff;
+    background-color: transparent;
+    border-color: transparent;
+}
+
+/* Form controls */
+.form-control {
+    display: block;
+    width: 100%;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #495057;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    border-radius: .25rem;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+
+.form-control-sm {
+    height: calc(1.8125rem + 2px);
+    padding: .25rem .5rem;
+    font-size: .875rem;
+    line-height: 1.5;
+    border-radius: .2rem;
+}
+
+/* Monitor control styles */
+#moni_control {
+    width: 100%;
+    padding: 10px;
+    background: rgba(24, 24, 24, .3);
+    display: none;
+}
+
+#moni_control button {
+    cursor: pointer;
+}
+
+/* Range input (slider) styles */
+input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 5px;
+    border-radius: 2px;
+    background: #d3d3d3;
+    margin-bottom: 15px;
+    -moz-box-shadow: inset 0 1px 1px #000;
+    -webkit-box-shadow: inset 0 1px 1px #000;
+    box-shadow: inset 0 1px 1px #000;
+}
+
+input[type=range]:focus {
+    outline: none;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    background: url("../img/bottom-handle.png") no-repeat 50%;
+    cursor: pointer;
+}
+
+input[type=range]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border: 0;
+    background: url("../img/bottom-handle.png") no-repeat 50%;
+    cursor: pointer;
+}
+
+/* Drag and drop styles */
 #drop_message {
     position: fixed;
     top: 50%;
@@ -60,7 +175,6 @@ input[type=range]::-moz-range-thumb{
     transition: all 0.3s ease-in-out;
 }
 
-/* 드래그 앤 드롭 오버레이 */
 #drop_overlay {
     position: fixed;
     top: 0;
@@ -81,26 +195,53 @@ input[type=range]::-moz-range-thumb{
     pointer-events: none;
 }
 
-/* 드래그 중일 때 기본 메시지 숨기기 */
 #drop_message.hidden {
     opacity: 0;
     pointer-events: none;
 }
 
-/* "click to select" 부분만 포인터 스타일 추가 */
 #drop_message u {
-    cursor: pointer; /* 손가락 포인터 표시 */
+    cursor: pointer;
 }
 
-/* 드래그 중일 때 활성화 */
 #drop_overlay.active {
     opacity: 1;
     pointer-events: auto;
 }
 
-/* 드래그 중일 때 메시지 강조 */
 #drop_message.active {
     color: #fff;
     border-color: #fff;
     background: rgba(255, 255, 255, 0.2);
+}
+
+/* Display utilities */
+.d-inline-block {
+    display: inline-block !important;
+}
+
+/* Margin utilities */
+.ml-auto {
+    margin-left: auto !important;
+}
+
+/* Dark select dropdown style */
+.sel-dark {
+    background-color: #333;
+    color: #fff;
+}
+
+/* Hide elements with [hidden] attribute */
+[hidden] {
+    display: none !important;
+}
+
+::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: auto;
 }
