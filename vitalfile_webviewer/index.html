@@ -14,13 +14,27 @@
     <div id="div_preview" style="width:100%; height: 100%; overflow-y: auto; overflow-x: hidden; display: none;">
         <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
             <tr>
-                <td id="span_preview_caseid"></td>
+                <td>
+                    <div class="file-history-container"
+                        style="display:inline-block; position:relative; margin-right:15px;">
+                        <button id="current_file_btn" class="btn btn-gray btn-sm dropdown-toggle"
+                            style="background:#505050; margin:5px; height:25px; line-height:1px; text-decoration:none; min-width:200px; text-align:left; padding-right:25px;">
+                            <span id="span_preview_caseid"></span>
+                            <i class="fa fa-caret-down"
+                                style="position:absolute; right:10px; top:50%; transform:translateY(-50%);"></i>
+                        </button>
+                        <div id="file_history_dropdown"
+                            style="display:none; position:absolute; background:#2a2a2a; border:1px solid #444; border-radius:4px; max-height:300px; overflow-y:auto; width:100%; z-index:100;">
+                            <div id="file_history_items">
+                            </div>
+                        </div>
+                    </div>
+                </td>
                 <td align="right">
-                    <span id="span_status"></span>
                     <div id="btn_preview" style="display:none;">
                         <button type="button" id="select_file" class="btn btn-gray btn-sm"
                             style="background:#505050;margin:5px;height:25px;line-height:1px;text-decoration:none;"
-                            onclick="document.getElementById('file_input').click()">Select File</button>
+                            onclick="document.getElementById('file_input').click()">Select Files</button>
                         <button type="button" id="fit_width" class="btn btn-gray btn-sm"
                             style="background:#505050;margin:5px;height:25px;line-height:1px;text-decoration:none;"
                             onclick="VitalFileViewer.fitTrackview(0)">Fit Width</button>
@@ -32,6 +46,9 @@
                             onclick="window.vf.draw_moniview()">Monitor View</button>
                     </div>
                 </td>
+            </tr>
+            <tr>
+                <td colspan="2"><span id="span_status"></span></td>
             </tr>
         </table>
 
@@ -86,10 +103,36 @@
         </div>
     </div>
 
-    <div id="drop_message" style="display:none;">📂 Drop a <b>.vital</b> file here or <u>click to select</u> for preview
+    <div id="drop_message" style="display:none;">
+        📂 Drop <b>.vital</b> file(s) here or <u>click to select</u> for preview
+        <div style="font-size:14px; margin-top:10px; color:#aaa;">You can select multiple files at once</div>
     </div>
-    <input type="file" id="file_input" accept=".vital" style="display:none;">
-    <div id="drop_overlay" style="display:none;">📂 Drop a .vital file here for preview</div>
+    <input type="file" id="file_input" accept=".vital" multiple style="display:none;">
+    <div id="drop_overlay" style="display:none;">
+        📂 Drop .vital file(s) here for preview
+        <div style="font-size:18px; margin-top:10px; color:#ccc;">Multiple files supported</div>
+    </div>
+
+    <!-- Script to handle file batches -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Add batch processing status
+            const originalStatus = document.getElementById('span_status');
+
+            if (originalStatus) {
+                // Create processing status container
+                const processingContainer = document.createElement('div');
+                processingContainer.id = 'processing_status';
+                processingContainer.style.display = 'none';
+                processingContainer.style.marginTop = '10px';
+                processingContainer.style.padding = '8px 12px';
+                processingContainer.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                processingContainer.style.borderRadius = '4px';
+                processingContainer.style.color = '#fff';
+                originalStatus.parentNode.appendChild(processingContainer);
+            }
+        });
+    </script>
 
     <script src="./static/js/app/main.js"></script>
 

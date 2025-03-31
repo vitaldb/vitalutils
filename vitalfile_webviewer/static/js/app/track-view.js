@@ -7,262 +7,387 @@ const TrackView = (function () {
     // Private state
     let canvas;
     let ctx;
-    let vf;
-    let tw = 640;
-    let tx = CONSTANTS.HEADER_WIDTH;
-    let is_zooming = false;
-    let fit = 0;
-    let dragx = -1;
-    let dragy = -1;
-    let dragty, dragtx;
+    let vitalFile;
+    let trackWidth = 640;
+    let trackXOffset = CONSTANTS.HEADER_WIDTH;
+    let isZooming = false;
+    let fitMode = 0;
+    let dragStartX = -1;
+    let dragStartY = -1;
+    let dragTrackY, dragTrackX;
+    let offset = 0;
 
-    // Helper functions
-    function stotime(seconds) {
-        const date = new Date((seconds + vf.dtstart) * 1000);
-        const hh = date.getHours();
-        const mm = date.getMinutes();
-        const ss = date.getSeconds();
+    /**
+     * Formats seconds into HH:MM:SS time string
+     * @param {number} seconds - Seconds to format
+     * @returns {string} - Formatted time string
+     */
+    function formatTimeString(seconds) {
+        const date = new Date((seconds + vitalFile.dtstart) * 1000);
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        const seconds_ = date.getSeconds();
 
-        return ("0" + hh).slice(-2) + ":" + ("0" + mm).slice(-2) + ":" + ("0" + ss).slice(-2);
+        return [
+            String(hours).padStart(2, '0'),
+            String(minutes).padStart(2, '0'),
+            String(seconds_).padStart(2, '0')
+        ].join(':');
     }
 
-    // Drawing functions
-    function drawTime() {
-        const caselen = vf.dtend - vf.dtstart;
-        if (!is_zooming) {
-            tw = (fit === 1) ? (caselen * 100) : (canvas.width - CONSTANTS.HEADER_WIDTH);
-        }
-        let ty = 0;
+    /**
+     * Draws the time ruler at the top of the view
+     */
+    function drawTimeRuler() {
+        const caseLength = vitalFile.dtend - vitalFile.dtstart;
 
-        // Time ruler background and title
+        // Calculate track width if not zooming
+        if (!isZooming) {
+            trackWidth = (fitMode === 1)
+                ? (caseLength * 100)
+                : (canvas.width - CONSTANTS.HEADER_WIDTH);
+        }
+
+        let posY = 0;
+
+        // Time ruler background
         ctx.fillStyle = '#464646';
-        ctx.fillRect(0, ty, canvas.width, CONSTANTS.DEVICE_HEIGHT);
+        ctx.fillRect(0, posY, canvas.width, CONSTANTS.DEVICE_HEIGHT);
+
+        // Draw "TIME" label
         ctx.font = '100 12px arial';
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'left';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText("TIME", 8, ty + CONSTANTS.DEVICE_HEIGHT - 7);
+        ctx.fillText("TIME", 8, posY + CONSTANTS.DEVICE_HEIGHT - 7);
 
-        ty += 5;
+        posY += 5;
 
-        // Draw time scale
+        // Draw time scale markers
         ctx.lineWidth = 1;
         ctx.strokeStyle = "#ffffff";
         ctx.textBaseline = 'top';
-        const dist = (canvas.width - CONSTANTS.HEADER_WIDTH) / 5;
+        const markerDistance = (canvas.width - CONSTANTS.HEADER_WIDTH) / 5;
 
-        for (let i = CONSTANTS.HEADER_WIDTH; i <= canvas.width; i += dist) {
-            const time = stotime((i - tx) * caselen / tw);
-            ctx.textAlign = "center";
+        // Draw 6 markers at equal distances
+        for (let i = 0; i <= 5; i++) {
+            const xPos = CONSTANTS.HEADER_WIDTH + i * markerDistance;
+            const timeOffset = (xPos - trackXOffset) * caseLength / trackWidth;
+            const timeString = formatTimeString(timeOffset);
 
-            if (i === CONSTANTS.HEADER_WIDTH) ctx.textAlign = "left";
-            if (i === canvas.width) {
+            // Text alignment adjustments for edge markers
+            if (i === 0) {
+                ctx.textAlign = "left";
+            } else if (i === 5) {
                 ctx.textAlign = "right";
-                i -= 5;
+            } else {
+                ctx.textAlign = "center";
             }
 
-            ctx.fillText(time, i, ty);
+            // Draw time text
+            ctx.fillText(timeString, xPos, posY);
 
+            // Draw vertical grid line
             ctx.beginPath();
-            ctx.moveTo(i, 17);
-            ctx.lineTo(i, CONSTANTS.DEVICE_HEIGHT);
+            ctx.moveTo(xPos, 17);
+            ctx.lineTo(xPos, CONSTANTS.DEVICE_HEIGHT);
             ctx.stroke();
         }
     }
 
-    function drawTrack(tid) {
-        const t = vf.trks[tid];
-        const ty = t.ty;
-        const th = t.th;
+    /**
+     * Draws a single track of data
+     * @param {string} trackId - ID of the track to draw
+     * @returns {boolean} - Success status
+     */
+    function drawTrack(trackId) {
+        const track = vitalFile.trks[trackId];
+        if (!track) return false;
 
-        const caselen = vf.dtend - vf.dtstart;
-        if (!is_zooming) {
-            tw = (fit === 1) ? (caselen * 100) : (canvas.width - CONSTANTS.HEADER_WIDTH);
+        const posY = track.ty;
+        const height = track.th;
+        const caseLength = vitalFile.dtend - vitalFile.dtstart;
+
+        // Update track width if not zooming
+        if (!isZooming) {
+            trackWidth = (fitMode === 1)
+                ? (caseLength * 100)
+                : (canvas.width - CONSTANTS.HEADER_WIDTH);
         }
 
         // Clear background
         ctx.fillStyle = '#181818';
-        ctx.fillRect(CONSTANTS.HEADER_WIDTH - 1, ty, canvas.width - CONSTANTS.HEADER_WIDTH, th);
+        ctx.fillRect(CONSTANTS.HEADER_WIDTH - 1, posY, canvas.width - CONSTANTS.HEADER_WIDTH, height);
         ctx.beginPath();
         ctx.lineWidth = 1;
 
-        if (t.type === 1) { // Wave type
-            let isfirst = true;
-            // Ensure at least 100 samples per pixel
-            let inc = parseInt(t.prev.length / tw / 100);
-            if (inc < 1) inc = 1;
-
-            // Calculate starting index
-            let sidx = parseInt((CONSTANTS.HEADER_WIDTH - tx) * t.prev.length / tw);
-            if (sidx < 0) sidx = 0;
-
-            for (let idx = sidx, l = t.prev.length; idx < l; idx += inc) {
-                // Skip zeros
-                if (t.prev[idx] === 0) continue;
-
-                const px = tx + ((idx * tw) / (t.prev.length));
-                if (px <= CONSTANTS.HEADER_WIDTH) {
-                    continue;
-                }
-                if (px >= canvas.width) {
-                    break;
-                }
-
-                // Draw points with values 1-255
-                const py = ty + th * (255 - t.prev[idx]) / 254;
-                if (isfirst) {
-                    isfirst = false;
-                    ctx.moveTo(px, py);
-                }
-                ctx.lineTo(px, py);
-            }
-        } else if (t.type === 2) { // Numeric type
-            for (let idx in t.data) {
-                const dtval = t.data[idx];
-                const dt = parseFloat(dtval[0]);
-                const px = tx + dt / caselen * tw;
-
-                if (px <= CONSTANTS.HEADER_WIDTH) continue;
-                if (px >= canvas.width) break;
-
-                const val = parseFloat(dtval[1]);
-                if (val <= t.mindisp) continue;
-
-                let displayVal = val;
-                if (displayVal >= t.maxdisp) displayVal = t.maxdisp;
-
-                let py = ty + th - (displayVal - t.mindisp) * th / (t.maxdisp - t.mindisp);
-                if (py < ty) py = ty;
-                else if (py > ty + th) py = ty + th;
-
-                ctx.moveTo(px, py);
-                ctx.lineTo(px, ty + th);
-            }
+        // Choose drawing method based on track type
+        if (track.type === 1) {
+            drawWaveTrack(track, posY, height, caseLength);
+        } else if (track.type === 2) {
+            drawNumericTrack(track, posY, height, caseLength);
         }
 
-        ctx.strokeStyle = vf.get_color(tid);
+        // Draw track color
+        ctx.strokeStyle = vitalFile.get_color(trackId);
         ctx.stroke();
 
-        // Draw bottom line
+        // Draw horizontal divider line
         ctx.lineWidth = 0.5;
         ctx.strokeStyle = '#808080';
         ctx.beginPath();
-        ctx.moveTo(CONSTANTS.HEADER_WIDTH, ty + th);
-        ctx.lineTo(canvas.width, ty + th);
+        ctx.moveTo(CONSTANTS.HEADER_WIDTH, posY + height);
+        ctx.lineTo(canvas.width, posY + height);
         ctx.stroke();
+
+        return true;
     }
 
+    /**
+     * Draws waveform track data
+     * @param {Object} track - Track object
+     * @param {number} posY - Y-position for drawing
+     * @param {number} height - Height of the track
+     * @param {number} caseLength - Length of the case in seconds
+     */
+    function drawWaveTrack(track, posY, height, caseLength) {
+        if (!track.prev || !track.prev.length) return;
+
+        let isFirstPoint = true;
+
+        // Calculate optimal sampling increment for performance
+        const increment = Math.max(1, Math.floor(track.prev.length / trackWidth / 100));
+
+        // Calculate starting index based on current view position
+        const startIndex = Math.max(0, Math.floor((CONSTANTS.HEADER_WIDTH - trackXOffset) * track.prev.length / trackWidth));
+
+        // Draw waveform points
+        for (let idx = startIndex; idx < track.prev.length; idx += increment) {
+            // Skip gaps in data
+            if (track.prev[idx] === 0) continue;
+
+            // Calculate x position
+            const posX = trackXOffset + ((idx * trackWidth) / track.prev.length);
+
+            // Skip points outside the visible area
+            if (posX <= CONSTANTS.HEADER_WIDTH) continue;
+            if (posX >= canvas.width) break;
+
+            // Calculate y position (normalize to 0-255 range)
+            const positionY = posY + height * (255 - track.prev[idx]) / 254;
+
+            // Start or continue the path
+            if (isFirstPoint) {
+                isFirstPoint = false;
+                ctx.moveTo(posX, positionY);
+            } else {
+                ctx.lineTo(posX, positionY);
+            }
+        }
+    }
+
+    /**
+     * Draws numeric track data
+     * @param {Object} track - Track object
+     * @param {number} posY - Y-position for drawing
+     * @param {number} height - Height of the track
+     * @param {number} caseLength - Length of the case in seconds
+     */
+    function drawNumericTrack(track, posY, height, caseLength) {
+        if (!track.data || !track.data.length) return;
+
+        // Draw each data point
+        for (let idx = 0; idx < track.data.length; idx++) {
+            const [time, rawValue] = track.data[idx];
+
+            // Calculate x position
+            const posX = trackXOffset + time / caseLength * trackWidth;
+
+            // Skip points outside the visible area
+            if (posX <= CONSTANTS.HEADER_WIDTH) continue;
+            if (posX >= canvas.width) break;
+
+            // Handle values outside display range
+            const value = parseFloat(rawValue);
+            if (value <= track.mindisp) continue;
+
+            // Normalize value to display range
+            let displayValue = Math.min(value, track.maxdisp);
+
+            // Calculate y position (scaled to track height)
+            let pointY = posY + height - (displayValue - track.mindisp) * height / (track.maxdisp - track.mindisp);
+
+            // Clamp to track boundaries
+            pointY = Math.max(posY, Math.min(posY + height, pointY));
+
+            // Draw vertical line from point to bottom of track
+            ctx.moveTo(posX, pointY);
+            ctx.lineTo(posX, posY + height);
+        }
+    }
+
+    /**
+     * Sets up the canvas with track headers and backgrounds
+     */
     function initCanvas() {
+        // Update canvas height to accommodate all tracks
+        canvas.height = vitalFile.trackViewHeight;
+        canvas.style.height = vitalFile.trackViewHeight + 'px';
+
+        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#181818';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // Set text style
         ctx.font = '100 12px arial';
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'left';
 
-        let ty = CONSTANTS.DEVICE_HEIGHT;
-        let lastdname = '';
+        let posY = CONSTANTS.DEVICE_HEIGHT;
+        let lastDeviceName = '';
 
-        for (let i in vf.sorted_tids) {
-            const tid = vf.sorted_tids[i];
-            const t = vf.trks[tid];
-            const dname = t.dname;
+        // Draw track headers
+        for (let i = 0; i < vitalFile.sortedTids.length; i++) {
+            const trackId = vitalFile.sortedTids[i];
+            const track = vitalFile.trks[trackId];
+            const deviceName = track.dname;
 
-            // Draw device name
-            if (dname !== lastdname) {
+            // Add device header if new device
+            if (deviceName !== lastDeviceName) {
+                // Device header background
                 ctx.fillStyle = '#505050';
-                ctx.fillRect(0, ty, canvas.width, CONSTANTS.DEVICE_HEIGHT);
+                ctx.fillRect(0, posY, canvas.width, CONSTANTS.DEVICE_HEIGHT);
 
-                // Device name text
+                // Device name
                 ctx.fillStyle = '#ffffff';
-                ctx.fillText(dname, 8, ty + CONSTANTS.DEVICE_HEIGHT - 7);
+                ctx.fillText(deviceName, 8, posY + CONSTANTS.DEVICE_HEIGHT - 7);
 
-                ty += CONSTANTS.DEVICE_HEIGHT;
-                lastdname = dname;
+                posY += CONSTANTS.DEVICE_HEIGHT;
+                lastDeviceName = deviceName;
             }
 
-            // Draw track name field
+            // Track name background
             ctx.fillStyle = '#464646';
-            ctx.fillRect(0, ty, CONSTANTS.HEADER_WIDTH, t.th);
+            ctx.fillRect(0, posY, CONSTANTS.HEADER_WIDTH, track.th);
 
-            // Track name text
-            ctx.fillStyle = vf.get_color(tid);
-            const tname = t.name;
-            ctx.fillText(tname, 8, ty + 20);
+            // Track name
+            ctx.fillStyle = vitalFile.get_color(trackId);
+            ctx.fillText(track.name, 8, posY + 20);
 
-            // Loading text
+            // Loading indicator
             ctx.textAlign = 'left';
             ctx.fillStyle = '#808080';
-            ctx.fillText('LOADING...', CONSTANTS.HEADER_WIDTH + 10, ty + CONSTANTS.DEVICE_HEIGHT - 7);
+            ctx.fillText('LOADING...', CONSTANTS.HEADER_WIDTH + 10, posY + CONSTANTS.DEVICE_HEIGHT - 7);
 
-            ty += t.th;
+            posY += track.th;
         }
     }
 
+    /**
+     * Draws all tracks in the view
+     */
     function drawAllTracks() {
-        drawTime();
-        for (let i in vf.sorted_tids) {
-            const tid = vf.sorted_tids[i];
-            drawTrack(tid);
+        drawTimeRuler();
+        vitalFile.sortedTids.forEach(trackId => drawTrack(trackId));
+    }
+
+    /**
+     * Handles mouse down event
+     * @param {Event} event - Mouse event
+     */
+    function handleMouseDown(event) {
+        if (!$(canvas).is(":visible")) return;
+
+        dragStartX = event.x;
+        dragStartY = event.y;
+        dragTrackY = canvas.parentNode.scrollTop;
+        dragTrackX = trackXOffset;
+    }
+
+    /**
+     * Handles mouse up event
+     * @param {Event} event - Mouse event
+     */
+    function handleMouseUp(event) {
+        if (!$(canvas).is(":visible")) return;
+
+        dragStartX = -1;
+        dragStartY = -1;
+    }
+
+    /**
+     * Handles mouse wheel (zoom) event
+     * @param {Event} event - Mouse wheel event
+     */
+    function handleMouseWheel(event) {
+        if (!$(canvas).is(":visible")) return;
+        if (event.altKey) return;
+        if (event.x < CONSTANTS.HEADER_WIDTH) return;
+
+        isZooming = true;
+        const wheelDirection = Math.sign(event.wheelDelta);
+        const zoomRatio = 1.5;
+
+        // Calculate zoom centered at mouse position
+        if (wheelDirection >= 1) {
+            // Zoom in
+            trackWidth *= zoomRatio;
+            trackXOffset = event.x - (event.x - trackXOffset) * zoomRatio;
+        } else {
+            // Zoom out
+            trackWidth /= zoomRatio;
+            trackXOffset = event.x - (event.x - trackXOffset) / zoomRatio;
         }
+
+        // Redraw at new zoom level
+        initCanvas();
+        drawAllTracks();
+        event.preventDefault();
     }
 
-    // Event handlers
+    /**
+     * Handles mouse move (drag) event
+     * @param {Event} event - Mouse move event
+     */
+    function handleMouseMove(event) {
+        if (!$(canvas).is(":visible") || dragStartX === -1) return;
+
+        // Update vertical scroll position
+        canvas.parentNode.scrollTop = dragTrackY + (dragStartY - event.y);
+        offset = canvas.parentNode.scrollTop - 35;
+
+        // Update horizontal position
+        trackXOffset = dragTrackX + (event.x - dragStartX);
+
+        // Redraw with new position
+        drawAllTracks();
+    }
+
+    /**
+     * Sets up all event handlers
+     */
     function setupEventHandlers() {
-        $(canvas).bind('mouseup', function (e) {
-            if (!$(canvas).is(":visible")) return;
-            e = e.originalEvent;
-            dragx = -1;
-            dragy = -1;
+        $(canvas).on('mouseup', function (e) {
+            handleMouseUp(e.originalEvent);
         });
 
-        $(canvas).bind('mousedown', function (e) {
-            if (!$(canvas).is(":visible")) return;
-            e = e.originalEvent;
-            dragx = e.x;
-            dragy = e.y;
-            dragty = canvas.parentNode.scrollTop;
-            dragtx = tx;
+        $(canvas).on('mousedown', function (e) {
+            handleMouseDown(e.originalEvent);
         });
 
-        $(canvas).bind('mousewheel', function (e) {
-            if (!$(canvas).is(":visible")) return;
-            is_zooming = true;
-            e = e.originalEvent;
-            const wheel = Math.sign(e.wheelDelta);
-            if (e.altKey) return;
-            if (e.x < CONSTANTS.HEADER_WIDTH) return;
-
-            const ratio = 1.5;
-            if (wheel >= 1) {
-                tw *= ratio;
-                tx = e.x - (e.x - tx) * ratio;
-            } else if (wheel < 1) { // ZOOM OUT
-                tw /= ratio;
-                tx = e.x - (e.x - tx) / ratio;
-            }
-
-            initCanvas();
-            drawAllTracks();
-            e.preventDefault();
+        $(canvas).on('mousewheel', function (e) {
+            handleMouseWheel(e.originalEvent);
         });
 
-        $(canvas).bind('mousemove', function (e) {
-            if (!$(canvas).is(":visible")) return;
-            e = e.originalEvent;
-            if (dragx === -1) { // No active drag
-                return;
-            }
-
-            // Handle dragging
-            canvas.parentNode.scrollTop = dragty + (dragy - e.y);
-            offset = canvas.parentNode.scrollTop - 35;
-            tx = dragtx + (e.x - dragx);
-            drawAllTracks();
+        $(canvas).on('mousemove', function (e) {
+            handleMouseMove(e.originalEvent);
         });
     }
 
+    /**
+     * Handles window resize event
+     */
     function onResizeWindow() {
         if (!$(canvas).is(":visible")) return;
 
@@ -275,31 +400,40 @@ const TrackView = (function () {
         drawAllTracks();
     }
 
-    function fitTrackview(fitType) {
-        // fit width: fitType = 0
-        // fit 100px: fitType = 1
-        is_zooming = false;
-        tx = CONSTANTS.HEADER_WIDTH;
-        fit = fitType;
+    /**
+     * Sets track view fitting mode
+     * @param {number} mode - 0: fit width, 1: 100px/s
+     * @returns {boolean} - Success status
+     */
+    function fitTrackview(mode) {
+        isZooming = false;
+        trackXOffset = CONSTANTS.HEADER_WIDTH;
+        fitMode = mode;
         drawAllTracks();
         return true;
     }
 
     // Public API
     return {
-        initialize: function (vitalFile, canvasElement) {
-            vf = vitalFile;
+        /**
+         * Initialize the track view module
+         * @param {Object} vitalFileObj - VitalFile object containing data
+         * @param {HTMLElement} canvasElement - Canvas for drawing
+         */
+        initialize: function (vitalFileObj, canvasElement) {
+            vitalFile = vitalFileObj;
             canvas = canvasElement;
             ctx = canvas.getContext('2d');
 
             // Reset state
-            is_zooming = false;
-            tx = CONSTANTS.HEADER_WIDTH;
+            isZooming = false;
+            trackXOffset = CONSTANTS.HEADER_WIDTH;
 
-            // Setup
+            // Setup canvas
             canvas.width = parseInt(canvas.parentNode.parentNode.clientWidth);
             setupEventHandlers();
 
+            // Draw initial view
             initCanvas();
             drawAllTracks();
         },

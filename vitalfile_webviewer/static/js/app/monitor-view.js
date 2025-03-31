@@ -8,188 +8,130 @@ const MonitorView = (function () {
     let canvas;
     let ctx;
     let vf;
-    let montype_groupids = {};
-    let montype_trks = {};
-    let groupid_trks = {};
-    let dtplayer = 0;
+    let montypeGroupids = {};
+    let montypeTrackMap = {};
+    let groupidTrackMap = {};
+    let playerTime = 0;
     let isPaused = true;
     let isSliding = false;
     let scale = 1;
-    let caselen;
-    let fast_forward = 1.0;
-    let canvas_width;
-    let last_render = 0;
+    let caseLength;
+    let playbackSpeed = 1.0;
+    let canvasWidth;
+    let lastRenderTime = 0;
 
-    // Drawing functions
-    function montypeGroup() {
-        // Initialize groupings
-        montype_groupids = {};
-        montype_trks = {};
-        groupid_trks = {};
+    /**
+     * Format a number with leading zeros
+     * @param {number} value - The number to format
+     * @returns {string} - The formatted string with leading zeros
+     */
+    function formatTimeComponent(value) {
+        return `0${value}`.substr(-2);
+    }
+
+    /**
+     * Get the current playback time in HH:MM:SS format
+     * @returns {string} - Formatted time string
+     */
+    function getPlaytime() {
+        const date = new Date((vf.dtstart + playerTime) * 1000);
+        return [
+            formatTimeComponent(date.getHours()),
+            formatTimeComponent(date.getMinutes()),
+            formatTimeComponent(date.getSeconds())
+        ].join(":");
+    }
+
+    /**
+     * Organize tracks by monitor type and group
+     */
+    function organizeMonitorGroups() {
+        // Reset state
+        montypeGroupids = {};
+        montypeTrackMap = {};
+        groupidTrackMap = {};
 
         // Map monitor types to group IDs
-        for (let groupid in CONSTANTS.GROUPS) {
-            const group = CONSTANTS.GROUPS[groupid];
-            for (let i in group.param) {
-                const montype = group.param[i];
-                montype_groupids[montype] = groupid;
+        Object.entries(CONSTANTS.GROUPS).forEach(([groupId, group]) => {
+            // Process parameters
+            if (group.param) {
+                group.param.forEach(montype => {
+                    montypeGroupids[montype] = groupId;
+                });
             }
+
+            // Process waveform monitor type
             if (group.wav) {
-                montype_groupids[group.wav] = groupid;
+                montypeGroupids[group.wav] = groupId;
             }
-        }
+        });
 
         // Organize tracks by monitor type and group
-        for (let tid in vf.trks) {
-            const trk = vf.trks[tid];
-            const montype = vf.get_montype(tid);
-            if (montype !== "" && !montype_trks[montype]) montype_trks[montype] = trk;
+        Object.entries(vf.trks).forEach(([trackId, track]) => {
+            const monitorType = vf.get_montype(trackId);
 
-            const groupid = montype_groupids[montype];
-            if (groupid) {
-                if (!groupid_trks[groupid]) {
-                    groupid_trks[groupid] = [];
-                }
-                groupid_trks[groupid].push(trk);
-            }
-        }
-    }
-
-    function getPlaytime() {
-        const date = new Date((vf.dtstart + dtplayer) * 1000);
-        return ("0" + date.getHours()).substr(-2) + ":" +
-            ("0" + date.getMinutes()).substr(-2) + ":" +
-            ("0" + date.getSeconds()).substr(-2);
-    }
-
-    function drawTitle(rcx) {
-        ctx.font = (40 * scale) + 'px arial';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
-
-        ctx.fillText(vf.bedname, rcx + 4, 45 * scale);
-        let px = rcx + ctx.measureText(vf.bedname).width + 22;
-
-        // Current playback time
-        const casetime = getPlaytime();
-        ctx.font = 'bold ' + (24 * scale) + 'px arial';
-        ctx.fillStyle = '#FFFFFF';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
-        ctx.fillText(casetime, (rcx + canvas_width) / 2 - 50, 29 * scale);
-
-        // Device list
-        ctx.font = (15 * scale) + 'px arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
-        for (let did in vf.devs) {
-            const dev = vf.devs[did];
-            if (!dev.name) continue;
-
-            ctx.fillStyle = '#348EC7';
-            Utils.roundedRect(ctx, px, 36 * scale, 12 * scale, 12 * scale, 3);
-            ctx.fill();
-
-            px += 17 * scale;
-
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillText(dev.name.substr(0, 7), px, 48 * scale);
-            px += ctx.measureText(dev.name.substr(0, 7)).width + 13 * scale;
-        }
-    }
-
-    function drawWave(track, rcx, rcy, wav_width, rch) {
-        if (!track || !track.srate || !track.prev || !track.prev.length) {
-            return;
-        }
-
-        ctx.beginPath();
-
-        let lastx = rcx;
-        let py = 0;
-        let is_first = true;
-
-        let idx = parseInt(dtplayer * track.srate);
-        let inc = track.srate / 100;
-        let px = 0;
-
-        for (let l = idx; l < idx + (rcx + wav_width) * inc && l < track.prev.length; l++, px += (1.0 / inc)) {
-            let value = track.prev[l];
-            if (value === 0) continue;
-
-            if (px > rcx + wav_width) break;
-
-            py = rcy + rch * (255 - value) / 254;
-
-            if (py < rcy) py = rcy;
-            if (py > rcy + rch) py = rcy + rch;
-
-            if (is_first) {
-                if (px < rcx + 10) {
-                    ctx.moveTo(rcx, py);
-                    ctx.lineTo(px, py);
-                } else {
-                    ctx.moveTo(px, py);
-                }
-                is_first = false;
-            } else {
-                if (px - lastx > rcx + 10) {
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(px, py);
-                } else {
-                    ctx.lineTo(px, py);
-                }
+            // Associate first track with each monitor type
+            if (monitorType && !montypeTrackMap[monitorType]) {
+                montypeTrackMap[monitorType] = track;
             }
 
-            lastx = px;
-        }
-
-        if (!is_first && px > rcx + wav_width - 10) {
-            ctx.lineTo(rcx + wav_width, py);
-        }
-
-        ctx.stroke();
-
-        // Draw white rectangle at the rightmost position
-        if (!is_first && px > rcx + wav_width - 4) {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(rcx + wav_width - 4, py - 2, 4, 4);
-        }
+            // Group tracks by group ID
+            const groupId = montypeGroupids[monitorType];
+            if (groupId) {
+                if (!groupidTrackMap[groupId]) {
+                    groupidTrackMap[groupId] = [];
+                }
+                groupidTrackMap[groupId].push(track);
+            }
+        });
     }
 
-    function drawParam(group, isTrackDrawn, rcx, rcy) {
-        if (!group || !group.param) return false;
+    /**
+     * Find the latest value for a track at current play time
+     * @param {Object} track - The track to search
+     * @returns {*} - The latest value or null if not found
+     */
+    function findLatestValue(track) {
+        if (!track.data) return null;
+
+        for (let idx = 0; idx < track.data.length; idx++) {
+            const record = track.data[idx];
+            const time = record[0];
+
+            if (time > playerTime) {
+                // Return previous value if it's recent enough (within 5 minutes)
+                if (idx > 0 && track.data[idx - 1][0] > playerTime - 300) {
+                    return track.data[idx - 1][1];
+                }
+                break;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Collect parameter values for a group
+     * @param {Object} group - The parameter group
+     * @returns {Object} - Object containing values and existence flag
+     */
+    function collectParameterValues(group) {
+        if (!group || !group.param) return { values: [], hasValues: false };
 
         const layout = CONSTANTS.PARAM_LAYOUTS[group.paramLayout];
-        const nameValueArray = [];
-        if (!layout) return false;
+        if (!layout) return { values: [], hasValues: false };
 
+        const nameValueArray = [];
         let valueExists = false;
 
-        // Collect parameter values for this group
+        // Collect values for each parameter in the group
         for (let i in group.param) {
-            const montype = group.param[i];
-            const track = montype_trks[montype];
+            const monitorType = group.param[i];
+            const track = montypeTrackMap[monitorType];
 
             if (track && track.data) {
-                isTrackDrawn.add(track.tid);
-                let value = null;
+                let value = findLatestValue(track);
 
-                for (let idx = 0; idx < track.data.length; idx++) {
-                    const rec = track.data[idx];
-                    const dt = rec[0];
-
-                    if (dt > dtplayer) {
-                        if (idx > 0 && track.data[idx - 1][0] > dtplayer - 300) {
-                            value = track.data[idx - 1][1];
-                        }
-                        break;
-                    }
-                }
-
-                if (value) {
+                if (value !== null) {
                     value = Utils.formatValue(value, track.type);
                     nameValueArray.push({ name: track.name, value: value });
                     valueExists = true;
@@ -199,247 +141,532 @@ const MonitorView = (function () {
             }
         }
 
-        if (!valueExists) return false;
+        return { values: nameValueArray, hasValues: valueExists };
+    }
 
-        // Handle special formatting for different types of groups
-        if (group.name) {
-            const name = group.name;
-            if (name.substring(0, 5) === 'AGENT' && nameValueArray.length > 1) {
-                const agentValue = nameValueArray[1].value.toUpperCase();
-                if (agentValue === 'DESF') {
-                    nameValueArray[1].value = 'DES';
-                } else if (agentValue === 'ISOF') {
-                    nameValueArray[1].value = 'ISO';
-                } else if (agentValue === 'ENFL') {
-                    nameValueArray[1].value = 'ENF';
+    /**
+     * Process special formatting for parameter values
+     * @param {Object} group - The parameter group
+     * @param {Array} values - Array of name/value pairs
+     * @returns {Array} - Processed values
+     */
+    function processSpecialFormats(group, values) {
+        if (values.length === 0) return values;
+
+        // Handle agent-specific abbreviations
+        if (group.name && group.name.substring(0, 5) === 'AGENT' && values.length > 1) {
+            const agentValue = values[1].value.toUpperCase();
+            const agentMap = {
+                'DESF': 'DES',
+                'ISOF': 'ISO',
+                'ENFL': 'ENF'
+            };
+
+            if (agentMap[agentValue]) {
+                values[1].value = agentMap[agentValue];
+            }
+        }
+
+        // Handle blood pressure formatting
+        if (group.paramLayout === 'BP' && values.length > 2) {
+            values[0].name = group.name || '';
+            values[0].value = (values[0].value ? Math.round(values[0].value) : ' ') +
+                (values[1].value ? ('/' + Math.round(values[1].value)) : ' ');
+            values[2].value = values[2].value ? Math.round(values[2].value) : '';
+            values[1] = values[2];
+            values.pop();
+        } else if (!values[0].name) {
+            values[0].name = group.name || '';
+        }
+
+        return values;
+    }
+
+    /**
+     * Get the appropriate text color for a parameter
+     * @param {Object} group - The parameter group
+     * @param {Array} values - Parameter values
+     * @param {number} index - Current value index
+     * @returns {string} - Color hex code
+     */
+    function getParameterColor(group, values, index) {
+        // Default to group color
+        let color = group.fgColor;
+
+        // Handle special cases
+        if (values[0].name === "HPI") {
+            return "#00FFFF";
+        }
+
+        if (group.name && group.name.substring(0, 5) === 'AGENT' && values.length > 1 && index === 1) {
+            const colorMap = {
+                'DES': '#2296E6',
+                'ISO': '#DDA0DD',
+                'ENF': '#FF0000'
+            };
+
+            if (colorMap[values[1].value]) {
+                return colorMap[values[1].value];
+            }
+        }
+
+        return color;
+    }
+
+    /**
+     * Draw the title bar with bed name and current time
+     * @param {number} x - X-coordinate to start drawing 
+     */
+    function drawTitle(x) {
+        // Bed name
+        ctx.font = `${40 * scale}px arial`;
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(vf.bedname, x + 4, 45 * scale);
+
+        let posX = x + ctx.measureText(vf.bedname).width + 22;
+
+        // Current playback time
+        const caseTime = getPlaytime();
+        ctx.font = `bold ${24 * scale}px arial`;
+        ctx.fillText(caseTime, (x + canvasWidth) / 2 - 50, 29 * scale);
+
+        // Device indicators
+        ctx.font = `${15 * scale}px arial`;
+        Object.entries(vf.devs).forEach(([deviceId, device]) => {
+            if (!device.name) return;
+
+            // Draw device indicator box
+            ctx.fillStyle = '#348EC7';
+            Utils.roundedRect(ctx, posX, 36 * scale, 12 * scale, 12 * scale, 3);
+            ctx.fill();
+
+            posX += 17 * scale;
+
+            // Draw device name
+            ctx.fillStyle = '#FFFFFF';
+            const deviceName = device.name.substr(0, 7);
+            ctx.fillText(deviceName, posX, 48 * scale);
+            posX += ctx.measureText(deviceName).width + 13 * scale;
+        });
+    }
+
+    /**
+     * Draw value text according to layout specifications
+     * @param {Object} layoutElement - Layout specification
+     * @param {string} value - Text to draw
+     * @param {number} x - X-coordinate
+     * @param {number} y - Y-coordinate
+     * @param {string} color - Text color
+     */
+    function drawValueText(layoutElement, value, x, y, color) {
+        if (!layoutElement) return;
+
+        // Set text properties
+        ctx.font = `${layoutElement.fontsize * scale}px arial`;
+        ctx.fillStyle = color;
+        ctx.textAlign = layoutElement.align || 'left';
+        ctx.textBaseline = layoutElement.baseline || 'alphabetic';
+
+        // Calculate position
+        const posX = x + layoutElement.x * scale;
+        const posY = y + layoutElement.y * scale;
+
+        // Draw text
+        ctx.fillText(value, posX, posY);
+    }
+
+    /**
+     * Draw parameter name text according to layout
+     * @param {Object} layoutElement - Layout specification
+     * @param {string} name - Text to draw
+     * @param {number} x - X-coordinate
+     * @param {number} y - Y-coordinate
+     */
+    function drawNameText(layoutElement, name, x, y) {
+        if (!layoutElement) return;
+
+        // Set text properties
+        ctx.font = `${14 * scale}px arial`;
+        ctx.fillStyle = 'white';
+        ctx.textAlign = layoutElement.align || 'left';
+        ctx.textBaseline = layoutElement.baseline || 'alphabetic';
+
+        // Calculate position
+        const posX = x + layoutElement.x * scale;
+        const posY = y + layoutElement.y * scale;
+
+        // Handle text that's too wide
+        const measuredWidth = ctx.measureText(name).width;
+        const maxWidth = 75;
+
+        if (measuredWidth > maxWidth) {
+            // Scale down text that's too wide
+            ctx.save();
+            ctx.scale(maxWidth / measuredWidth, 1);
+            ctx.fillText(name, posX * measuredWidth / maxWidth, posY);
+            ctx.restore();
+        } else {
+            ctx.fillText(name, posX, posY);
+        }
+    }
+
+    /**
+     * Draw a parameter box with values
+     * @param {Object} group - Parameter group
+     * @param {Set} drawnTracks - Set of track IDs that have been drawn
+     * @param {number} x - X-coordinate
+     * @param {number} y - Y-coordinate
+     * @returns {boolean} - True if parameters were drawn
+     */
+    function drawParameterBox(group, drawnTracks, x, y) {
+        // Collect parameter values
+        const { values, hasValues } = collectParameterValues(group);
+        if (!hasValues) return false;
+
+        // Process special formatting
+        const processedValues = processSpecialFormats(group, values);
+        const layout = CONSTANTS.PARAM_LAYOUTS[group.paramLayout];
+
+        // Track which parameters have been drawn
+        if (drawnTracks) {
+            for (let i in group.param) {
+                const monitorType = group.param[i];
+                const track = montypeTrackMap[monitorType];
+                if (track) {
+                    drawnTracks.add(track.tid);
                 }
             }
         }
 
-        if (group.paramLayout === 'BP' && nameValueArray.length > 2) {
-            nameValueArray[0].name = group.name || '';
-            nameValueArray[0].value = (nameValueArray[0].value ? Math.round(nameValueArray[0].value) : ' ') +
-                (nameValueArray[1].value ? ('/' + Math.round(nameValueArray[1].value)) : ' ');
-            nameValueArray[2].value = nameValueArray[2].value ? Math.round(nameValueArray[2].value) : '';
-            nameValueArray[1] = nameValueArray[2];
-            nameValueArray.pop();
-        } else if (nameValueArray.length > 0 && !nameValueArray[0].name) {
-            nameValueArray[0].name = group.name || '';
-        }
+        // Draw each parameter according to layout
+        for (let idx = 0; idx < layout.length && idx < processedValues.length; idx++) {
+            const layoutElement = layout[idx];
+            const { name, value } = processedValues[idx];
+            const color = getParameterColor(group, processedValues, idx);
 
-        // Draw parameter values according to layout
-        for (let idx = 0; idx < layout.length && idx < nameValueArray.length; idx++) {
-            const layoutElem = layout[idx];
-
-            if (layoutElem.value) {
-                ctx.font = (layoutElem.value.fontsize * scale) + 'px arial';
-                ctx.fillStyle = group.fgColor;
-
-                // Handle special colors for specific parameters
-                if (nameValueArray[0].name === "HPI") ctx.fillStyle = "#00FFFF";
-                if (group.name && group.name.substring(0, 5) === 'AGENT' && nameValueArray.length > 1) {
-                    if (nameValueArray[1].value === 'DES') {
-                        ctx.fillStyle = '#2296E6';
-                    } else if (nameValueArray[1].value === 'ISO') {
-                        ctx.fillStyle = '#DDA0DD';
-                    } else if (nameValueArray[1].value === 'ENF') {
-                        ctx.fillStyle = '#FF0000';
-                    }
-                }
-
-                ctx.textAlign = layoutElem.value.align || 'left';
-                ctx.textBaseline = layoutElem.value.baseline || 'alphabetic';
-                ctx.fillText(nameValueArray[idx].value, rcx + layoutElem.value.x * scale, rcy + layoutElem.value.y * scale);
+            // Draw value
+            if (layoutElement.value) {
+                drawValueText(layoutElement.value, value, x, y, color);
             }
 
-            if (layoutElem.name) {
-                ctx.font = (14 * scale) + 'px arial';
-                ctx.fillStyle = 'white';
-                ctx.textAlign = layoutElem.name.align || 'left';
-                ctx.textBaseline = layoutElem.name.baseline || 'alphabetic';
-
-                const str = nameValueArray[idx].name;
-                const measuredWidth = ctx.measureText(str).width;
-                const maxWidth = 75;
-
-                if (measuredWidth > maxWidth) {
-                    ctx.save();
-                    ctx.scale(maxWidth / measuredWidth, 1);
-                    ctx.fillText(str, (rcx + layoutElem.name.x * scale) * measuredWidth / maxWidth, rcy + layoutElem.name.y * scale);
-                    ctx.restore();
-                } else {
-                    ctx.fillText(str, rcx + layoutElem.name.x * scale, rcy + layoutElem.name.y * scale);
-                }
+            // Draw parameter name
+            if (layoutElement.name) {
+                drawNameText(layoutElement.name, name, x, y);
             }
         }
 
-        // Draw border
+        // Draw box border
         ctx.strokeStyle = '#808080';
         ctx.lineWidth = 0.5;
-        Utils.roundedRect(ctx, rcx, rcy, CONSTANTS.PAR_WIDTH * scale, CONSTANTS.PAR_HEIGHT * scale);
+        Utils.roundedRect(ctx, x, y, CONSTANTS.PAR_WIDTH * scale, CONSTANTS.PAR_HEIGHT * scale);
         ctx.stroke();
 
         return true;
     }
 
-    function draw() {
-        canvas_width = window.innerWidth;
-        canvas.width = window.innerWidth;
+    /**
+     * Draw waveform data
+     * @param {Object} track - Track containing waveform data
+     * @param {number} x - X-coordinate
+     * @param {number} y - Y-coordinate
+     * @param {number} width - Width of the waveform area
+     * @param {number} height - Height of the waveform area
+     */
+    function drawWaveform(track, x, y, width, height) {
+        // Skip if no valid data
+        if (!track || !track.srate || !track.prev || !track.prev.length) {
+            return;
+        }
+
+        ctx.beginPath();
+
+        let lastX = x;
+        let pointY = 0;
+        let isFirstPoint = true;
+
+        // Calculate starting index and increment
+        const startIndex = Math.floor(playerTime * track.srate);
+        const increment = track.srate / 100; // 100 points per second
+        let pointX = 0;
+
+        // Loop through visible portion of waveform
+        for (let i = startIndex; i < startIndex + (x + width) * increment && i < track.prev.length; i++, pointX += (1.0 / increment)) {
+            const value = track.prev[i];
+            if (value === 0) continue; // Skip gaps
+
+            if (pointX > x + width) break; // Past visible area
+
+            // Calculate Y position (inverted scale)
+            pointY = y + height * (255 - value) / 254;
+
+            // Clamp to boundaries
+            pointY = Math.max(y, Math.min(y + height, pointY));
+
+            if (isFirstPoint) {
+                // Handle start of line
+                if (pointX < x + 10) {
+                    ctx.moveTo(x, pointY);
+                    ctx.lineTo(pointX, pointY);
+                } else {
+                    ctx.moveTo(pointX, pointY);
+                }
+                isFirstPoint = false;
+            } else {
+                // Handle large gaps
+                if (pointX - lastX > x + 10) {
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(pointX, pointY);
+                } else {
+                    ctx.lineTo(pointX, pointY);
+                }
+            }
+
+            lastX = pointX;
+        }
+
+        // Complete the line to the edge
+        if (!isFirstPoint && pointX > x + width - 10) {
+            ctx.lineTo(x + width, pointY);
+        }
+
+        ctx.stroke();
+
+        // Draw current position indicator
+        if (!isFirstPoint && pointX > x + width - 4) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x + width - 4, pointY - 2, 4, 4);
+        }
+    }
+
+    /**
+     * Draw event list
+     * @param {number} x - X-coordinate
+     * @param {number} y - Y-coordinate
+     * @param {number} width - Width of the area
+     */
+    function drawEvents(x, y, width) {
+        const eventTrack = vf.find_track("/EVENT");
+        if (!eventTrack) return;
+
+        let count = 0;
+        ctx.font = `${14 * scale}px arial`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+
+        // Draw visible events
+        for (let eventIdx = 0; eventIdx < eventTrack.data.length; eventIdx++) {
+            const [time, value] = eventTrack.data[eventIdx];
+
+            // Only show events up to current playback time
+            if (time > playerTime) {
+                break;
+            }
+
+            // Format timestamp
+            const date = new Date((time + vf.dtstart) * 1000);
+            const hours = date.getHours();
+            const minutes = formatTimeComponent(date.getMinutes());
+            const timeString = `${hours}:${minutes}`;
+
+            // Draw time
+            ctx.fillStyle = '#4EB8C9';
+            ctx.fillText(timeString, x + width + 3, y + (20 + count * 20) * scale);
+
+            // Draw event text
+            ctx.fillStyle = 'white';
+            ctx.fillText(value, x + width + 45, y + (20 + count * 20) * scale);
+
+            count++;
+        }
+    }
+
+    /**
+     * Prepare canvas for drawing
+     */
+    function prepareCanvas() {
+        canvasWidth = window.innerWidth;
+        canvas.width = canvasWidth;
         canvas.height = window.innerHeight - 28;
 
+        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#181818';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.save();
 
+        // Calculate scale for responsive layout
         scale = 1;
-        if (vf.canvas_height && canvas.height < vf.canvas_height) {
-            scale = canvas.height / vf.canvas_height;
+        if (vf.monitorViewHeight && canvas.height < vf.monitorViewHeight) {
+            scale = canvas.height / vf.monitorViewHeight;
         }
 
+        // Update container sizes
         $("#div_preview").css("width", canvas.width + "px");
         $("#moni_control").css("width", canvas.width + "px");
+    }
 
-        let rcx = 0;
-        let rcy = 60 * scale;
-        const wav_width = canvas_width - CONSTANTS.PAR_WIDTH * scale;
+    /**
+     * Draw all monitor view elements
+     */
+    function draw() {
+        prepareCanvas();
 
-        drawTitle(rcx);
+        // Start layout
+        let posX = 0;
+        let posY = 60 * scale;
+        const waveformWidth = canvasWidth - CONSTANTS.PAR_WIDTH * scale;
 
-        // Draw wave groups
-        const isTrackDrawn = new Set();
-        for (let groupid in CONSTANTS.GROUPS) {
-            const group = CONSTANTS.GROUPS[groupid];
-            if (!group.wav) continue;
+        // Draw title bar
+        drawTitle(posX);
 
-            let wavname = group.name;
-            const wavtrack = montype_trks[group.wav];
-            if (!wavtrack) continue;
+        // Track which parameters have been drawn
+        const drawnTracks = new Set();
 
-            if (wavtrack && wavtrack.srate && wavtrack.prev && wavtrack.prev.length) {
-                isTrackDrawn.add(wavtrack.tid);
-                wavname = wavtrack.name;
+        // Draw waveform groups
+        Object.entries(CONSTANTS.GROUPS).forEach(([groupId, group]) => {
+            if (!group.wav) return; // Skip non-waveform groups
+
+            // Find waveform track for this group
+            const waveTrack = montypeTrackMap[group.wav];
+            if (!waveTrack) return;
+
+            let waveName = group.name;
+
+            // Use track name if available
+            if (waveTrack && waveTrack.srate && waveTrack.prev && waveTrack.prev.length) {
+                drawnTracks.add(waveTrack.tid);
+                waveName = waveTrack.name;
             }
 
-            drawParam(group, isTrackDrawn, rcx + wav_width, rcy);
+            // Draw parameter values
+            drawParameterBox(group, drawnTracks, posX + waveformWidth, posY);
+
+            // Draw waveform
             ctx.lineWidth = 2.5;
             ctx.strokeStyle = group.fgColor;
-            drawWave(wavtrack, rcx, rcy, wav_width, CONSTANTS.PAR_HEIGHT * scale);
+            drawWaveform(waveTrack, posX, posY, waveformWidth, CONSTANTS.PAR_HEIGHT * scale);
 
+            // Draw separator line
             ctx.lineWidth = 0.5;
             ctx.strokeStyle = '#808080';
             ctx.beginPath();
-            ctx.moveTo(rcx, rcy + CONSTANTS.PAR_HEIGHT * scale);
-            ctx.lineTo(rcx + wav_width, rcy + CONSTANTS.PAR_HEIGHT * scale);
+            ctx.moveTo(posX, posY + CONSTANTS.PAR_HEIGHT * scale);
+            ctx.lineTo(posX + waveformWidth, posY + CONSTANTS.PAR_HEIGHT * scale);
             ctx.stroke();
 
-            ctx.font = (14 * scale) + 'px Arial';
+            // Draw waveform name
+            ctx.font = `${14 * scale}px Arial`;
             ctx.fillStyle = 'white';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
-            ctx.fillText(wavname, rcx + 3, rcy + 4);
+            ctx.fillText(waveName, posX + 3, posY + 4);
 
-            rcy += CONSTANTS.PAR_HEIGHT * scale;
-        }
+            // Move to next row
+            posY += CONSTANTS.PAR_HEIGHT * scale;
+        });
 
         // Draw events
-        const evttrk = vf.find_track("/EVENT");
-        if (evttrk) {
-            drawParam(null, null, wav_width, rcy);
-            let cnt = 0;
-            ctx.font = (14 * scale) + 'px arial';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'alphabetic';
-            const evts = evttrk.data;
+        drawEvents(posX, posY, waveformWidth);
 
-            for (let eventIdx = 0; eventIdx < evts.length; eventIdx++) {
-                const rec = evts[eventIdx];
-                const dt = rec[0];
-                const value = rec[1];
+        // Draw non-waveform groups (parameter boxes)
+        posX = 0;
+        let isFirstLine = true;
 
-                if (dt > dtplayer) {
-                    break;
-                }
+        Object.entries(CONSTANTS.GROUPS).forEach(([groupId, group]) => {
+            // Skip if this group has already been drawn as a waveform
+            const waveTrack = montypeTrackMap[group.wav];
+            if (waveTrack && waveTrack.prev && waveTrack.prev.length) return;
 
-                const date = new Date((dt + vf.dtstart) * 1000);
-                const hours = date.getHours();
-                const minutes = ("0" + date.getMinutes()).substr(-2);
+            // Draw parameter box
+            if (!drawParameterBox(group, drawnTracks, posX, posY)) return;
 
-                ctx.fillStyle = '#4EB8C9';
-                ctx.fillText(hours + ':' + minutes, rcx + wav_width + 3, rcy + (20 + cnt * 20) * scale);
+            // Move to next position
+            posX += CONSTANTS.PAR_WIDTH * scale;
 
-                ctx.fillStyle = 'white';
-                ctx.fillText(value, rcx + wav_width + 45, rcy + (20 + cnt * 20) * scale);
+            // Handle wrapping
+            if (posX > canvasWidth - CONSTANTS.PAR_WIDTH * scale * 2) {
+                posX = 0;
+                posY += CONSTANTS.PAR_HEIGHT * scale;
 
-                cnt += 1;
+                // Limit parameter boxes to two rows
+                if (!isFirstLine) return;
+                isFirstLine = false;
             }
-        }
-
-        // Draw non-wave groups
-        rcx = 0;
-        let is_first_line = true;
-        for (let groupid in CONSTANTS.GROUPS) {
-            const group = CONSTANTS.GROUPS[groupid];
-
-            const wavtrack = montype_trks[group.wav];
-            if (wavtrack && wavtrack.prev && wavtrack.prev.length) continue;
-
-            if (!drawParam(group, isTrackDrawn, rcx, rcy)) continue;
-
-            rcx += CONSTANTS.PAR_WIDTH * scale;
-            if (rcx > canvas_width - CONSTANTS.PAR_WIDTH * scale * 2) {
-                rcx = 0;
-                rcy += CONSTANTS.PAR_HEIGHT * scale;
-                if (!is_first_line) break;
-                is_first_line = false;
-            }
-        }
+        });
 
         ctx.restore();
-        if (!vf.canvas_height) vf.canvas_height = rcy + 3 * CONSTANTS.PAR_HEIGHT * scale;
-        if (rcy + CONSTANTS.PAR_HEIGHT * scale > vf.canvas_height) vf.canvas_height = rcy + 3 * CONSTANTS.PAR_HEIGHT * scale;
+
+        // Update canvas height
+        const newHeight = posY + 3 * CONSTANTS.PAR_HEIGHT * scale;
+        if (!vf.monitorViewHeight || newHeight > vf.monitorViewHeight) {
+            vf.monitorViewHeight = newHeight;
+        }
     }
 
+    /**
+     * Handle animation frame updates
+     */
     function redraw() {
+        // Exit if monitor view isn't visible
         if (!$("#moni_preview").is(":visible")) return;
+
+        // Schedule next frame
         Utils.updateFrame(redraw);
 
-        const now = Date.now();
-        const diff = now - last_render;
-
         // Limit to 30 FPS
-        if (diff > 30) {
-            last_render = now;
-        } else {
-            return;
-        }
+        const now = Date.now();
+        const timeSinceLastRender = now - lastRenderTime;
+        if (timeSinceLastRender < 30) return;
 
-        // Advance playback time
-        if (!isPaused && !isSliding && dtplayer < caselen) {
-            dtplayer += (fast_forward / 30); // Add time based on playback speed
-            $("#moni_slider").val(dtplayer);
-            $("#casetime").html(Utils.formatTime(Math.floor(dtplayer)) + " / " + Utils.formatTime(Math.floor(caselen)));
+        lastRenderTime = now;
+
+        // Advance playback time if playing
+        if (!isPaused && !isSliding && playerTime < caseLength) {
+            // Add time based on playback speed
+            playerTime += (playbackSpeed / 30);
+
+            // Update UI
+            $("#moni_slider").val(playerTime);
+            $("#casetime").html(
+                `${Utils.formatTime(Math.floor(playerTime))} / ${Utils.formatTime(Math.floor(caseLength))}`
+            );
+
+            // Redraw with new time
             draw();
         }
     }
 
-    // Event handlers
+    /**
+     * Handle window resize
+     */
     function onResizeWindow() {
+        // Update canvas dimensions
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight - 28;
         canvas.style.width = window.innerWidth + 'px';
         canvas.style.height = (window.innerHeight - 28) + 'px';
-        canvas_width = canvas.width;
+        canvasWidth = canvas.width;
+
+        // Redraw with new dimensions
         draw();
     }
 
+    /**
+     * Toggle or set play/pause state
+     * @param {boolean|null} pause - State to set, or toggle if null
+     */
     function pauseResume(pause = null) {
+        // Update state
         if (pause !== null) {
             isPaused = pause;
         } else {
             isPaused = !isPaused;
         }
 
+        // Update UI
         if (isPaused) {
             $("#moni_pause").hide();
             $("#moni_resume").show();
@@ -449,68 +676,145 @@ const MonitorView = (function () {
         }
     }
 
+    /**
+     * Rewind playback
+     * @param {number|null} seconds - Seconds to rewind, or auto-calculate if null
+     */
     function rewind(seconds = null) {
-        if (!seconds) seconds = (canvas_width - CONSTANTS.PAR_WIDTH) / 100;
-        dtplayer -= seconds;
-        if (dtplayer < 0) dtplayer = 0;
-    }
+        // Calculate default rewind amount based on visible area
+        if (!seconds) {
+            seconds = (canvasWidth - CONSTANTS.PAR_WIDTH) / 100;
+        }
 
-    function proceed(seconds = null) {
-        if (!seconds) seconds = (canvas_width - CONSTANTS.PAR_WIDTH) / 100;
-        dtplayer += seconds;
-        if (dtplayer > caselen) dtplayer = caselen - (canvas_width - CONSTANTS.PAR_WIDTH) / 100;
-    }
+        // Update time
+        playerTime -= seconds;
 
-    function slideTo(seconds) {
-        dtplayer = parseInt(seconds);
-        isSliding = false;
+        // Ensure we don't go before the start
+        if (playerTime < 0) playerTime = 0;
+
+        // Update UI
+        $("#moni_slider").val(playerTime);
+        $("#casetime").html(
+            `${Utils.formatTime(Math.floor(playerTime))} / ${Utils.formatTime(Math.floor(caseLength))}`
+        );
+
+        // Redraw
         draw();
     }
 
+    /**
+     * Advance playback
+     * @param {number|null} seconds - Seconds to advance, or auto-calculate if null
+     */
+    function proceed(seconds = null) {
+        // Calculate default proceed amount based on visible area
+        if (!seconds) {
+            seconds = (canvasWidth - CONSTANTS.PAR_WIDTH) / 100;
+        }
+
+        // Update time
+        playerTime += seconds;
+
+        // Ensure we don't go past the end
+        if (playerTime > caseLength) {
+            playerTime = caseLength - (canvasWidth - CONSTANTS.PAR_WIDTH) / 100;
+        }
+
+        // Update UI
+        $("#moni_slider").val(playerTime);
+        $("#casetime").html(
+            `${Utils.formatTime(Math.floor(playerTime))} / ${Utils.formatTime(Math.floor(caseLength))}`
+        );
+
+        // Redraw
+        draw();
+    }
+
+    /**
+     * Jump to specific time
+     * @param {number} seconds - Target time in seconds
+     */
+    function slideTo(seconds) {
+        playerTime = parseInt(seconds);
+        isSliding = false;
+
+        // Update UI
+        $("#casetime").html(
+            `${Utils.formatTime(Math.floor(playerTime))} / ${Utils.formatTime(Math.floor(caseLength))}`
+        );
+
+        // Redraw
+        draw();
+    }
+
+    /**
+     * Update UI during slider movement
+     * @param {number} seconds - Current slider position in seconds
+     */
     function slideOn(seconds) {
-        $("#casetime").html(Utils.formatTime(Math.floor(seconds)) + " / " + Utils.formatTime(Math.floor(caselen)));
+        // Update time display
+        $("#casetime").html(
+            `${Utils.formatTime(Math.floor(seconds))} / ${Utils.formatTime(Math.floor(caseLength))}`
+        );
+
+        // Set sliding state
         isSliding = true;
     }
 
-    function setPlayspeed(val) {
-        fast_forward = parseInt(val);
+    /**
+     * Set playback speed
+     * @param {number|string} value - Playback speed multiplier
+     */
+    function setPlayspeed(value) {
+        playbackSpeed = parseInt(value);
     }
 
+    /**
+     * Get the case length
+     * @returns {number} - Case length in seconds
+     */
     function getCaselen() {
-        return caselen;
+        return caseLength;
     }
 
     // Public API
     return {
         initialize: function (vitalFile, canvasElement) {
+            // Store references
             vf = vitalFile;
             canvas = canvasElement;
             ctx = canvas.getContext('2d');
-            caselen = vf.dtend - vf.dtstart;
+            caseLength = vf.dtend - vf.dtstart;
 
             // Reset state
-            fast_forward = 1.0;
-            montype_groupids = {};
-            montype_trks = {};
-            groupid_trks = {};
-            dtplayer = 0;
+            playbackSpeed = 1.0;
+            montypeGroupids = {};
+            montypeTrackMap = {};
+            groupidTrackMap = {};
+            playerTime = 0;
 
             // Initialize UI
             pauseResume(true);
-            $("#moni_slider").attr("max", caselen).attr("min", 0).val(0);
+            $("#moni_slider")
+                .attr("max", caseLength)
+                .attr("min", 0)
+                .val(0);
 
-            montypeGroup();
+            // Setup monitor view
+            organizeMonitorGroups();
             onResizeWindow();
             draw();
+
+            // Start animation loop
             Utils.updateFrame(redraw);
         },
-        pauseResume: pauseResume,
-        rewind: rewind,
-        proceed: proceed,
-        slideTo: slideTo,
-        slideOn: slideOn,
-        setPlayspeed: setPlayspeed,
-        getCaselen: getCaselen,
+        pauseResume,
+        rewind,
+        proceed,
+        slideTo,
+        slideOn,
+        setPlayspeed,
+        getCaselen,
         onResize: onResizeWindow
     };
 })();
