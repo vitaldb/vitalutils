@@ -147,9 +147,9 @@ const VitalFileViewer = (function () {
 
             // Render in current view mode
             if (window.view === 'moni') {
-                window.vf.draw_moniview();
+                window.vf.drawMoniview();
             } else {
-                window.vf.draw_trackview();
+                window.vf.drawTrackview();
             }
         }
     }
@@ -311,8 +311,14 @@ const VitalFileViewer = (function () {
             $processingContainer.show();
         }
 
+        // Hide time overlay
+        TrackView.hideTimeOverlay();
+
         // Make sure playback is paused
         MonitorView.pauseResume(true);
+
+        // Disable mouse event handlers
+        disableMouseHandlers();
 
         // Initialize files container
         if (!window.files) {
@@ -324,6 +330,36 @@ const VitalFileViewer = (function () {
 
         // Hide drop message
         $("#drop_message").hide();
+    }
+
+
+    /**
+     * Disable mouse event handlers during file processing
+     */
+    function disableMouseHandlers() {
+        // Store original event handlers for TrackView
+        if (window.TrackView) {
+            window._storedMouseHandlers = {
+                mouseup: null,
+                mousedown: null,
+                mousewheel: null,
+                mousemove: null,
+                mouseleave: null
+            };
+
+            // Store and remove event handlers
+            const $canvas = $('#file_preview, #moni_preview');
+
+            // For each event type, store and then unbind
+            for (const eventType in window._storedMouseHandlers) {
+                // Use jQuery's data to store event handlers
+                const handlers = $._data($canvas[0], 'events');
+                if (handlers && handlers[eventType]) {
+                    window._storedMouseHandlers[eventType] = [...handlers[eventType]];
+                    $canvas.off(eventType);
+                }
+            }
+        }
     }
 
     // Initialize the app when document is ready

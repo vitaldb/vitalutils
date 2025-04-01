@@ -22,7 +22,7 @@ function VitalFile(file, filename) {
     this.dgmt = 0;
 
     // Begin loading the file
-    this.load_vital(file);
+    this.loadVital(file);
 }
 
 // VitalFile prototype methods
@@ -32,7 +32,7 @@ VitalFile.prototype = {
      * @param {File|Blob} file - The vital file to parse
      * @returns {Promise} - Resolves when parsing is complete
      */
-    load_vital: async function (file) {
+    loadVital: async function (file) {
         const self = this;
         const fileReader = new FileReader();
 
@@ -60,18 +60,18 @@ VitalFile.prototype = {
 
                     // Read header length and skip header
                     let headerLength;
-                    [headerLength, pos] = Utils.buf2data(data, pos, 2, 1);
+                    [headerLength, pos] = Utils.bufToData(data, pos, 2, 1);
                     pos += headerLength;
 
-                    await Utils._progress(self.filename, pos, data.byteLength);
+                    await Utils.updateProgress(self.filename, pos, data.byteLength);
 
                     // Parse packets
                     await self.parsePackets(data, pos);
 
                     // Process parsed data
-                    await Utils._progress(self.filename, data.byteLength, data.byteLength);
-                    await self.justify_recs();
-                    await self.sort_tracks();
+                    await Utils.updateProgress(self.filename, data.byteLength, data.byteLength);
+                    await self.justifyRecs();
+                    await self.sortTracks();
 
                     resolve();
                 } catch (error) {
@@ -103,8 +103,8 @@ VitalFile.prototype = {
         while (pos + 5 < data.byteLength) {
             // Read packet header
             let packetType, packetLength;
-            [packetType, pos] = Utils.buf2data(data, pos, 1, 1, true);
-            [packetLength, pos] = Utils.buf2data(data, pos, 4, 1);
+            [packetType, pos] = Utils.bufToData(data, pos, 1, 1, true);
+            [packetLength, pos] = Utils.bufToData(data, pos, 4, 1);
 
             // Extract packet data
             const packet = data.slice(pos - 5, pos + packetLength);
@@ -123,7 +123,7 @@ VitalFile.prototype = {
 
             // Update progress for large files
             if (isLargeFile && pos >= progressFlag) {
-                await Utils._progress(this.filename, pos, data.byteLength);
+                await Utils.updateProgress(this.filename, pos, data.byteLength);
                 progressFlag += data.byteLength / 15.0;
             }
         }
@@ -166,13 +166,13 @@ VitalFile.prototype = {
         let deviceId, deviceType, deviceName, devicePort;
 
         // Read device ID
-        [deviceId, ppos] = Utils.buf2data(packet, ppos, 4, 1);
+        [deviceId, ppos] = Utils.bufToData(packet, ppos, 4, 1);
 
         // Read device info strings
         devicePort = "";
-        [deviceType, ppos] = Utils.buf2str(packet, ppos);
-        [deviceName, ppos] = Utils.buf2str(packet, ppos);
-        [devicePort, ppos] = Utils.buf2str(packet, ppos);
+        [deviceType, ppos] = Utils.bufToStr(packet, ppos);
+        [deviceName, ppos] = Utils.bufToStr(packet, ppos);
+        [devicePort, ppos] = Utils.bufToStr(packet, ppos);
 
         // Store device info
         this.devs[deviceId] = {
@@ -192,31 +192,31 @@ VitalFile.prototype = {
 
         // Read track ID and type information
         let trackId, trackType, formatType;
-        [trackId, ppos] = Utils.buf2data(packet, ppos, 2, 1);
-        [trackType, ppos] = Utils.buf2data(packet, ppos, 1, 1, true);
-        [formatType, ppos] = Utils.buf2data(packet, ppos, 1, 1, true);
+        [trackId, ppos] = Utils.bufToData(packet, ppos, 2, 1);
+        [trackType, ppos] = Utils.bufToData(packet, ppos, 1, 1, true);
+        [formatType, ppos] = Utils.bufToData(packet, ppos, 1, 1, true);
 
         // Read track name and unit
         let trackName, unit;
-        [trackName, ppos] = Utils.buf2str(packet, ppos);
-        [unit, ppos] = Utils.buf2str(packet, ppos);
+        [trackName, ppos] = Utils.bufToStr(packet, ppos);
+        [unit, ppos] = Utils.bufToStr(packet, ppos);
 
         // Read track display parameters
         let minDisplay, maxDisplay, color, sampleRate;
-        [minDisplay, ppos] = Utils.buf2data(packet, ppos, 4, 1, true, "float");
-        [maxDisplay, ppos] = Utils.buf2data(packet, ppos, 4, 1, true, "float");
-        [color, ppos] = Utils.buf2data(packet, ppos, 4, 1);
-        [sampleRate, ppos] = Utils.buf2data(packet, ppos, 4, 1, true, "float");
+        [minDisplay, ppos] = Utils.bufToData(packet, ppos, 4, 1, true, "float");
+        [maxDisplay, ppos] = Utils.bufToData(packet, ppos, 4, 1, true, "float");
+        [color, ppos] = Utils.bufToData(packet, ppos, 4, 1);
+        [sampleRate, ppos] = Utils.bufToData(packet, ppos, 4, 1, true, "float");
 
         // Read scaling parameters
         let gain, offset;
-        [gain, ppos] = Utils.buf2data(packet, ppos, 8, 1);
-        [offset, ppos] = Utils.buf2data(packet, ppos, 8, 1);
+        [gain, ppos] = Utils.bufToData(packet, ppos, 8, 1);
+        [offset, ppos] = Utils.bufToData(packet, ppos, 8, 1);
 
         // Read monitor type and device ID
         let monitorType, deviceId;
-        [monitorType, ppos] = Utils.buf2data(packet, ppos, 1, 1, true);
-        [deviceId, ppos] = Utils.buf2data(packet, ppos, 4, 1);
+        [monitorType, ppos] = Utils.bufToData(packet, ppos, 1, 1, true);
+        [deviceId, ppos] = Utils.bufToData(packet, ppos, 4, 1);
 
         // Create fully qualified track name
         let deviceName = "";
@@ -259,8 +259,8 @@ VitalFile.prototype = {
 
         // Read timestamp and track ID
         let timestamp, trackId;
-        [timestamp, ppos] = Utils.buf2data(packet, ppos, 8, 1);
-        [trackId, ppos] = Utils.buf2data(packet, ppos, 2, 1);
+        [timestamp, ppos] = Utils.bufToData(packet, ppos, 8, 1);
+        [trackId, ppos] = Utils.bufToData(packet, ppos, 2, 1);
 
         // Update time boundaries
         if (this.dtstart === 0 || (timestamp > 0 && timestamp < this.dtstart)) {
@@ -295,11 +295,11 @@ VitalFile.prototype = {
         let ppos = startPos;
 
         // Get format information
-        const [formatCode, formatLength] = Utils.parse_fmt(track.fmt);
+        const [formatCode, formatLength] = Utils.parseFmt(track.fmt);
 
         // Read sample count
         let sampleCount;
-        [sampleCount, ppos] = Utils.buf2data(packet, ppos, 4, 1);
+        [sampleCount, ppos] = Utils.bufToData(packet, ppos, 4, 1);
 
         // Update end time if needed
         if (timestamp + (sampleCount / track.srate) > this.dtend) {
@@ -343,19 +343,19 @@ VitalFile.prototype = {
         let ppos = startPos;
 
         // Get format information
-        const [formatCode, formatLength] = Utils.parse_fmt(track.fmt);
+        const [formatCode, formatLength] = Utils.parseFmt(track.fmt);
 
         // Read value based on format
         let value;
 
         if (formatCode === "f") {
-            [value, ppos] = Utils.buf2data(packet, ppos, formatLength, 1, true, "float");
+            [value, ppos] = Utils.bufToData(packet, ppos, formatLength, 1, true, "float");
         } else if (formatCode === "d") {
-            [value, ppos] = Utils.buf2data(packet, ppos, formatLength, 1);
+            [value, ppos] = Utils.bufToData(packet, ppos, formatLength, 1);
         } else if (formatCode === "b" || formatCode === "h" || formatCode === "l") {
-            [value, ppos] = Utils.buf2data(packet, ppos, formatLength, 1, true);
+            [value, ppos] = Utils.bufToData(packet, ppos, formatLength, 1, true);
         } else if (formatCode === "B" || formatCode === "H" || formatCode === "L") {
-            [value, ppos] = Utils.buf2data(packet, ppos, formatLength, 1);
+            [value, ppos] = Utils.bufToData(packet, ppos, formatLength, 1);
         }
 
         // Store the record
@@ -374,7 +374,7 @@ VitalFile.prototype = {
 
         // Read string value
         let value;
-        [value, ppos] = Utils.buf2str(packet, ppos);
+        [value, ppos] = Utils.bufToStr(packet, ppos);
 
         // Store the record
         track.recs.push({ "dt": timestamp, "val": value });
@@ -390,16 +390,16 @@ VitalFile.prototype = {
 
         // Read command type
         let commandType;
-        [commandType, ppos] = Utils.buf2data(packet, ppos, 1, 1, true);
+        [commandType, ppos] = Utils.bufToData(packet, ppos, 1, 1, true);
 
         if (commandType === 6) { // Reset events
-            const eventTrack = this.find_track("/EVENT");
+            const eventTrack = this.findTrack("/EVENT");
             if (eventTrack) {
                 eventTrack.recs = [];
             }
         } else if (commandType === 5) { // Track order
             let count;
-            [count, ppos] = Utils.buf2data(packet, ppos, 2, 1);
+            [count, ppos] = Utils.bufToData(packet, ppos, 2, 1);
             this.trkorder = new Uint16Array(packet.slice(ppos, ppos + count * 2));
         }
     },
@@ -409,7 +409,7 @@ VitalFile.prototype = {
      * @param {string} trackId - The track ID
      * @returns {string} - The color as a hex string
      */
-    get_color: function (trackId) {
+    getColor: function (trackId) {
         if (trackId in this.trks) {
             // Convert numeric color to hex string
             return "#" + ("0" + (Number(this.trks[trackId].col).toString(16))).slice(3).toUpperCase();
@@ -422,7 +422,7 @@ VitalFile.prototype = {
      * @param {string} trackId - The track ID
      * @returns {string} - The monitor type string
      */
-    get_montype: function (trackId) {
+    getMontype: function (trackId) {
         if (trackId in this.trks) {
             const monitorType = this.trks[trackId].montype;
             if (monitorType in CONSTANTS.MONTYPES) {
@@ -437,7 +437,7 @@ VitalFile.prototype = {
      * Get all track names
      * @returns {Array} - Array of track names
      */
-    get_track_names: function () {
+    getTrackNames: function () {
         return Object.values(this.trks)
             .filter(track => track.dtname)
             .map(track => track.dtname);
@@ -448,7 +448,7 @@ VitalFile.prototype = {
      * @param {string} fullTrackName - The track name (optionally with device prefix)
      * @returns {Object|null} - The track object or null if not found
      */
-    find_track: function (fullTrackName) {
+    findTrack: function (fullTrackName) {
         // Split device and track name if provided
         let deviceName = "";
         let trackName = fullTrackName;
@@ -484,7 +484,7 @@ VitalFile.prototype = {
     /**
      * Process raw records into display-ready data
      */
-    justify_recs: function () {
+    justifyRecs: function () {
         const fileLength = this.dtend - this.dtstart;
 
         for (const trackId in this.trks) {
@@ -567,7 +567,7 @@ VitalFile.prototype = {
     /**
      * Sort tracks into a consistent display order
      */
-    sort_tracks: function () {
+    sortTracks: function () {
         const orderedTracks = {};
 
         // Group tracks by device first
@@ -647,14 +647,14 @@ VitalFile.prototype = {
      * @param {string} trackId - The track ID to draw
      * @returns {boolean} - Success status
      */
-    draw_track: function (trackId) {
+    drawTrack: function (trackId) {
         return TrackView.drawTrack(trackId);
     },
 
     /**
      * Switch to track view mode
      */
-    draw_trackview: function () {
+    drawTrackview: function () {
         // Set global state
         window.view = "track";
         window.vf = this;
@@ -666,7 +666,7 @@ VitalFile.prototype = {
         $("#fit_width").show();
         $("#fit_100px").show();
         $("#convert_view")
-            .attr("onclick", "window.vf.draw_moniview()")
+            .attr("onclick", "window.vf.drawMoniview()")
             .html("Monitor View");
 
         // Initialize track view
@@ -684,7 +684,7 @@ VitalFile.prototype = {
     /**
      * Switch to monitor view mode
      */
-    draw_moniview: function () {
+    drawMoniview: function () {
         // Set global state
         window.view = "moni";
         window.vf = this;
@@ -702,7 +702,7 @@ VitalFile.prototype = {
         $("#fit_100px").hide();
         $("#btn_preview").show();
         $("#convert_view")
-            .attr("onclick", "window.vf.draw_trackview()")
+            .attr("onclick", "window.vf.drawTrackview()")
             .html("Track View");
     }
 };

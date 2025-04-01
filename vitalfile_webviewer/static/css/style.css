@@ -70,6 +70,17 @@ body {
     padding: 10px 12px;
 }
 
+#time-overlay {
+    position: fixed;
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #FFFFFF;
+    padding: 5px;
+    font-size: 11px;
+    pointer-events: none;
+    display: none;
+}
+
 /* Row and column layout */
 .row {
     display: flex;

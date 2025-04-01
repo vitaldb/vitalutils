@@ -68,7 +68,7 @@ const MonitorView = (function () {
 
         // Organize tracks by monitor type and group
         Object.entries(vf.trks).forEach(([trackId, track]) => {
-            const monitorType = vf.get_montype(trackId);
+            const monitorType = vf.getMontype(trackId);
 
             // Associate first track with each monitor type
             if (monitorType && !montypeTrackMap[monitorType]) {
@@ -447,7 +447,7 @@ const MonitorView = (function () {
      * @param {number} width - Width of the area
      */
     function drawEvents(x, y, width) {
-        const eventTrack = vf.find_track("/EVENT");
+        const eventTrack = vf.findTrack("/EVENT");
         if (!eventTrack) return;
 
         let count = 0;

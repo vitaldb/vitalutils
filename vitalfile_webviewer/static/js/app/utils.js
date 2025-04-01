@@ -29,7 +29,7 @@ const Utils = (function () {
      * @param {number} position - The starting position
      * @returns {Array} - [string, newPosition]
      */
-    function buf2str(buffer, position) {
+    function bufToStr(buffer, position) {
         // Read string length
         const stringLength = new Uint32Array(buffer.slice(position, position + 4))[0];
         let newPosition = position + 4;
@@ -47,7 +47,7 @@ const Utils = (function () {
      * @param {number} format - The format code
      * @returns {Array} - [formatString, byteSize]
      */
-    function parse_fmt(format) {
+    function parseFmt(format) {
         const formatMap = {
             1: ["f", 4],  // float
             2: ["d", 8],  // double
@@ -72,7 +72,7 @@ const Utils = (function () {
      * @param {string} type - Optional type specifier (e.g., "float")
      * @returns {Array} - [data, newPosition]
      */
-    function buf2data(buffer, position, size, length, signed = false, type = "") {
+    function bufToData(buffer, position, size, length, signed = false, type = "") {
         let result;
         const slice = buffer.slice(position, position + size * length);
 
@@ -193,7 +193,7 @@ const Utils = (function () {
      * @param {number} dataLength - Total length
      * @returns {Promise} - Resolves when update is complete
      */
-    function _progress(filename, offset, dataLength) {
+    function updateProgress(filename, offset, dataLength) {
         return new Promise(async resolve => {
             const percentage = (offset / dataLength * 100).toFixed(2);
             await preloader(filename, "PARSING...", percentage)
@@ -221,7 +221,7 @@ const Utils = (function () {
                     $("#moni_preview").show();
                     $("#moni_control").show();
                     $("#convert_view")
-                        .attr("onclick", "window.vf.draw_trackview()")
+                        .attr("onclick", "window.vf.drawTrackview()")
                         .html("Track View");
                     $canvas = $('#moni_preview');
                 } else {
@@ -231,7 +231,7 @@ const Utils = (function () {
                     $("#fit_width").show();
                     $("#fit_100px").show();
                     $("#convert_view")
-                        .attr("onclick", "window.vf.draw_moniview()")
+                        .attr("onclick", "window.vf.drawMoniview()")
                         .html("Monitor View");
                     $canvas = $('#file_preview');
                 }
@@ -289,14 +289,14 @@ const Utils = (function () {
     return {
         typedArrayToBuffer,
         arrayBufferToString,
-        buf2str,
-        parse_fmt,
-        buf2data,
+        bufToStr,
+        parseFmt,
+        bufToData,
         formatTime,
         formatValue,
         roundedRect,
         updateFrame,
-        _progress,
+        updateProgress,
         preloader
     };
 })();
