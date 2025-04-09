@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "clean-css": "^5.3.3",
+    "mime-types": "^3.0.1",
+    "terser": "^5.39.0"
+  }
+}

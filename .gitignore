@@ -13,3 +13,4 @@ dist
 *.ipdb
 *.iobj
 *.exe
+vitalfile_webviewer/node_modules
