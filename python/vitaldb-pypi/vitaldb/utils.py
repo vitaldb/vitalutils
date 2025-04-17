@@ -358,6 +358,7 @@ class VitalFile:
         self.dgmt = 0
         self.order = []  # optional: order of dtname
         self.ipath = ipath
+        self.rawdata = []
 
         if skip_records is not None: 
             header_only = skip_records
@@ -1604,7 +1605,18 @@ class VitalFile:
                 #     packet_len += 4
                 #     fix64 = True
 
-                if packet_type == 9:  # devinfo
+                if packet_type == 10:  # raw data
+                    dt = _unpack_d(buf, pos)[0]
+                    pos += 8
+                    if packet_len > pos:
+                        sport, pos = _unpack_str(buf, pos)
+                    if packet_len > pos:
+                        bsent = _unpack_b(buf, pos)[0]
+                        pos += 1
+                    if packet_len > pos:
+                        buf = _unpack_b(buf, pos)
+                    self.rawdata.append({'dt': dt, 'sport': sport, 'bsent': bsent, 'buf': buf})
+                elif packet_type == 9:  # devinfo
                     did = _unpack_dw(buf, pos)[0]; pos += 4
                     # if fix64:
                     #     buf += f.read(4)
@@ -1811,6 +1823,69 @@ class VitalFile:
 
         f.close()
         return True
+    
+    def dump_rawdata(self):
+        if self.rawdata: # 데이터를 dt 기준으로 정렬
+            self.rawdata = sorted(self.rawdata, key=lambda x: x['dt'])
+            
+            # 결과를 저장할 리스트
+            merged_data = []
+            
+            # 현재 그룹의 마지막 항목으로 초기화
+            current_item = {'dt': self.rawdata[0]['dt'], 'sport': self.rawdata[0]['sport'], 'bsent': self.rawdata[0]['bsent'], 'buf': list(self.rawdata[0]['buf'])}
+            last_dt = current_item['dt']
+            
+            # 첫 번째 항목 이후의 모든 항목에 대해
+            for item in self.rawdata[1:]: # 같은 sport이고 시간 차이가 1초 이내인 경우
+                if (item['sport'] == current_item['sport']) and (item['bsent'] == current_item['bsent']) and (abs(item['dt'] - last_dt) <= 0.5):
+                    current_item['buf'].extend(list(item['buf'])) # buf 값 이어붙이기
+                else:
+                    merged_data.append(current_item)
+                    current_item = {'dt': item['dt'], 'sport': item['sport'], 'bsent': item['bsent'], 'buf': list(item['buf'])}
+                last_dt = item['dt']
+            merged_data.append(current_item) # 마지막 항목 추가
+            self.rawdata = merged_data
+
+        results = []
+        for packet in self.rawdata:
+            # Unix timestamp를 로컬 시간으로 변환
+            timestamp = datetime.datetime.fromtimestamp(packet['dt']).strftime('%Y-%m-%d %H:%M:%S.%f')
+            
+            # buf 데이터를 바이트 배열로 변환 (음수 값을 양수로 변환)
+            buf_bytes = bytes([b & 0xFF for b in packet['buf']])
+            
+            # 16진수 형태로 변환
+            hex_values = []
+            text_representation = []
+            
+            # 16바이트씩 분할하여 표시
+            for i in range(0, len(buf_bytes), 16):
+                chunk = buf_bytes[i:i+16]
+                
+                # 16진수 형태로 변환
+                hex_chunk = ' '.join([f'{b:02X}' for b in chunk])
+                hex_values.append(hex_chunk)
+                
+                # 출력 가능한 문자는 텍스트로 표시, 아닐 경우 '.'으로 표시
+                text_chunk = ''.join([chr(b) if 32 <= b <= 126 else '.' for b in chunk])
+                text_representation.append(text_chunk)
+            
+            # 결과 조합
+            # 송신/수신 정보 확인
+            if packet['bsent'] == 0:
+                packet_info = f"{timestamp} RECEIVED from {packet['sport']}"
+            else:
+                packet_info = f"{timestamp} SENT to {packet['sport']}"
+            
+            packet_data = []
+            for i in range(len(hex_values)):
+                hex_str = hex_values[i].ljust(48)  # 16바이트에 대한 16진수 표현 (공백 포함)
+                text_str = text_representation[i]
+                packet_data.append(f"  {hex_str} | {text_str}")
+            
+            results.append(packet_info + "\n" + "\n".join(packet_data))
+        
+        return "\n\n".join(results)    
 
     def run_filter(self, run, cfg):
         # find input tracks

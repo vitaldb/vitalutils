@@ -3,6 +3,10 @@ import time
 import vitaldb
 import pandas as pd
 
+vf = vitaldb.VitalFile("SICU2_02_250417_060000.vital")
+print(vf.dump_rawdata())
+quit()
+
 vf = vitaldb.read_csv('test.csv', interval=1/100)
 vf.to_vital('test.vital')
 quit()
