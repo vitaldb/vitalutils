@@ -511,6 +511,7 @@ class VitalFile:
             dtfrom = self.dtstart
         elif dtfrom < 0:
             dtfrom = self.dtend + dtfrom
+        # dtfrom이 2000-01-01 00:00:00 GMT 이전일 경우
         elif dtfrom < 946684800:
             dtfrom = self.dtstart + dtfrom
 
@@ -518,8 +519,9 @@ class VitalFile:
             dtend = self.dtend
         elif dtend < 0:
             dtend = self.dtend + dtend
-        # elif dtend < 946684800:
-        #     dtend = self.dtstart + dtend
+        # dtend가 2000-01-01 00:00:00 GMT 이전일 경우
+        elif dtend < 946684800:
+            dtend = self.dtstart + dtend
 
         if dtend < dtfrom:
             return
@@ -527,7 +529,9 @@ class VitalFile:
         for dtname, trk in self.trks.items():
             new_recs = []
             for rec in trk.recs:
-                rec_dtend = rec['dt'] + len(rec['val']) / trk.srate
+                rec_dtend = rec['dt']
+                if trk.type == TYPE_WAV:
+                    rec_dtend += len(rec['val']) / trk.srate
                 if dtfrom <= rec['dt'] <= dtend or dtfrom <= rec_dtend <= dtend:
                     new_recs.append(rec)
             self.trks[dtname].recs = new_recs
