@@ -387,7 +387,8 @@ class VitalFile:
             dtutc = dt.timestamp()
             self.dgmt = -int((dtutc - self.dtstart) / 60)  # dgmt = ut - localtime in minutes. For KST, it is -540
             return
-        elif isinstance(ipath, int):
+        elif isinstance(ipath, int) or isinstance(ipath, np.integer):
+            # open dataset
             if header_only:
                 raise NotImplementedError
             self.load_opendata(ipath, track_names, exclude)
