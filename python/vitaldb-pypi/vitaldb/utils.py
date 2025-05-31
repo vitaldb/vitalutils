@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 from copy import deepcopy
 from urllib import parse, request
+import socket
+import time
 from struct import pack, unpack_from, Struct
 
 _unpack_b = Struct('<b').unpack_from
@@ -458,6 +460,8 @@ class VitalFile:
         else:
             self.load_vital(ipath, track_names, header_only, exclude, maxlen)
 
+        # Sort rawdata by sport and dt
+        self.rawdata.sort(key=lambda x: (x.get('sport', ''), x.get('dt', 0)))
 
     def __repr__(self):
         return f'VitalFile(\'{self.ipath}\', \'{self.get_track_names()}\')'
@@ -1825,18 +1829,14 @@ class VitalFile:
         f.close()
         return True
     
-    def dump_rawdata(self):
-        if self.rawdata: # 데이터를 dt 기준으로 정렬
-            self.rawdata = sorted(self.rawdata, key=lambda x: x['dt'])
-            
-            # 결과를 저장할 리스트
-            merged_data = []
-            
+    def dump_debug(self):
+        if self.rawdata:            
             # 현재 그룹의 마지막 항목으로 초기화
             current_item = {'dt': self.rawdata[0]['dt'], 'sport': self.rawdata[0]['sport'], 'bsent': self.rawdata[0]['bsent'], 'buf': list(self.rawdata[0]['buf'])}
             last_dt = current_item['dt']
             
             # 첫 번째 항목 이후의 모든 항목에 대해
+            merged_data = []
             for item in self.rawdata[1:]: # 같은 sport이고 시간 차이가 1초 이내인 경우
                 if (item['sport'] == current_item['sport']) and (item['bsent'] == current_item['bsent']) and (abs(item['dt'] - last_dt) <= 0.5):
                     current_item['buf'].extend(list(item['buf'])) # buf 값 이어붙이기
@@ -1872,11 +1872,18 @@ class VitalFile:
                 text_representation.append(text_chunk)
             
             # 결과 조합
+            # Find device name from port
+            device_name = packet['sport']
+            for dname, dev in self.devs.items():
+                if dev.port == packet['sport']:
+                    device_name = dev.name
+                    break
+
             # 송신/수신 정보 확인
             if packet['bsent'] == 0:
-                packet_info = f"{timestamp} RECEIVED from {packet['sport']}"
+                packet_info = f"{timestamp} RECEIVED from {device_name} ({packet['sport']})"
             else:
-                packet_info = f"{timestamp} SENT to {packet['sport']}"
+                packet_info = f"{timestamp} SENT to {device_name} ({packet['sport']})"
             
             packet_data = []
             for i in range(len(hex_values)):
@@ -1886,7 +1893,76 @@ class VitalFile:
             
             results.append(packet_info + "\n" + "\n".join(packet_data))
         
-        return "\n\n".join(results)    
+        return results
+
+    def sim_debug(self):
+        """
+        Simulates sending raw data packets to local TCP ports based on 'sport'.
+        Only sends received packets (bsent == 0).
+        Each unique 'sport' is sent to a different port starting from 5001.
+        Packets are sent with a delay based on their relative time from self.dtstart.
+        """
+        received_packets = [p for p in self.rawdata if p['bsent'] == 0]
+        if not received_packets:
+            print("No received raw data packets to simulate.")
+            return
+
+        # Group packets by sport and assign ports
+        sport_ports = {}
+        port_counter = 5001
+        packets_by_sport = {}
+        for packet in received_packets:
+            sport = packet['sport']
+            if sport not in sport_ports:
+                sport_ports[sport] = port_counter
+                packets_by_sport[sport] = []
+                port_counter += 1
+            packets_by_sport[sport].append(packet)
+
+        # Create and connect sockets
+        sockets = {}
+        for sport, port in sport_ports.items():
+            try:
+                client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                client_socket.connect(('localhost', port))
+                sockets[sport] = client_socket
+                print(f"Connected to localhost:{port} for sport {sport}")
+            except ConnectionRefusedError:
+                print(f"Connection refused for sport {sport} on port {port}. Make sure a server is listening.")
+                sockets[sport] = None # Mark as failed connection
+
+        # Send packets with delay
+        start_time = time.time()
+        file_start_dt = self.dtstart
+
+        for sport in packets_by_sport:
+            client_socket = sockets.get(sport)
+            if not client_socket:
+                continue # Skip if connection failed
+
+            for packet in packets_by_sport[sport]:
+                relative_time = packet['dt'] - file_start_dt
+                current_elapsed_time = time.time() - start_time
+                delay = relative_time - current_elapsed_time
+
+                if delay > 0:
+                    time.sleep(delay)
+
+                try:
+                    # buf 데이터를 바이트 배열로 변환 (음수 값을 양수로 변환)
+                    buf_bytes = bytes([b & 0xFF for b in packet['buf']])
+                    client_socket.sendall(buf_bytes)
+                    # print(f"Sent {len(buf_bytes)} bytes for sport {sport} to port {sport_ports[sport]}")
+                except Exception as e:
+                    print(f"Error sending data for sport {sport}: {e}")
+                    break # Stop sending for this sport if error occurs
+
+        # Close sockets
+        for sport, client_socket in sockets.items():
+            if client_socket:
+                client_socket.close()
+                print(f"Closed connection for sport {sport} on port {sport_ports[sport]}")
+
 
     def run_filter(self, run, cfg):
         # find input tracks
@@ -2029,8 +2105,9 @@ def read_parquet(ipath, track_names=None, exclude=None):
     return vf
 
 if __name__ == '__main__':
-    vf = VitalFile(r"C:\Users\lucid\Desktop\1.vital")
-    vf.to_vital(r"C:\Users\lucid\Desktop\repaired_1.vital")
+    vf = VitalFile(r"C:\Users\lucid\Desktop\VitalDB\1.15.6 45yszyuy2_250531_072730.vital")
+    for line in vf.dump_debug():
+        print(line)
     quit()
     
     vf = VitalFile(1, ['ART', 'EEG1_WAV'])

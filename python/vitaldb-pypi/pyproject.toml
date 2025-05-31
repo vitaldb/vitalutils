@@ -1,6 +1,6 @@
 [project]
 name = "vitaldb"
-version = "1.5.2"
+version = "1.5.3"
 description = "VitalDB Python Libray"
 requires-python = ">=3.0"
 license = "MIT"
