@@ -11,15 +11,19 @@ from copy import deepcopy
 from urllib import parse, request
 import socket
 import time
+import threading
 from struct import pack, unpack_from, Struct
 
-_unpack_b = Struct('<b').unpack_from
+# Unpack and pack 1 value using various data types
+_unpack_b = Struct('<B').unpack_from
+_unpack_c = Struct('<b').unpack_from
 _unpack_w = Struct('<H').unpack_from
 _unpack_s = Struct('<h').unpack_from
 _unpack_f = Struct('<f').unpack_from
 _unpack_d = Struct('<d').unpack_from
 _unpack_dw = Struct('<L').unpack_from
-_pack_b = Struct('<b').pack
+_pack_b = Struct('<B').pack
+_pack_c = Struct('<b').pack
 _pack_w = Struct('<H').pack
 _pack_s = Struct('<h').pack
 _pack_f = Struct('<f').pack
@@ -1619,8 +1623,10 @@ class VitalFile:
                         bsent = _unpack_b(buf, pos)[0]
                         pos += 1
                     if packet_len > pos:
-                        buf = _unpack_b(buf, pos)
-                    self.rawdata.append({'dt': dt, 'sport': sport, 'bsent': bsent, 'buf': buf})
+                        buflen = _unpack_dw(buf, pos)[0]
+                        pos += 4
+                    if packet_len >= pos + buflen:
+                        self.rawdata.append({'dt': dt, 'sport': sport, 'bsent': bsent, 'buf': buf[pos:pos + buflen]})
                 elif packet_type == 9:  # devinfo
                     did = _unpack_dw(buf, pos)[0]; pos += 4
                     # if fix64:
@@ -1829,7 +1835,10 @@ class VitalFile:
         f.close()
         return True
     
-    def dump_debug(self):
+    def dump_debug(self, filter=None):
+        if filter is not None:
+            filter = filter.lower()
+
         if self.rawdata:            
             # 현재 그룹의 마지막 항목으로 초기화
             current_item = {'dt': self.rawdata[0]['dt'], 'sport': self.rawdata[0]['sport'], 'bsent': self.rawdata[0]['bsent'], 'buf': list(self.rawdata[0]['buf'])}
@@ -1852,16 +1861,13 @@ class VitalFile:
             # Unix timestamp를 로컬 시간으로 변환
             timestamp = datetime.datetime.fromtimestamp(packet['dt']).strftime('%Y-%m-%d %H:%M:%S.%f')
             
-            # buf 데이터를 바이트 배열로 변환 (음수 값을 양수로 변환)
-            buf_bytes = bytes([b & 0xFF for b in packet['buf']])
-            
             # 16진수 형태로 변환
             hex_values = []
             text_representation = []
             
             # 16바이트씩 분할하여 표시
-            for i in range(0, len(buf_bytes), 16):
-                chunk = buf_bytes[i:i+16]
+            for i in range(0, len(packet['buf']), 16):
+                chunk = packet['buf'][i:i+16]
                 
                 # 16진수 형태로 변환
                 hex_chunk = ' '.join([f'{b:02X}' for b in chunk])
@@ -1871,7 +1877,6 @@ class VitalFile:
                 text_chunk = ''.join([chr(b) if 32 <= b <= 126 else '.' for b in chunk])
                 text_representation.append(text_chunk)
             
-            # 결과 조합
             # Find device name from port
             device_name = packet['sport']
             for dname, dev in self.devs.items():
@@ -1879,89 +1884,128 @@ class VitalFile:
                     device_name = dev.name
                     break
 
-            # 송신/수신 정보 확인
-            if packet['bsent'] == 0:
-                packet_info = f"{timestamp} RECEIVED from {device_name} ({packet['sport']})"
-            else:
-                packet_info = f"{timestamp} SENT to {device_name} ({packet['sport']})"
-            
-            packet_data = []
+            if filter is not None:
+                if filter not in device_name.lower() and filter not in packet['sport'].lower():
+                    continue
+
+            lpad = '\t\t\t\t\t\t\t\t\t\t' if packet['bsent'] else ''
+
+            # print results
+            res = lpad + timestamp
+            res += ' SENT to ' if packet['bsent'] else ' RECEIVED from '
+            res += f'{device_name} ({packet['sport']})'
+            res += f" len={len(packet['buf'])}\n"
             for i in range(len(hex_values)):
-                hex_str = hex_values[i].ljust(48)  # 16바이트에 대한 16진수 표현 (공백 포함)
-                text_str = text_representation[i]
-                packet_data.append(f"  {hex_str} | {text_str}")
-            
-            results.append(packet_info + "\n" + "\n".join(packet_data))
+                res += lpad + '\t' + hex_values[i].ljust(48) + ' | ' + text_representation[i] + '\n'
+
+            results.append(res)
         
         return results
 
-    def sim_debug(self):
+    def _sim_port(self, sport, port, packets, file_start_dt):
         """
-        Simulates sending raw data packets to local TCP ports based on 'sport'.
+        Handles the simulation for a single sport in a separate thread.
+        """
+        server_socket = None        
+        try:
+            # Create a server socket
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server_socket.bind(('localhost', port))
+            server_socket.listen(1)
+            while True:
+                client_socket = None
+                try:
+                    # Accept a client connection
+                    client_socket, client_address = server_socket.accept()
+                    print(f"Accepted connection from {client_address} for {sport}")
+
+                    # Send packets with delay
+                    start_time = time.time()
+                    for packet in packets:
+                        relative_time = packet['dt'] - file_start_dt
+                        current_elapsed_time = time.time() - start_time
+                        delay = relative_time - current_elapsed_time
+                        if delay > 0:
+                            time.sleep(delay)
+                        try:
+                            #hex_chunk = ' '.join([f'{b:02X}' for b in packet['buf']])
+                            #print(f"Sending for {sport} at {packet['dt']} (relative time: {relative_time:.2f}s) len={len(packet['buf'])}: {hex_chunk}")
+                            client_socket.sendall(bytes(packet['buf']))
+                        except Exception as e:
+                            print(f"Error sending data for {sport}: {e}")
+                            break # Stop sending for this client if error occurs
+
+                except Exception as e:
+                    print(f"An error occurred with client connection for {sport} on port {port}: {e}")
+
+                finally:
+                    # Clean up the client connection
+                    if client_socket:
+                        client_socket.close()
+                        print(f"Closed client connection for {sport} on port {port}")
+                
+                # Add a small delay before listening for the next connection to prevent high CPU usage
+                time.sleep(1)
+
+        except Exception as e:
+            print(f"An error occurred with the server socket for {sport} on port {port}: {e}")
+
+        finally:
+            # Clean up the server socket
+            if server_socket:
+                server_socket.close()
+                print(f"Closed server socket for {sport} on port {port}")
+
+    def sim_debug(self, filter=None):
+        """
+        Simulates sending raw data packets from TCP port starting from 5001.
         Only sends received packets (bsent == 0).
-        Each unique 'sport' is sent to a different port starting from 5001.
-        Packets are sent with a delay based on their relative time from self.dtstart.
+        Each sport is simulated in a separate thread to allow simultaneous listening.
         """
+        if filter is not None:
+            filter = filter.lower()
+
         received_packets = [p for p in self.rawdata if p['bsent'] == 0]
         if not received_packets:
             print("No received raw data packets to simulate.")
             return
 
         # Group packets by sport and assign ports
-        sport_ports = {}
+        sport_tports = {}
         port_counter = 5001
         packets_by_sport = {}
         for packet in received_packets:
             sport = packet['sport']
-            if sport not in sport_ports:
-                sport_ports[sport] = port_counter
+
+            # Find device name from port
+            device_name = packet['sport']
+            for dname, dev in self.devs.items():
+                if dev.port == packet['sport']:
+                    device_name = dev.name
+                    break
+
+            if filter is not None:
+                if filter not in device_name.lower() and filter not in packet['sport'].lower():
+                    continue
+
+            if sport not in sport_tports:
+                sport_tports[sport] = port_counter
                 packets_by_sport[sport] = []
                 port_counter += 1
+
             packets_by_sport[sport].append(packet)
 
-        # Create and connect sockets
-        sockets = {}
-        for sport, port in sport_ports.items():
-            try:
-                client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                client_socket.connect(('localhost', port))
-                sockets[sport] = client_socket
-                print(f"Connected to localhost:{port} for sport {sport}")
-            except ConnectionRefusedError:
-                print(f"Connection refused for sport {sport} on port {port}. Make sure a server is listening.")
-                sockets[sport] = None # Mark as failed connection
+        # Create and start a thread for each sport
+        threads = []
+        for sport, packets in packets_by_sport.items():
+            tport = sport_tports[sport]
+            print(f"Listening on localhost:{tport} for {sport}")
+            thread = threading.Thread(target=self._sim_port, args=(sport, tport, packets, self.dtstart))
+            threads.append(thread)
+            thread.start()
 
-        # Send packets with delay
-        start_time = time.time()
-        file_start_dt = self.dtstart
-
-        for sport in packets_by_sport:
-            client_socket = sockets.get(sport)
-            if not client_socket:
-                continue # Skip if connection failed
-
-            for packet in packets_by_sport[sport]:
-                relative_time = packet['dt'] - file_start_dt
-                current_elapsed_time = time.time() - start_time
-                delay = relative_time - current_elapsed_time
-
-                if delay > 0:
-                    time.sleep(delay)
-
-                try:
-                    # buf 데이터를 바이트 배열로 변환 (음수 값을 양수로 변환)
-                    buf_bytes = bytes([b & 0xFF for b in packet['buf']])
-                    client_socket.sendall(buf_bytes)
-                    # print(f"Sent {len(buf_bytes)} bytes for sport {sport} to port {sport_ports[sport]}")
-                except Exception as e:
-                    print(f"Error sending data for sport {sport}: {e}")
-                    break # Stop sending for this sport if error occurs
-
-        # Close sockets
-        for sport, client_socket in sockets.items():
-            if client_socket:
-                client_socket.close()
-                print(f"Closed connection for sport {sport} on port {sport_ports[sport]}")
+        # Threads will run in the background, no need to join them here for a simulation
 
 
     def run_filter(self, run, cfg):
@@ -2105,10 +2149,9 @@ def read_parquet(ipath, track_names=None, exclude=None):
     return vf
 
 if __name__ == '__main__':
-    vf = VitalFile(r"C:\Users\lucid\Desktop\VitalDB\1.15.6 45yszyuy2_250531_072730.vital")
-    for line in vf.dump_debug():
-        print(line)
-    quit()
+    #vf = VitalFile(r"C:\Users\lucid\Desktop\1.15.8 45yszyuy2_250531_073033.vital")
+    #vf.sim_debug()
+    #quit()
     
     vf = VitalFile(1, ['ART', 'EEG1_WAV'])
     vf.to_wfdb('1', interval=1/500)
