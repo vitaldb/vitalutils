@@ -364,7 +364,7 @@ class VitalFile:
         self.dgmt = 0
         self.order = []  # optional: order of dtname
         self.ipath = ipath
-        self.rawdata = []
+        self.packets = []
 
         if skip_records is not None: 
             header_only = skip_records
@@ -464,8 +464,8 @@ class VitalFile:
         else:
             self.load_vital(ipath, track_names, header_only, exclude, maxlen)
 
-        # Sort rawdata by sport and dt
-        self.rawdata.sort(key=lambda x: (x.get('sport', ''), x.get('dt', 0)))
+        # Sort packets by sport and dt
+        self.packets.sort(key=lambda x: (x.get('sport', ''), x.get('dt', 0)))
 
     def __repr__(self):
         return f'VitalFile(\'{self.ipath}\', \'{self.get_track_names()}\')'
@@ -1626,7 +1626,7 @@ class VitalFile:
                         buflen = _unpack_dw(buf, pos)[0]
                         pos += 4
                     if packet_len >= pos + buflen:
-                        self.rawdata.append({'dt': dt, 'sport': sport, 'bsent': bsent, 'buf': buf[pos:pos + buflen]})
+                        self.packets.append({'dt': dt, 'sport': sport, 'bsent': bsent, 'buf': buf[pos:pos + buflen]})
                 elif packet_type == 9:  # devinfo
                     did = _unpack_dw(buf, pos)[0]; pos += 4
                     # if fix64:
@@ -1835,47 +1835,33 @@ class VitalFile:
         f.close()
         return True
     
-    def dump_debug(self, filter=None):
+    def dump_debug(self, filter=None, max_packets=None, merge_packets=0.2):
         if filter is not None:
             filter = filter.lower()
 
-        if self.rawdata:            
+        # merge packets with the same sport and within merge_packets seconds
+        if self.packets:            
             # 현재 그룹의 마지막 항목으로 초기화
-            current_item = {'dt': self.rawdata[0]['dt'], 'sport': self.rawdata[0]['sport'], 'bsent': self.rawdata[0]['bsent'], 'buf': list(self.rawdata[0]['buf'])}
+            current_item = {'dt': self.packets[0]['dt'], 'sport': self.packets[0]['sport'], 'bsent': self.packets[0]['bsent'], 'buf': list(self.packets[0]['buf'])}
             last_dt = current_item['dt']
             
             # 첫 번째 항목 이후의 모든 항목에 대해
             merged_data = []
-            for item in self.rawdata[1:]: # 같은 sport이고 시간 차이가 1초 이내인 경우
-                if (item['sport'] == current_item['sport']) and (item['bsent'] == current_item['bsent']) and (abs(item['dt'] - last_dt) <= 0.5):
+            for item in self.packets[1:]: # 같은 sport이고 시간 차이가 1초 이내인 경우
+                if (item['sport'] == current_item['sport']) and (item['bsent'] == current_item['bsent']) and (abs(item['dt'] - last_dt) <= merge_packets):
                     current_item['buf'].extend(list(item['buf'])) # buf 값 이어붙이기
                 else:
                     merged_data.append(current_item)
                     current_item = {'dt': item['dt'], 'sport': item['sport'], 'bsent': item['bsent'], 'buf': list(item['buf'])}
                 last_dt = item['dt']
             merged_data.append(current_item) # 마지막 항목 추가
-            self.rawdata = merged_data
+            self.packets = merged_data
 
-        results = []
-        for packet in self.rawdata:
+        # print results
+        num_printed = 0
+        for packet in self.packets:
             # Unix timestamp를 로컬 시간으로 변환
             timestamp = datetime.datetime.fromtimestamp(packet['dt']).strftime('%Y-%m-%d %H:%M:%S.%f')
-            
-            # 16진수 형태로 변환
-            hex_values = []
-            text_representation = []
-            
-            # 16바이트씩 분할하여 표시
-            for i in range(0, len(packet['buf']), 16):
-                chunk = packet['buf'][i:i+16]
-                
-                # 16진수 형태로 변환
-                hex_chunk = ' '.join([f'{b:02X}' for b in chunk])
-                hex_values.append(hex_chunk)
-                
-                # 출력 가능한 문자는 텍스트로 표시, 아닐 경우 '.'으로 표시
-                text_chunk = ''.join([chr(b) if 32 <= b <= 126 else '.' for b in chunk])
-                text_representation.append(text_chunk)
             
             # Find device name from port
             device_name = packet['sport']
@@ -1891,16 +1877,23 @@ class VitalFile:
             lpad = '\t\t\t\t\t\t\t\t\t\t' if packet['bsent'] else ''
 
             # print results
-            res = lpad + timestamp
-            res += ' SENT to ' if packet['bsent'] else ' RECEIVED from '
-            res += f'{device_name} ({packet['sport']})'
-            res += f" len={len(packet['buf'])}\n"
-            for i in range(len(hex_values)):
-                res += lpad + '\t' + hex_values[i].ljust(48) + ' | ' + text_representation[i] + '\n'
+            print(lpad + timestamp + ' ' + ('SENT to ' if packet['bsent'] else 'RECEIVED from ') + f'{device_name} ({packet["sport"]}) len={len(packet["buf"])}')
 
-            results.append(res)
-        
-        return results
+            # print lines
+            for i in range(0, len(packet['buf']), 16):
+                hex_chunk = ''
+                text_chunk = ''
+                for b in packet['buf'][i:i+16]:
+                    hex_chunk += f'{b:02X} '
+                    text_chunk += chr(b) if 32 <= b <= 126 else '.'
+                print(lpad + '\t' + hex_chunk.ljust(48) + '| ' + text_chunk)
+            
+            print('\n')
+
+            num_printed += 1
+            if max_packets is not None and num_printed >= max_packets:
+                break
+          
 
     def _sim_port(self, sport, port, packets, file_start_dt):
         """
@@ -1929,7 +1922,7 @@ class VitalFile:
                         if delay > 0:
                             time.sleep(delay)
                         try:
-                            #hex_chunk = ' '.join([f'{b:02X}' for b in packet['buf']])
+                            hex_chunk = ' '.join([f'{b:02X}' for b in packet['buf']])
                             #print(f"Sending for {sport} at {packet['dt']} (relative time: {relative_time:.2f}s) len={len(packet['buf'])}: {hex_chunk}")
                             client_socket.sendall(bytes(packet['buf']))
                         except Exception as e:
@@ -1966,15 +1959,16 @@ class VitalFile:
         if filter is not None:
             filter = filter.lower()
 
-        received_packets = [p for p in self.rawdata if p['bsent'] == 0]
+        received_packets = [p for p in self.packets if p['bsent'] == 0]
         if not received_packets:
             print("No received raw data packets to simulate.")
             return
 
         # Group packets by sport and assign ports
+        tport = 5001
         sport_tports = {}
-        port_counter = 5001
-        packets_by_sport = {}
+        sport_packets = {}
+        sport_dnames = {}
         for packet in received_packets:
             sport = packet['sport']
 
@@ -1990,17 +1984,19 @@ class VitalFile:
                     continue
 
             if sport not in sport_tports:
-                sport_tports[sport] = port_counter
-                packets_by_sport[sport] = []
-                port_counter += 1
-
-            packets_by_sport[sport].append(packet)
+                sport_tports[sport] = tport
+                tport += 1
+                sport_dnames[sport] = device_name
+                sport_packets[sport] = []
+                
+            sport_packets[sport].append(packet)
 
         # Create and start a thread for each sport
         threads = []
-        for sport, packets in packets_by_sport.items():
+        for sport, packets in sport_packets.items():
             tport = sport_tports[sport]
-            print(f"Listening on localhost:{tport} for {sport}")
+            dname = sport_dnames[sport]
+            print(f"Listening on localhost:{tport} for {sport} / {dname}")
             thread = threading.Thread(target=self._sim_port, args=(sport, tport, packets, self.dtstart))
             threads.append(thread)
             thread.start()
@@ -2149,9 +2145,9 @@ def read_parquet(ipath, track_names=None, exclude=None):
     return vf
 
 if __name__ == '__main__':
-    #vf = VitalFile(r"C:\Users\lucid\Desktop\1.15.8 45yszyuy2_250531_073033.vital")
-    #vf.sim_debug()
-    #quit()
+    vf = VitalFile(r"C:\Users\lucid\Desktop\SICU05_250610_140015.vital")
+    vf.sim_debug()
+    quit()
     
     vf = VitalFile(1, ['ART', 'EEG1_WAV'])
     vf.to_wfdb('1', interval=1/500)
