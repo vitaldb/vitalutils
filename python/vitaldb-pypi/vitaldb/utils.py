@@ -1893,7 +1893,7 @@ class VitalFile:
             # print results
             res = lpad + timestamp
             res += ' SENT to ' if packet['bsent'] else ' RECEIVED from '
-            res += f'{device_name} ({packet['sport']})'
+            res += f"{device_name} ({packet['sport']})"
             res += f" len={len(packet['buf'])}\n"
             for i in range(len(hex_values)):
                 res += lpad + '\t' + hex_values[i].ljust(48) + ' | ' + text_representation[i] + '\n'
