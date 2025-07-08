@@ -350,7 +350,7 @@ class VitalFile:
     :param double dtend: flie end time
     :param float dgmt: dgmt = ut - localtime in minutes. For KST, it is -540.
     """
-    def __init__(self, ipath=None, track_names=None, header_only=False, skip_records=None, exclude=None, userid=None, maxlen=None, interval=None):
+    def __init__(self, ipath=None, track_names=None, header_only=False, skip_records=None, exclude=None, maxlen=None, interval=None):
         """Constructor of the VitalFile class.
         :param ipath: file path, list of file path, or caseid of open dataset.
         :param track_names: list of track names, eg) ['SNUADC/ECG', 'Solar 8000/HR']
@@ -440,16 +440,6 @@ class VitalFile:
         ipos = ext.find('?')
         if ipos > 0:
             ext = ext[:ipos]
-
-        if isinstance(userid, str):
-            if ext == '.parquet':
-                bedname = ipath[:-22]
-                month = ipath[-21:-17]
-                ipath = f's3://vitaldb-parquets/{userid}/{month}/{bedname}/{ipath}'
-            elif ext == '.vital':
-                bedname = ipath[:-20]
-                month = ipath[-19:-15]
-                ipath = f's3://vitaldb-myfiles/{userid}/{month}/{bedname}/{ipath}'
 
         if ext == '.vital':
             self.load_vital(ipath, track_names, header_only, exclude, maxlen)
