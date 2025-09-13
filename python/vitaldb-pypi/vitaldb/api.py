@@ -122,6 +122,18 @@ def download(filename, localpath=None):
     return True
 
 
+def bedlist():
+    global access_token
+    if access_token is None:
+        raise Exception('Please login first')
+
+    pars = {"access_token": access_token}
+    res = requests.get(API_URL + "bedlist", params=pars)
+    if 200 != res.status_code:
+        raise Exception('API Server Error: ' + res.content.decode('utf-8'))
+    return json.loads(gzip.decompress(res.content))
+
+
 def receive(vrcode=None, bedname=None, dtstart=None, dtend=None):
     global access_token
     if access_token is None:
@@ -133,6 +145,8 @@ def receive(vrcode=None, bedname=None, dtstart=None, dtend=None):
         dtend = dtend.timestamp()
     pars = {"access_token": access_token, 'vrcode':vrcode}
     if bedname:
+        if isinstance(bedname, (list, set, tuple)):
+            bedname = ','.join(bedname)
         pars['bedname'] = bedname
     if dtstart:
         pars['dtstart'] = dtstart
