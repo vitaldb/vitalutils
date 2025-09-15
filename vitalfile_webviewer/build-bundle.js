@@ -31,6 +31,20 @@ const LIBS = [
 // Small files to embed as data URLs (under this size in KB)
 const EMBED_SIZE_LIMIT = 50; // KB
 
+// License information to include in the bundled file
+const LICENSE_INFO = `
+<!-- 
+  License Information:
+  © 2025 Vital Lab.
+  This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 
+  International Public License (CC BY-NC-SA 4.0).
+  You may use, share, and adapt this software for non-commercial research and educational purposes, 
+  provided that appropriate credit is given and any derivative works are shared under the same license.
+  
+  Full license terms: https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+`;
+
 // Function to combine all app JavaScript files
 async function combineAppJs() {
     let combinedCode = '';
@@ -39,6 +53,7 @@ async function combineAppJs() {
     combinedCode += '/**\n';
     combinedCode += ' * VitalFile Webviewer - Combined JS\n';
     combinedCode += ' * Generated: ' + new Date().toISOString() + '\n';
+    combinedCode += ' * © 2025 Vital Lab. Licensed under CC BY-NC-SA 4.0\n';
     combinedCode += ' */\n\n';
 
     // Add each file in the specified order
@@ -151,8 +166,13 @@ async function processHtml(js, css) {
         // Load HTML into cheerio
         const $ = cheerio.load(html);
 
+        // Add license information at the beginning of the HTML as a comment only
+        $.root().prepend(LICENSE_INFO);
+
         // Remove existing CSS links and replace with inline CSS
         $('link[rel="stylesheet"]').remove();
+        
+        // No need for footer styles anymore
         $('head').append(`<style>${css}</style>`);
 
         // Remove existing script tags and add combined JS
@@ -198,7 +218,15 @@ async function processHtml(js, css) {
                 }
             }
         });
-
+        
+        // Remove any existing footer with license info
+        $('.license-info, .license-footer').remove();
+        $('footer').each((i, el) => {
+            if ($(el).text().includes('Vital Lab') || $(el).text().includes('CC BY-NC-SA')) {
+                $(el).remove();
+            }
+        });
+        
         // Return the modified HTML
         return $.html();
     } catch (error) {

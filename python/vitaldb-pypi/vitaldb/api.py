@@ -60,6 +60,8 @@ def filelist(bedname=None, dtstart=None, dtend=None, hid=None, notimestamp=None,
 
     pars = {"access_token": access_token}
     if bedname:
+        if isinstance(bedname, (list, set, tuple)):
+            bedname = ','.join(bedname)
         pars['bedname'] = bedname
     #dtstart = to_timestamp(dtstart)
     #dtend = to_timestamp(dtend)
@@ -85,6 +87,8 @@ def tracklist(bedname=None, dtstart=None, dtend=None):
 
     pars = {"access_token": access_token}
     if bedname:
+        if isinstance(bedname, (list, set, tuple)):
+            bedname = ','.join(bedname)
         pars['bedname'] = bedname
     #dtstart = to_timestamp(dtstart)
     #dtend = to_timestamp(dtend)
@@ -131,10 +135,14 @@ def bedlist():
     res = requests.get(API_URL + "bedlist", params=pars)
     if 200 != res.status_code:
         raise Exception('API Server Error: ' + res.content.decode('utf-8'))
-    return json.loads(gzip.decompress(res.content))
+    if res.headers.get("Content-Encoding") == "gzip":
+        data = gzip.decompress(res.content)
+    else:
+        data = res.content
+    return json.loads(data)
 
 
-def receive(vrcode=None, bedname=None, dtstart=None, dtend=None):
+def receive(vrcode=None, bedname=None, track_names=None, dtstart=None, dtend=None):
     global access_token
     if access_token is None:
         raise Exception('Please login first')
@@ -148,6 +156,10 @@ def receive(vrcode=None, bedname=None, dtstart=None, dtend=None):
         if isinstance(bedname, (list, set, tuple)):
             bedname = ','.join(bedname)
         pars['bedname'] = bedname
+    if track_names:
+        if isinstance(track_names, (list, set, tuple)):
+            track_names = ','.join(track_names)
+        pars['track_names'] = track_names
     if dtstart:
         pars['dtstart'] = dtstart
     if dtend:

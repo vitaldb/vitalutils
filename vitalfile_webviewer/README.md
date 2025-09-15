@@ -1,56 +1,67 @@
-# VitalFile Webviewer
+# Vital File Web Viewer
 
-A lightweight web-based viewer for .vital files that enables visualization of vital signs data with no server-side requirements.
+**Vital File Web Viewer** is a lightweight, browser-based tool for visualizing `.vital` files — a binary format used to store high-resolution vital signs data collected during surgery or intensive care. This tool provides an intuitive interface to explore `.vital` data on any operating system without the need for software installation or server-side components. It is intended for educational and research use.
+
+---
 
 ## Features
 
-- Drag and drop interface for easy file loading
-- Support for multiple file selection and batch processing
-- File history management with quick switching between loaded files
+- Cross-platform viewer with no installation required
+- Drag-and-drop or file selection interface for `.vital` files
+- Support for multiple file loading and in-memory file history
 - Two viewing modes:
-  - **Track View**: Displays all parameters in a traditional time-series format
-  - **Monitor View**: Simulates a clinical patient monitor display
-- Playback controls for Monitor View:
-  - Play/pause functionality
-  - Adjustable playback speed (1x, 2x, 4x, 6x)
-  - Timeline scrubbing
-  - Frame-by-frame navigation
-- Responsive design that adapts to different screen sizes
+  - **Track View**: Time-series plots of all signal parameters
+  - **Monitor View**: Simulated patient monitor layout with waveform playback
+- Playback controls: play/pause, speed control, frame-by-frame navigation, timeline scrubbing
+- Responsive layout adaptable to desktops, laptops, and tablets
+
+---
 
 ## Getting Started
 
-### Prerequisites
+### Requirements
 
-- A modern web browser (Chrome, Firefox, Safari, or Edge)
-- No server-side requirements - runs entirely in your browser
+- A modern web browser:
+  - Chrome (latest)
+  - Firefox (latest)
+  - Safari (latest)
+  - Edge (latest)
 
 ### Installation
 
-1. Clone the repository or download the source code
-2. No build process required - open `index.html` in your browser to run the application
+1. Download or clone the repository.
+2. Open `vitalfile_webviewer.html` or `index.html` in your browser.
+3. Load `.vital` files by drag-and-drop or by using the "Select Files" button.
 
-### Usage
+---
 
-1. Open `index.html` in your web browser
-2. Load .vital files using one of these methods:
-   - Drag and drop one or more `.vital` files onto the designated area
-   - Click "Select Files" to browse and select one or more files
-3. Files will be loaded and the first one displayed in Track View mode by default
-4. Use the file history dropdown to switch between loaded files
-5. Use the buttons at the top to switch between viewing modes:
-   - "Track View" - shows the traditional timeline view
-   - "Monitor View" - shows the patient monitor simulation
-6. In Track View mode, use the "Fit Width" or "100 Pixel/s" buttons to adjust the time scale
-7. In Monitor View mode, use the playback controls at the bottom to navigate through the data
+## Usage
+
+- Files are parsed directly in the browser; no internet connection is required.
+- Switch between loaded files using the dropdown menu in the top-left corner.
+- In **Track View**, you can zoom, pan, and change the time scale.
+- In **Monitor View**, you can navigate the timeline using playback controls.
+- All file processing is handled locally to ensure data confidentiality.
+
+---
+
+## How It Works
+
+- Files are decompressed in-browser using the [Pako](https://github.com/nodeca/pako) library.
+- Track data is parsed and rendered with HTML5 Canvas.
+- Monitor View simulates a bedside monitor using waveform and numeric displays.
+- UI interaction is handled via JavaScript and jQuery with asynchronous processing to ensure smooth performance.
+
+---
 
 ## File Structure
 
 ```
 vitalfile_webviewer/
 ├── index.html              # Main HTML file
+├── build-bundle.js         # Script to bundle the app into a single HTML file
 ├── static/
 │   ├── css/
-│   ├── img/
 │   └── js/
 │       ├── lib/            # Third-party libraries
 │       │   ├── jquery.min.js
@@ -65,80 +76,78 @@ vitalfile_webviewer/
 │           └── main.js         # Entry point and script loader
 ```
 
-## Key Components
+### Build Process
 
-### File Management
+The project includes a build script (`build-bundle.js`) that bundles the entire application into a single, self-contained HTML file:
 
-- **File History**: Maintains an in-memory collection of loaded files
-- **Dropdown Menu**: Allows quick switching between previously loaded files
-- **Multiple File Support**: Process batches of .vital files with progress tracking
+- Combines and minifies all JavaScript files
+- Inlines and minifies CSS
+- Embeds small images as data URLs
+- Produces `vitalfile_webviewer.html` that works without external dependencies
 
-### Views
+To build the bundled version:
+```
+node build-bundle.js
+```
 
-- **Track View**: Traditional time-series display of all parameters
-  - Supports zooming, panning, and different time scales
-  - Shows device and parameter organization
+#### Usage Requirements:
+- Node.js (v12 or higher)
+- Required npm packages: 
+  - terser
+  - clean-css
+  - cheerio
+  - mime-types
 
-- **Monitor View**: Clinical monitor simulation
-  - Displays waveforms and parameter values in a monitor-like layout
-  - Features playback controls for time navigation
+#### Installation of Dependencies:
+```
+npm install terser clean-css cheerio mime-types
+```
 
-## How It Works
-
-1. The application loads one or more `.vital` files into the browser's memory
-2. Files are processed asynchronously and stored in an in-memory collection
-3. Each file is decompressed using the pako library
-4. File data is parsed and organized into tracks and parameters
-5. Depending on the selected view mode, the data is rendered to the canvas element:
-   - Track View: Shows all parameters as time-series graphs
-   - Monitor View: Renders a patient monitor display with waveforms and numeric values
-6. Users can switch between files using the file history dropdown
-
-## Code Architecture
-
-The application follows a modular architecture:
-
-- **Utils**: Core utility functions for data parsing and UI helpers
-- **Monitor View**: Module for rendering and controlling the monitor display
-- **Track View**: Module for rendering and interacting with the track timeline display
-- **VitalFile**: Class handling file parsing and data organization
-- **App**: Main application controller coordinating between modules
-- **Constants**: Configuration values and layout definitions
-
-## Technologies Used
-
-- **HTML5 Canvas** for rendering graphics
-- **JavaScript ES6+** for application logic
-- **CSS3** for styling
-- **jQuery** for DOM manipulation
-- **Pako** for decompression of .vital files
-- **Font Awesome** for icons
-
-## Browser Compatibility
-
-The application is compatible with the following browsers:
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-
-## Performance Considerations
-
-- Files are loaded and processed asynchronously to maintain UI responsiveness
-- Large files are processed with progress indication
-- Multiple files are handled sequentially to avoid memory issues
-- Canvas rendering is optimized to maintain smooth playback
-
-## License
-
-This project is open-source and available under the MIT License.
-
-## Acknowledgements
-
-- Font Awesome for the icon set
-- jQuery team for the jQuery library
-- nodeca for the pako compression library
+#### Customization:
+You can adjust the build process by modifying these variables in `build-bundle.js`:
+- `JS_ORDER`: Controls the order of JavaScript files in the bundle
+- `LIBS`: External libraries to include
+- `EMBED_SIZE_LIMIT`: Maximum size (in KB) of files to embed as data URLs
 
 ---
 
-*Note: This viewer is intended for educational and research purposes only and should not be used for clinical diagnostics or patient care.*
+## Technologies Used
+
+- HTML5 / JavaScript (ES6+)
+- CSS3 for layout and styling
+- HTML5 Canvas for rendering
+- [Pako](https://github.com/nodeca/pako) for decompression
+- jQuery for DOM handling
+- Font Awesome for interface icons
+
+---
+
+## Performance Notes
+
+- Optimized for large `.vital` files with asynchronous loading
+- No server latency or upload overhead
+- Works entirely within the browser memory
+- File handling is sequential to minimize memory usage
+
+---
+
+## Acknowledgements
+
+- [Pako](https://github.com/nodeca/pako) for in-browser decompression
+- [jQuery](https://jquery.com/) for UI utilities
+- [Font Awesome](https://fontawesome.com/) for icons
+- VitalDB Project (https://vitaldb.net)
+
+---
+
+## License
+
+© 2025 Vital Lab.  
+This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License (CC BY-NC-SA 4.0)**.  
+You may use, share, and adapt this software for non-commercial research and educational purposes, provided that appropriate credit is given and any derivative works are shared under the same license.
+
+[Read the full license terms](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+
+---
+
+*Disclaimer: This viewer is intended for research and educational use only. It is not suitable for clinical diagnosis or patient care.*
