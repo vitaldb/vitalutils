@@ -1,8 +1,19 @@
 [project]
 name = "vitaldb"
-version = "1.5.8"
-description = "VitalDB Python Libray"
-requires-python = ">=3.0"
+version = "1.6.0"
+description = "VitalDB Python Library"
+requires-python = ">=3.10"
 license = "MIT"
 authors = [{name = "VitalLab", email = "vital@snu.ac.kr"}]
+keywords = ["vitaldb", "vital-signs", "medical", "healthcare", "mcp"]
 dependencies = ['numpy', 'pandas', 'requests', 'wfdb']
+
+[project.optional-dependencies]
+mcp = ["mcp"]
+
+[project.scripts]
+vitaldb = "vitaldb.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
