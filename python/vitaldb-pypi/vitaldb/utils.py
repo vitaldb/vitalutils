@@ -2135,7 +2135,7 @@ def read_parquet(ipath, track_names=None, exclude=None):
     return vf
 
 if __name__ == '__main__':
-    vf = VitalFile("C:\\Users\\lucid\\OneDrive\\Desktop\\a.vital")
+    vf = VitalFile("C:\\Users\\lucid\\Desktop\\1.vital")
     #vf.dump_debug()
     vf.sim_debug()
     quit()

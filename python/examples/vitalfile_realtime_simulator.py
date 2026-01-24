@@ -5,7 +5,7 @@ import copy
 import time
 
 # Define the path to the vital file
-file = './vitalfiles/101_231023_074744.vital'
+file = './1.vital'
 
 # Create a VitalFile object from the specified file path
 vf = vitaldb.VitalFile(file)
