@@ -14,5 +14,6 @@ dist
 *.iobj
 *.exe
 vitalfile_webviewer/node_modules
-.vscode/settings.json
+.claude/
+.vscode/
 python/examples/1.vital
