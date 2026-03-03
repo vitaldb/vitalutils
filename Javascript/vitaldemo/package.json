@@ -1,14 +1,14 @@
 {
-  "name": "vital-server",
+  "name": "vitaldemo",
   "version": "1.0.0",
-  "description": "",
+  "description": "VitalDB demo API server that serves sample vital files with infinite loop playback",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node ."
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["vitaldb", "vital", "medical", "api", "demo"],
+  "author": "vitaldb",
+  "license": "MIT",
   "dependencies": {
     "@fastify/cors": "^8.5.0",
     "fastify": "^4.29.1",
