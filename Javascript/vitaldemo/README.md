@@ -23,8 +23,7 @@ When a request is made based on the current time, the elapsed time since server 
 ## Installation & Running
 
 ```bash
-npm install
-node .
+npx vitaldemo
 ```
 
 Environment variables:

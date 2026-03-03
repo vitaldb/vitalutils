@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * VitalDB-compatible API Server using Fastify
  *
