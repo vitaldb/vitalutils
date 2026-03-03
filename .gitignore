@@ -13,7 +13,7 @@ dist
 *.ipdb
 *.iobj
 *.exe
-vitalfile_webviewer/node_modules
+node_modules/
 .claude/
 .vscode/
 python/examples/1.vital

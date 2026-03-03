@@ -1,0 +1,9 @@
+{
+  "name": "vitaldb-js",
+  "version": "1.0.1",
+  "description": "Parser for Vital Recorder .vital file format",
+  "main": "index.js",
+  "keywords": ["vital", "vitaldb", "vital-recorder", "medical"],
+  "author": "Hyung-Chul Lee <vital@snu.ac.kr>",
+  "license": "MIT"
+}
