@@ -26,13 +26,13 @@ int main(int argc, char* argv[]) {
 		print_usage(argv[0]);
 		return -1;
 	}
-	argc--; argv++; // ÀÚ±â ÀÚ½ÅÀÇ ½ÇÇà ÆÄÀÏ¸í Á¦°Å
+	argc--; argv++; // ï¿½Ú±ï¿½ ï¿½Ú½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ï¸ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 	string devfrom = argv[2];
 	string devto = argv[3];
 
-	GZWriter fw(argv[1]); // ¾²±â ÆÄÀÏÀ» ¿¬´Ù.
-	GZReader fr(argv[0]); // ÀÐÀ» ÆÄÀÏÀ» ¿¬´Ù.
+	GZWriter fw(argv[1]); // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
+	GZReader fr(argv[0]); // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
 	if (!fr.opened() || !fw.opened()) {
 		fprintf(stderr, "file open error\n");
 		return -1;
@@ -59,13 +59,18 @@ int main(int argc, char* argv[]) {
 	if (!fr.read(&header[0], headerlen)) return -1;
 	if (!fw.write(&header[0], headerlen)) return -1;
 
-	// ÇÑ ¹ø ÈÈÀ½. ÇÑ¹ø¿¡ ÀÐÀ¸¸é¼­ ¾´´Ù.
-	while (!fr.eof()) { // body´Â ÆÐÅ¶ÀÇ ¿¬¼ÓÀÌ´Ù.
+	unsigned char packed = 0;
+	if (headerlen >= 27) { // 2(tzbias) + 4(inst_id) + 4(prog_ver) + 8(dtstart) + 8(dtend) + 1(packed) = 27
+		packed = header[26];
+	}
+
+	// ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½. ï¿½Ñ¹ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½é¼­ ï¿½ï¿½ï¿½ï¿½.
+	while (!fr.eof()) { // bodyï¿½ï¿½ ï¿½ï¿½Å¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ì´ï¿½.
 		unsigned char packet_type; if (!fr.read(&packet_type, 1)) break;
 		unsigned long packet_len; if (!fr.read(&packet_len, 4)) break;
-		if(packet_len > 1000000) break; // 1MB ÀÌ»óÀÇ ÆÐÅ¶Àº ¹ö¸²
+		if(!packed && packet_len > 1000000) break; // 1MB ï¿½Ì»ï¿½ï¿½ï¿½ ï¿½ï¿½Å¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		
-		// ÀÏ°ý·Î º¹»çÇØ¾ßÇÏ¹Ç·Î ÀÏ°ý·Î ÀÐÀ» ¼ö ¹Û¿¡ ¾øÀ½
+		// ï¿½Ï°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ø¾ï¿½ï¿½Ï¹Ç·ï¿½ ï¿½Ï°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Û¿ï¿½ ï¿½ï¿½ï¿½ï¿½
 		BUF buf(packet_len);
 		if (!fr.read(&buf[0], packet_len)) break;
 		if (packet_type == 9) { // devinfo
@@ -78,19 +83,19 @@ int main(int argc, char* argv[]) {
 				fw.write(&packet_type, 1);
 				fw.write(&new_packet_len, 4);
 				
-				// Àåºñ¸í ÀÌÀü Á¤º¸¸¦ ¾¸
+				// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 				fw.write(&did, sizeof(did));
 
 				unsigned long dtype_len = dtype.size();
 				fw.write(&dtype_len, 4);
 				fw.write(&dtype[0], dtype_len);
 				
-				// »õ Àåºñ¸íÀ» ¾¸
+				// ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 				unsigned long devto_len = devto.size();
 				fw.write(&devto_len, 4);
 				fw.write(&devto[0], devto_len);
 				
-				// ³ª¸ÓÁö¸¦ ¾¸
+				// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 				unsigned long remain_pos = 4 + 8 + dtype_len + devfrom.size();
 				fw.write(&buf[remain_pos], packet_len - remain_pos);
 			} else {
@@ -98,7 +103,7 @@ int main(int argc, char* argv[]) {
 				fw.write(&packet_len, 4);
 				fw.write(&buf[0], packet_len);
 			}
-		} else { // ³ª¸ÓÁö´Â ±×³É º¹»ç
+		} else { // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½×³ï¿½ ï¿½ï¿½ï¿½ï¿½
 			fw.write(&packet_type, 1);
 			fw.write(&packet_len, 4);
 			fw.write(&buf[0], packet_len);

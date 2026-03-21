@@ -12,7 +12,7 @@
 #include "Util.h"
 
 using namespace std;
-double dt_moveto = 4102444800; // 2100³â 1¿ù 1ÀÏ 0½Ã
+double dt_moveto = 4102444800; // 2100ï¿½ï¿½ 1ï¿½ï¿½ 1ï¿½ï¿½ 0ï¿½ï¿½
 
 void print_usage(const char* progname) {
 	fprintf(stderr, "Deidentify vital file\n\n\
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
 		print_usage(argv[0]);
 		return -1;
 	}
-	argc--; argv++; // ÀÚ±â ÀÚ½ÅÀÇ ½ÇÇà ÆÄÀÏ¸í Á¦°Å
+	argc--; argv++; // ï¿½Ú±ï¿½ ï¿½Ú½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ï¸ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 	GZReader gi(argv[0]);
 	if (!gi.opened()) {
@@ -62,7 +62,18 @@ int main(int argc, char* argv[]) {
 	
 	unsigned short headerlen; // header length
 	if (!gi.read(&headerlen, 2)) return -1;
-	if (!gi.skip(headerlen)) return -1;
+
+	unsigned char packed = 0;
+	{
+		unsigned short remaining = headerlen;
+		if (remaining >= 27) { // 2(tzbias) + 4(inst_id) + 4(prog_ver) + 8(dtstart) + 8(dtend) + 1(packed) = 27
+			unsigned char tmp[27];
+			if (!gi.read(tmp, 27)) return -1;
+			packed = tmp[26];
+			remaining -= 27;
+		}
+		if (!gi.skip(remaining)) return -1;
+	}
 
 	// 1st pass to find out dtstart
 	unsigned short tid_evt = 0; // event trkid
@@ -70,7 +81,7 @@ int main(int argc, char* argv[]) {
 	while (!gi.eof()) { // body is just a list of packet
 		unsigned char type; if (!gi.read(&type, 1)) break;
 		unsigned long datalen; if (!gi.read(&datalen, 4)) break;
-		if(datalen > 1000000) break;
+		if(!packed && datalen > 1000000) break;
 		if (type == 0) { // trkinfo : tname, tid, dname, did, type (NUM, STR, WAV), srate
 			unsigned short tid; if (!gi.fetch(tid, datalen)) goto next_packet;
 			gi.skip(2, datalen);
@@ -106,7 +117,7 @@ next_packet:
 	while (!gi.eof()) {
 		unsigned char type; if (!gi.read(&type, 1)) break;
 		unsigned long datalen; if (!gi.read(&datalen, 4)) break;
-		if(datalen > 1000000) break;
+		if(!packed && datalen > 1000000) break;
 		if(buf.size() < datalen) buf.resize(datalen);
 		if (!gi.read(&buf[0], datalen)) break; // read packet
 		if (type == 0) { // trkinfo : tname, tid, dname, did, type (NUM, STR, WAV), srate
@@ -119,9 +130,9 @@ next_packet:
 			auto ptid = (unsigned short*)& buf[10];
 			if (*ptid == tid_evt) continue; // skip the old event records
 
-			if (seconds) { // »ó´ë½Ã°£¸¸Å­ ÀÌµ¿
+			if (seconds) { // ï¿½ï¿½ï¿½Ã°ï¿½ï¿½ï¿½Å­ ï¿½Ìµï¿½
 				*pdt += seconds;
-			} else { // 2100³â 1¿ù 1ÀÏ·Î ÀÌµ¿
+			} else { // 2100ï¿½ï¿½ 1ï¿½ï¿½ 1ï¿½Ï·ï¿½ ï¿½Ìµï¿½
 				*pdt -= dtstart;
 				*pdt += dt_moveto;
 			}

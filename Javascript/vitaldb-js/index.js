@@ -208,6 +208,7 @@ function VitalFile(client, filepath, track_names = [], track_names_only = false,
     this.dtstart = 0;         // earliest timestamp
     this.dtend = 0;           // latest timestamp
     this.dgmt = 0;            // timezone bias in minutes
+    this.packed = 0;          // packed header flag
     this.trkorder = null;     // track display order
 
     // Normalize filter sets for O(1) lookup
@@ -270,7 +271,14 @@ VitalFile.prototype.load_vital = function (client, filepath, track_names_only) {
 
             // Parse header on first chunk
             if (!headerParsed) {
-                if (data.length < 20) {
+                if (data.length < 10) {
+                    // Need at least sign(4) + format_ver(4) + headerlen(2) to determine full header size
+                    remainder = data;
+                    return;
+                }
+                const headerlen = data.readUInt16LE(8); // peek headerlen at offset 8
+                const fullHeaderSize = 4 + 4 + 2 + headerlen; // sign + format_ver + headerlen + header content
+                if (data.length < fullHeaderSize) {
                     // Header incomplete, wait for more data
                     remainder = data;
                     return;
@@ -285,12 +293,24 @@ VitalFile.prototype.load_vital = function (client, filepath, track_names_only) {
                 }
 
                 /* const format_ver = */ data.readUInt32LE(pos); pos += 4;
-                /* const headerlen = */ data.readUInt16LE(pos); pos += 2;
+                pos += 2; // skip headerlen (already read above)
                 this.dgmt = data.readInt16LE(pos); pos += 2;
                 /* const inst_id = */ data.readUInt32LE(pos); pos += 4;
 
                 // prog_ver: 4 bytes
                 pos += 4;
+
+                // Extended header fields: dtstart (8), dtend (8), packed (1)
+                // headerlen covers bytes after itself: dgmt(2) + inst_id(4) + prog_ver(4) = 10 minimum
+                // With new fields: 10 + 8 + 8 + 1 = 27
+                if (headerlen >= 27) {
+                    this.dtstart = data.readDoubleLE(pos); pos += 8;
+                    this.dtend = data.readDoubleLE(pos); pos += 8;
+                    this.packed = data.readUInt8(pos); pos += 1;
+                }
+
+                // Skip any remaining header bytes for forward compatibility
+                pos = fullHeaderSize;
             }
 
             // Parse packets

@@ -30,7 +30,7 @@ MAX_LENGTH_IN_SEC: maximum length in second\n", basename(argv[0]).c_str());
 
 	string ipath = argv[0];
 	string opath = argv[1];
-	if (argc == 2) { // ´Ü¼ø º¹»ç
+	if (argc == 2) { // ï¿½Ü¼ï¿½ ï¿½ï¿½ï¿½ï¿½
 		FILE* fr = fopen(ipath.c_str(), "rb");
 		if (!fr) {
 			fprintf(stderr, "file open error\n");
@@ -56,14 +56,14 @@ MAX_LENGTH_IN_SEC: maximum length in second\n", basename(argv[0]).c_str());
 	////////////////////////////////////////////////////////////
 	// parse dname/tname
 	////////////////////////////////////////////////////////////
-	vector<string> tnames; // Ãâ·ÂÇÒ Æ®·¢¸í
-	vector<string> dnames; // Ãâ·ÂÇÒ Àåºñ¸í
-	set<unsigned short> tids; // Ãâ·ÂÇÒ tid
+	vector<string> tnames; // ï¿½ï¿½ï¿½ï¿½ï¿½ Æ®ï¿½ï¿½ï¿½ï¿½
+	vector<string> dnames; // ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+	set<unsigned short> tids; // ï¿½ï¿½ï¿½ï¿½ï¿½ tid
 	double maxlen = 0;
 
 	bool alltrack = true;
 	string strdtnames, strmaxlen;
-	if (argc >= 4) { // ÆÄ¶ó¹ÌÅÍ 4°³ÀÏ ¶§
+	if (argc >= 4) { // ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ 4ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 		if (is_numeric(argv[3])) {
 			strmaxlen = argv[3];
 			strdtnames = argv[2];
@@ -73,18 +73,18 @@ MAX_LENGTH_IN_SEC: maximum length in second\n", basename(argv[0]).c_str());
 			strdtnames = argv[3];
 		}
 	}
-	else if (argc >= 3) { // ÆÄ¶ó¹ÌÅÍ 3°³ÀÏ ¶§
+	else if (argc >= 3) { // ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ 3ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 		if (is_numeric(argv[2])) strmaxlen = argv[2];
 		else strdtnames = argv[2];
 	}
 
-	// ±æÀÌ ÁöÁ¤ ½Ã
+	// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 	if (!strmaxlen.empty()) {
 		float n = strtof(strmaxlen.c_str(), nullptr);
 		if (n > 0) maxlen = n;
 	}
 
-	// Æ®·¢¸í ÁöÁ¤ ½Ã
+	// Æ®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 	if (!strdtnames.empty()) {
 		alltrack = false;
 		tnames = explode(strdtnames, ',');
@@ -92,15 +92,15 @@ MAX_LENGTH_IN_SEC: maximum length in second\n", basename(argv[0]).c_str());
 		dnames.resize(ncols);
 		for (long j = 0; j < ncols; j++) {
 			auto pos = tnames[j].find('/');
-			if (pos != -1) {// devname, tnameÀ¸·Î ºÐ¸®
+			if (pos != -1) {// devname, tnameï¿½ï¿½ï¿½ï¿½ ï¿½Ð¸ï¿½
 				dnames[j] = tnames[j].substr(0, pos);
 				tnames[j] = tnames[j].substr(pos + 1);
 			}
 		}
 	}
 
-	GZWriter fw(argv[1]); // ¾²±â ÆÄÀÏÀ» ¿¬´Ù.
-	GZReader fr(argv[0]); // ÀÐÀ» ÆÄÀÏÀ» ¿¬´Ù.
+	GZWriter fw(argv[1]); // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
+	GZReader fr(argv[0]); // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
 	if (!fr.opened() || !fw.opened()) {
 		fprintf(stderr, "file open error\n");
 		return -1;
@@ -128,8 +128,13 @@ MAX_LENGTH_IN_SEC: maximum length in second\n", basename(argv[0]).c_str());
 	header.resize(10 + headerlen);
 	if (!fr.read(&header[10], headerlen)) return -1;
 
+	unsigned char packed = 0;
+	if (headerlen >= 27) { // 2(tzbias) + 4(inst_id) + 4(prog_ver) + 8(dtstart) + 8(dtend) + 1(packed) = 27
+		packed = header[10 + 26];
+	}
+
 	fw.write(&header[0], header.size());
-	
+
 	map<unsigned long, string> did_dname;
 	map<unsigned long, BUF> did_di;
 	map<unsigned short, string> tid_tname;
@@ -137,14 +142,14 @@ MAX_LENGTH_IN_SEC: maximum length in second\n", basename(argv[0]).c_str());
 	map<unsigned short, unsigned long> tid_did;
 	map<unsigned short, BUF> tid_recs;
 
-	// ÇÑ¹ø ÀÐÀ¸¸é¼­ ÆÄÀÏ ½ÃÀÛ, Á¾·á ½Ã°¢¸¸ ±¸ÇÔ
+	// ï¿½Ñ¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½é¼­ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	double dtstart = DBL_MAX;
 	double dtend = 0;
 	if (maxlen) {
-		while (!fr.eof()) { // body´Â ÆÐÅ¶ÀÇ ¿¬¼ÓÀÌ´Ù.
+		while (!fr.eof()) { // bodyï¿½ï¿½ ï¿½ï¿½Å¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ì´ï¿½.
 			unsigned char type; if (!fr.read(&type, 1)) break;
 			unsigned long datalen; if (!fr.read(&datalen, 4)) break;
-			if (datalen > 1000000) break;
+			if (!packed && datalen > 1000000) break;
 			if (type == 1) { // rec
 				unsigned short infolen; if (!fr.fetch(infolen, datalen)) goto next_packet;
 				double dt; if (!fr.fetch(dt, datalen)) goto next_packet;
@@ -165,21 +170,21 @@ MAX_LENGTH_IN_SEC: maximum length in second\n", basename(argv[0]).c_str());
 			return -1;
 		}
 
-		fr.rewind(); // µÇ °¨À½
-		if (!fr.skip(10 + headerlen)) return -1; // Çì´õ¸¦ °Ç³Ê¶Ü
+		fr.rewind(); // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		if (!fr.skip(10 + headerlen)) return -1; // ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ç³Ê¶ï¿½
 	}
 
-	// ÇÑ ¹ø¿¡ ÀÐÀ¸¸é¼­ ¾´´Ù.
-	while (!fr.eof()) { // body´Â ÆÐÅ¶ÀÇ ¿¬¼ÓÀÌ´Ù.
+	// ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½é¼­ ï¿½ï¿½ï¿½ï¿½.
+	while (!fr.eof()) { // bodyï¿½ï¿½ ï¿½ï¿½Å¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ì´ï¿½.
 		unsigned char packet_type; if (!fr.read(&packet_type, 1)) break;
 		unsigned long packet_len; if (!fr.read(&packet_len, 4)) break;
-		if(packet_len > 1000000) break; // 1MB ÀÌ»óÀÇ ÆÐÅ¶Àº ¹ö¸²
+		if(!packed && packet_len > 1000000) break; // 1MB ï¿½Ì»ï¿½ï¿½ï¿½ ï¿½ï¿½Å¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 		BUF packet_header(5);
 		packet_header[0] = packet_type;
 		memcpy(&packet_header[1], &packet_len, 4);
 		
-		// ÀÏ°ý·Î º¹»çÇØ¾ßÇÏ¹Ç·Î ÀÏ°ý·Î ÀÐÀ» ¼ö ¹Û¿¡ ¾øÀ½
+		// ï¿½Ï°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ø¾ï¿½ï¿½Ï¹Ç·ï¿½ ï¿½Ï°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Û¿ï¿½ ï¿½ï¿½ï¿½ï¿½
 		BUF buf(packet_len);
 		if (!fr.read(&buf[0], packet_len)) break;
 		if (packet_type == 9) { // devinfo
@@ -204,7 +209,7 @@ MAX_LENGTH_IN_SEC: maximum length in second\n", basename(argv[0]).c_str());
 				bool matched = false;
 				for (int i = 0; i < tnames.size(); i++) {
 					if (tnames[i] == "*" || tnames[i] == tname) {
-						if (dnames[i].empty() || dnames[i] == dname || dnames[i] == "*") {// Æ®·¢¸í ¸ÅÄª µÊ
+						if (dnames[i].empty() || dnames[i] == dname || dnames[i] == "*") {// Æ®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Äª ï¿½ï¿½
 							tids.insert(tid);
 							matched = true;
 							break;
@@ -218,12 +223,12 @@ MAX_LENGTH_IN_SEC: maximum length in second\n", basename(argv[0]).c_str());
 			double dt; if (!buf.fetch(dt)) continue;
 			unsigned short tid; if (!buf.fetch(tid)) continue;
 
-			if (maxlen) if (dtstart + maxlen < dt) continue; // »ý·«ÇÒ ·¹ÄÚµå
+			if (maxlen) if (dtstart + maxlen < dt) continue; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Úµï¿½
 
-			if (!alltrack) if (tids.find(tid) == tids.end()) continue; // »ý·«ÇÒ ·¹ÄÚµå
+			if (!alltrack) if (tids.find(tid) == tids.end()) continue; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Úµï¿½
 		} 
 		
-		// ±× ¿Ü ÆÐÅ¶
+		// ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½Å¶
 		fw.write(&packet_header[0], packet_header.size());
 		fw.write(&buf[0], buf.size());
 	}

@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
 Usage : %s [-s] FILENAME \nOptions : -s Print comma seperated device name/track name list only\n\n", basename(argv[0]).c_str());
 		return -1;
 	}
-	argc--; argv++; // ÀÚ±â ÀÚ½ÅÀÇ ½ÇÇà ÆÄÀÏ¸í Á¦°Å
+	argc--; argv++; // ï¿½Ú±ï¿½ ï¿½Ú½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ï¸ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 	bool is_short = false;
 	if (argc > 0) {
@@ -69,10 +69,17 @@ Usage : %s [-s] FILENAME \nOptions : -s Print comma seperated device name/track 
 	unsigned short len; // header length
 	if (!gz.read(&len, 2)) return -1;
 
-	short dgmt;
+	short dgmt = 0;
+	unsigned char packed = 0;
 	if (len >= 2) {
 		if (!gz.read(&dgmt, sizeof(dgmt))) return -1;
 		len -= 2;
+	}
+	if (len >= 25) { // 4(inst_id) + 4(prog_ver) + 8(dtstart) + 8(dtend) + 1(packed) = 25
+		unsigned char tmp[25];
+		if (!gz.read(tmp, 25)) return -1;
+		packed = tmp[24];
+		len -= 25;
 	}
 
 	if (!gz.skip(len)) return -1;
@@ -80,10 +87,10 @@ Usage : %s [-s] FILENAME \nOptions : -s Print comma seperated device name/track 
 	////////////////////////////////////////////////////////////
 	// body
 	////////////////////////////////////////////////////////////
-	while (!gz.eof()) { // body´Â ÆÐÅ¶ÀÇ ¿¬¼ÓÀÌ´Ù.
+	while (!gz.eof()) { // bodyï¿½ï¿½ ï¿½ï¿½Å¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ì´ï¿½.
 		unsigned char type; if (!gz.read(&type, 1)) break;
 		unsigned long datalen; if (!gz.read(&datalen, 4)) break;
-		if (datalen > 1000000) break;
+		if (!packed && datalen > 1000000) break;
 
 		// tname, tid, dname, did, type (NUM, STR, WAV), srate
 		if (type == 0) { // trkinfo
@@ -111,7 +118,7 @@ Usage : %s [-s] FILENAME \nOptions : -s Print comma seperated device name/track 
 			if (!gz.fetch(did, datalen)) goto save_and_next_packet;
 
 save_and_next_packet:
-			// ¸¶Áö¸·¿¡ Ãâ·ÂÇÏ±â À§ÇØ ÀúÀå
+			// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ï±ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 			tids.push_back(tid);
 			tid_tnames[tid] = tname;
 			tid_dnames[tid] = did_dnames[did];
@@ -131,7 +138,7 @@ save_and_next_packet:
 			double dt = 0; if (!gz.fetch(dt, datalen)) goto next_packet;
 			unsigned short tid = 0; if (!gz.fetch(tid, datalen)) goto next_packet;
 
-			// ÀüÃ¼ ÆÄÀÏÀÇ dtstart, dtend¸¸ ±¸ÇÔ
+			// ï¿½ï¿½Ã¼ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ dtstart, dtendï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 			if (!dtstart) dtstart = dt;
 			else if (dtstart > dt) dtstart = dt;
 			if (dtend < dt) dtend = dt;
@@ -141,7 +148,7 @@ save_and_next_packet:
 				goto next_packet;
 			}
 
-			// Æ®·¢º° dtstart, dtend ±¸ÇÔ
+			// Æ®ï¿½ï¿½ï¿½ï¿½ dtstart, dtend ï¿½ï¿½ï¿½ï¿½
 			if (!tid_dtstart[tid] || tid_dtstart[tid] > dt) tid_dtstart[tid] = dt;
 			if (tid_dtend[tid] < dt) tid_dtend[tid] = dt;
 

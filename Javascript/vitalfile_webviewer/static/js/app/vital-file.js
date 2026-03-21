@@ -20,6 +20,7 @@ function VitalFile(file, filename) {
     this.dtstart = 0;
     this.dtend = 0;
     this.dgmt = 0;
+    this.packed = 0;
 
     // Begin loading the file
     this.loadVital(file);
@@ -55,13 +56,37 @@ VitalFile.prototype = {
                         throw new Error("Invalid vital file");
                     }
 
-                    // Skip signature and reserved bytes
+                    // Skip signature and format_ver
                     let pos = 4 + 4;
 
-                    // Read header length and skip header
+                    // Read header length
                     let headerLength;
                     [headerLength, pos] = Utils.bufToData(data, pos, 2, 1);
-                    pos += headerLength;
+
+                    // Save position after headerLength to skip remaining header at end
+                    const headerStart = pos;
+
+                    // Read dgmt (2 bytes), inst_id (4 bytes), prog_ver (4 bytes) = 10 bytes minimum
+                    let dgmt;
+                    [dgmt, pos] = Utils.bufToData(data, pos, 2, 1, true);
+                    self.dgmt = dgmt;
+                    pos += 4; // skip inst_id
+                    pos += 4; // skip prog_ver
+
+                    // Extended header fields: dtstart (8), dtend (8), packed (1)
+                    // headerLength covers bytes after itself: 10 minimum, 27 with new fields
+                    if (headerLength >= 27) {
+                        let dtstart, dtend, packed;
+                        [dtstart, pos] = Utils.bufToData(data, pos, 8, 1);
+                        [dtend, pos] = Utils.bufToData(data, pos, 8, 1);
+                        [packed, pos] = Utils.bufToData(data, pos, 1, 1);
+                        self.dtstart = dtstart;
+                        self.dtend = dtend;
+                        self.packed = packed;
+                    }
+
+                    // Skip any remaining header bytes
+                    pos = headerStart + headerLength;
 
                     await Utils.updateProgress(self.filename, pos, data.byteLength);
 

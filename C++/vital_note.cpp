@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
 		print_usage(argv[0]);
 		return -1;
 	}
-	argc--; argv++; // ÀÚ±â ÀÚ½ÅÀÇ ½ÇÇà ÆÄÀÏ¸í Á¦°Å
+	argc--; argv++; // ï¿½Ú±ï¿½ ï¿½Ú½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ï¸ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 	GZReader gi(argv[0]);
 	if (!gi.opened()) {
@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
 		str = replace_all(str, "\n \n", "\n\n");
 		auto evtlines = explode(str, "\n\n");
 		for (auto evtline : evtlines) {
-			// Ã¹ ¹®Àå »ÌÀ½
+			// Ã¹ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 			auto ipos = evtline.find('\n');
 			if (ipos == string::npos) continue;
 			auto stime = evtline.substr(0, ipos);
@@ -76,7 +76,18 @@ int main(int argc, char* argv[]) {
 	
 	unsigned short headerlen; // header length
 	if (!gi.read(&headerlen, 2)) return -1;
-	if (!gi.skip(headerlen)) return -1;
+
+	unsigned char packed = 0;
+	{
+		unsigned short remaining = headerlen;
+		if (remaining >= 27) { // 2(tzbias) + 4(inst_id) + 4(prog_ver) + 8(dtstart) + 8(dtend) + 1(packed) = 27
+			unsigned char tmp[27];
+			if (!gi.read(tmp, 27)) return -1;
+			packed = tmp[26];
+			remaining -= 27;
+		}
+		if (!gi.skip(remaining)) return -1;
+	}
 
 	// 1st pass to find out dtstart
 	double dtstart = DBL_MAX;
@@ -84,7 +95,7 @@ int main(int argc, char* argv[]) {
 	while (!gi.eof()) { // body is just a list of packet
 		unsigned char type; if (!gi.read(&type, 1)) break;
 		unsigned long datalen; if (!gi.read(&datalen, 4)) break;
-		if(datalen > 1000000) break;
+		if(!packed && datalen > 1000000) break;
 		if (type == 0) { // trkinfo : tname, tid, dname, did, type (NUM, STR, WAV), srate
 			unsigned short tid; if (!gi.fetch(tid, datalen)) goto next_packet;
 			if (tid > tid_max) tid_max = tid;
@@ -142,10 +153,10 @@ next_packet:
 		go.write("EVENT", 5);
 	}
 
-	while (!gi.eof()) { // ÀÔ·Â ÆÄÀÏÀÇ ¸ðµç ÆÐÅ¶À» º¹»çÇÔ
+	while (!gi.eof()) { // ï¿½Ô·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½Å¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		unsigned char type; if (!gi.read(&type, 1)) break;
 		unsigned long datalen; if (!gi.read(&datalen, 4)) break;
-		if(datalen > 1000000) break;
+		if(!packed && datalen > 1000000) break;
 		if(buf.size() < datalen) buf.resize(datalen);
 		if (!gi.read(&buf[0], datalen)) break; // read packet
 
