@@ -124,6 +124,18 @@ class Track:
 # 1 byte B (unsigned) b (signed)
 FMT_TYPE_LEN = {1: ('f', 4), 2: ('d', 8), 3: ('b', 1), 4: ('B', 1), 5: ('h', 2), 6: ('H', 2), 7: ('l', 4), 8: ('L', 4)}
 
+# NaN value for each format type (used for filling gaps in packed mode)
+FMT_NAN = {
+    1: float('nan'),       # FMT_FLOAT
+    2: float('nan'),       # FMT_DOUBLE
+    3: -128,               # FMT_CHAR (signed byte min)
+    4: 255,                # FMT_BYTE (unsigned byte max)
+    5: -32768,             # FMT_SHORT (signed short min)
+    6: 65535,              # FMT_WORD (unsigned short max)
+    7: -2147483648,        # FMT_LONG (signed long min)
+    8: 4294967295,         # FMT_DWORD (unsigned long max)
+}
+
 TRACK_INFO = {
     'SNUADC/ART': {'unit': 'mmHg', 'srate': 500.0, 'maxdisp': 200.0, 'col': COLOR_RED}, 
     'SNUADC/ECG_II': {'unit': 'mV', 'srate': 500.0, 'mindisp': -1.0, 'maxdisp': 2.5, 'col': COLOR_GREEN}, 
@@ -362,6 +374,7 @@ class VitalFile:
         self.dtstart = 0
         self.dtend = 0
         self.dgmt = 0
+        self.packed = False
         self.order = []  # optional: order of dtname
         self.ipath = ipath
         self.packets = []
@@ -998,9 +1011,40 @@ class VitalFile:
 
         return ret
 
-    def to_vital(self, opath, compresslevel=1):
+    def _pack_wav_recs(self, trk):
+        """Pack multiple WAV recs into a single rec by filling gaps with NaN samples.
+        Returns a single rec with all samples merged.
+        """
+        if not trk.recs or trk.type != 1 or trk.srate <= 0:
+            return trk.recs
+
+        recs = sorted(trk.recs, key=lambda r: r['dt'])
+        fmtcode, fmtlen = FMT_TYPE_LEN[trk.fmt]
+        nan_val = FMT_NAN[trk.fmt]
+
+        # start from the first rec
+        merged = list(recs[0]['val'])
+        dt_start = recs[0]['dt']
+        dt_cursor = dt_start + len(recs[0]['val']) / trk.srate
+
+        for rec in recs[1:]:
+            gap_samps = int(round((rec['dt'] - dt_cursor) * trk.srate))
+            if gap_samps > 0:
+                # fill gap with NaN samples
+                merged.extend([nan_val] * gap_samps)
+            elif gap_samps < 0:
+                # overlapping: trim the overlap
+                merged = merged[:gap_samps]
+            merged.extend(rec['val'])
+            dt_cursor = dt_start + len(merged) / trk.srate
+
+        return [{'dt': dt_start, 'val': np.array(merged, dtype=np.dtype(fmtcode))}]
+
+    def to_vital(self, opath, compresslevel=9, packed=True):
         """ save as vital file
         :param opath: file path to save.
+        :param compresslevel: gzip compression level (default 9 for packed mode).
+        :param packed: if True, pack WAV tracks into single recs and sort all recs by time.
         """
         f = gzip.GzipFile(opath, 'wb', compresslevel=compresslevel)
 
@@ -1009,7 +1053,7 @@ class VitalFile:
             return False
         if not f.write(_pack_dw(3)):  # version
             return False
-        if not f.write(_pack_w(26)):  # header len
+        if not f.write(_pack_w(27)):  # header len (26 + 1 for packed flag)
             return False
         if not f.write(_pack_s(self.dgmt)):  # dgmt = ut - localtime
             return False
@@ -1021,14 +1065,24 @@ class VitalFile:
             return False
         if not f.write(_pack_d(self.dtend)):  # dtend
             return False
+        if not f.write(_pack_b(1 if packed else 0)):  # packed flag
+            return False
+
+        # prepare recs per track (pack WAV if needed, sort all by time)
+        trk_recs = {}  # dtname -> list of recs
+        for dtname, trk in self.trks.items():
+            if packed and trk.type == 1:  # WAV: pack into single rec
+                trk_recs[dtname] = self._pack_wav_recs(trk)
+            else:
+                trk_recs[dtname] = sorted(trk.recs, key=lambda r: r['dt']) if packed else trk.recs
 
         # save devinfos
         did = 0
         dname_dids = {}
         for dname, dev in self.devs.items():
-            if dname == '': 
+            if dname == '':
                 continue
-            
+
             # issue did
             did += 1
             dname_dids[dname] = did
@@ -1051,9 +1105,11 @@ class VitalFile:
             if dname in dname_dids:
                 did = dname_dids[dname]
 
+            recs = trk_recs[dtname]
+
             # calculate the length of recs
             reclen = 0
-            for rec in trk.recs:
+            for rec in recs:
                 reclen += 17  # 1 (packet type) + 4 (rec len) + 2 (infolen) + 8 (dt) + 2 (tid)
                 if trk.type == 1:  # wav
                     fmtcode, fmtlen = FMT_TYPE_LEN[trk.fmt]
@@ -1063,18 +1119,29 @@ class VitalFile:
                     reclen += fmtlen
                 elif trk.type == 5:  # str
                     reclen += 8 + len(rec['val'].encode('utf-8'))
-            
+
+            # track dtstart/dtend
+            trk_dtstart = 0.0
+            trk_dtend = 0.0
+            if recs:
+                trk_dtstart = recs[0]['dt']
+                last_rec = recs[-1]
+                trk_dtend = last_rec['dt']
+                if trk.type == 1 and trk.srate > 0:
+                    trk_dtend += len(last_rec['val']) / trk.srate
+
             ti = _pack_w(tid) + _pack_b(trk.type) + _pack_b(trk.fmt) + _pack_str(trk.name) \
                 + _pack_str(trk.unit) + _pack_f(trk.mindisp) + _pack_f(trk.maxdisp) \
                 + _pack_dw(trk.col) + _pack_f(trk.srate) + _pack_d(trk.gain) + _pack_d(trk.offset) \
-                + _pack_b(trk.montype) + _pack_dw(did) + _pack_dw(reclen)
+                + _pack_b(trk.montype) + _pack_dw(did) + _pack_dw(reclen) \
+                + _pack_d(trk_dtstart) + _pack_d(trk_dtend)
             if not f.write(_pack_b(0) + _pack_dw(len(ti)) + ti):
                 return False
 
-        # save recs
+        # save recs: track by track, sorted by time
         for dtname, trk in self.trks.items():
             tid = dtname_tids[dtname]
-            for rec in trk.recs:
+            for rec in trk_recs[dtname]:
                 rdata = _pack_w(10) + _pack_d(rec['dt']) + _pack_w(tid)  # infolen + dt + tid (= 12 bytes)
                 if trk.type == 1:  # wav
                     rdata += _pack_dw(len(rec['val'])) + rec['val'].tobytes()
@@ -1572,6 +1639,9 @@ class VitalFile:
         if headerlen >= 26:
             self.dtstart = _unpack_d(header, 10)[0]
             self.dtend = _unpack_d(header, 18)[0]
+        self.packed = False
+        if headerlen >= 27:
+            self.packed = _unpack_b(header, 26)[0] == 1
 
         # how many bytes to skip the records in this track
         tid_reclens = {}  # tid -> reclen
@@ -1588,7 +1658,7 @@ class VitalFile:
 
                 packet_type = _unpack_b(buf, pos)[0]; pos += 1
                 packet_len = _unpack_dw(buf, pos)[0]; pos += 4
-                if packet_len > 1000000: # maximum packet size should be < 1MB
+                if not self.packed and packet_len > 1000000: # maximum packet size should be < 1MB
                     break
                 
                 buf = f.read(packet_len)
@@ -1698,6 +1768,14 @@ class VitalFile:
                     if packet_len > pos:
                         reclen = _unpack_dw(buf, pos)[0]
                         pos += 4
+                    trk_dtstart = 0.0
+                    if packet_len > pos:
+                        trk_dtstart = _unpack_d(buf, pos)[0]
+                        pos += 8
+                    trk_dtend = 0.0
+                    if packet_len > pos:
+                        trk_dtend = _unpack_d(buf, pos)[0]
+                        pos += 8
 
                     dname = ''
                     if did and did in did_dnames:
