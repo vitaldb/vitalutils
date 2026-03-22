@@ -1,8 +1,8 @@
 # vitaldb-streaming-server
 
-VitalDB open dataset의 `.vital` 파일을 실시간으로 웹소켓 스트리밍하는 Node.js 서버입니다.
+VitalDB open dataset의 `.vital` 파일을 읽어 [VitalServer](https://vitalserver.net)에 실시간으로 스트리밍하는 Node.js 프로그램입니다.
 
-[VitalRecorder](https://vitaldb.net/vitalrecorder)의 웹소켓 프로토콜(Socket.IO v2 / Engine.IO v3)을 그대로 구현하여, VitalRecorder 클라이언트 또는 호환 뷰어에서 바로 연결할 수 있습니다.
+[VitalRecorder](https://vitaldb.net/vitalrecorder)가 10개 탭을 열고 환자 데이터를 전송하는 것과 동일하게 동작합니다. VitalServer에 Socket.IO 클라이언트로 접속하여 1초마다 `send_data` 이벤트로 압축된 JSON 데이터를 전송합니다.
 
 ## 설치
 
@@ -29,11 +29,11 @@ npm install vitaldb-streaming-server
 ### 기본 실행
 
 ```bash
-# VitalDB에서 10개 파일을 다운로드하여 스트리밍 (기본 포트: 8153)
+# VitalDB에서 10개 파일 다운로드 -> vitalserver.net 으로 전송
 vitaldb-streaming-server
 
-# 포트 변경
-vitaldb-streaming-server -p 3000
+# VitalServer 주소 지정
+vitaldb-streaming-server -s http://localhost:8153
 
 # 다운로드 파일 수 지정 (1~10)
 vitaldb-streaming-server -c 3
@@ -50,166 +50,82 @@ vitaldb-streaming-server case1.vital case2.vital case3.vital
 
 # 와일드카드 사용
 vitaldb-streaming-server ./data/*.vital
+
+# 로컬 파일을 특정 서버로 전송
+vitaldb-streaming-server -s http://my-server:8153 ./data/*.vital
 ```
 
 ### 옵션
 
 | 옵션 | 설명 | 기본값 |
 |------|------|--------|
-| `-p, --port <port>` | 서버 포트 번호 | `8153` |
+| `-s, --server <url>` | VitalServer URL | `http://vitalserver.net` |
 | `-c, --count <n>` | VitalDB에서 다운로드할 파일 수 (1~10) | `10` |
 | `-h, --help` | 도움말 출력 | |
 | `-v, --version` | 버전 출력 | |
 
-### npm scripts로 실행
+## 동작 방식
 
-```bash
-# 프로젝트 디렉토리에서
-npm start
+```
+┌─────────────────────────┐         ┌──────────────┐
+│  vitaldb-streaming-     │ Socket  │              │
+│  server                 │  .IO    │  VitalServer  │
+│                         ├────────►│              │
+│  .vital 파일 10개 로드    │send_data│              │
+│  → 1초마다 데이터 전송    │(deflate)│              │
+└─────────────────────────┘         └──────────────┘
 ```
 
-## 클라이언트 연결
+1. 시작 시 `.vital` 파일을 다운로드(또는 로컬에서 로드)하여 메모리에 파싱
+2. VitalServer에 Socket.IO 클라이언트로 접속 (WebSocket transport)
+3. 1초 주기로 전체 room(=파일)의 해당 구간 데이터를 JSON으로 직렬화
+4. zlib deflate (level 1) 압축 후 `send_data` 이벤트로 전송
+5. 파일 끝에 도달하면 처음부터 자동 반복 (무한 루프)
+6. 연결이 끊어지면 자동 재접속
 
-서버가 시작되면 Socket.IO v2 클라이언트로 연결할 수 있습니다.
+### 전송 프로토콜
 
-### JavaScript 클라이언트 예제
+VitalRecorder의 `send_thread_func()` (VRApp.cpp:1965~2256)과 동일한 프로토콜:
 
-```html
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.5.0/socket.io.js"></script>
-<script>
-const socket = io('http://localhost:8153');
-
-// room 입장 (case-1 ~ case-10)
-socket.emit('join_vr', 'case-1');
-
-// 데이터 수신 (1초 간격, zlib 압축된 JSON)
-socket.on('send_data', (compressed) => {
-  // 브라우저에서 pako 등으로 inflate
-  const text = pako.inflate(compressed, { to: 'string' });
-  const data = JSON.parse(text);
-  console.log(data);
-});
-</script>
-```
-
-### Node.js 클라이언트 예제
-
-```javascript
-const io = require('socket.io-client');
-const zlib = require('zlib');
-
-const socket = io('http://localhost:8153');
-
-socket.on('connect', () => {
-  console.log('Connected');
-  socket.emit('join_vr', 'case-1');
-});
-
-socket.on('send_data', (compressed) => {
-  const json = zlib.inflateSync(compressed).toString();
-  const data = JSON.parse(json);
-
-  for (const room of data.rooms) {
-    console.log(`[${room.roomname}] ${room.trks.length} tracks`);
-    for (const trk of room.trks) {
-      if (trk.type === 'wav') {
-        console.log(`  ${trk.name}: ${trk.recs.length} rec(s), srate=${trk.srate}`);
-      } else if (trk.type === 'num') {
-        const val = trk.recs[0]?.val;
-        console.log(`  ${trk.name}: ${val} ${trk.unit}`);
-      }
-    }
-  }
-});
-```
-
-### Python 클라이언트 예제
-
-```python
-import socketio
-import zlib
-import json
-
-sio = socketio.Client()
-
-@sio.on('connect')
-def on_connect():
-    print('Connected')
-    sio.emit('join_vr', 'case-1')
-
-@sio.on('send_data')
-def on_send_data(compressed):
-    text = zlib.decompress(compressed).decode('utf-8')
-    data = json.loads(text)
-    for room in data['rooms']:
-        for trk in room['trks']:
-            if trk['type'] == 'num' and trk['recs']:
-                print(f"  {trk['name']}: {trk['recs'][0]['val']} {trk['unit']}")
-
-sio.connect('http://localhost:8153')
-sio.wait()
-```
-
-## 프로토콜
-
-### 이벤트
-
-| 이벤트 | 방향 | 설명 |
-|--------|------|------|
-| `join_vr` | Client -> Server | room 입장. vrcode 전달 (예: `case-1`) |
-| `send_data` | Server -> Client | 1초 간격 데이터 전송. zlib deflate 압축된 JSON (Binary) |
-
-### Room 코드
-
-서버 시작 시 각 파일에 `case-1` ~ `case-N` 형태의 room 코드가 부여됩니다. 존재하지 않는 room 코드로 `join_vr`을 호출하면 모든 room에 자동으로 입장합니다.
+- **Transport**: Socket.IO v4 (WebSocket)
+- **Event**: `send_data`
+- **Payload**: zlib deflate (level 1) 압축된 JSON (Binary)
+- **Interval**: 1초
 
 ### JSON 페이로드 구조
-
-`send_data`로 전송되는 데이터는 zlib deflate (level 1) 압축된 JSON입니다.
 
 ```jsonc
 {
   "ver": "1.0.0",
   "vrcode": "vitaldb-replay",
   "os": "nodejs",
-  "rooms": [
+  "rooms": [              // 각 .vital 파일 = 1개 room (VitalRecorder의 탭과 동일)
     {
-      "roomname": "Case 1",         // 파일명 기반 room 이름
-      "seqid": 42,                   // 전송 시퀀스 번호
-      "dtstart": 1711100000.0,       // 이 패킷의 시작 시각 (unix timestamp)
-      "dtend": 1711100001.0,         // 이 패킷의 종료 시각
-      "dtcase": 1711099000.0,        // 케이스 시작 시각
-      "dgmt": 540,                   // UTC 오프셋 (분, KST=540)
-      "devs": [                      // 장비 목록
+      "roomname": "Case 1",
+      "seqid": 42,
+      "dtstart": 1711100000.0,
+      "dtend": 1711100001.0,
+      "dtcase": 1711099000.0,
+      "dgmt": 540,
+      "devs": [
         { "type": "Philips/IntelliVue", "name": "Monitor", "status": "connected" }
       ],
-      "trks": [                      // 트랙 데이터
+      "trks": [
         {
-          "id": 1,
-          "name": "SNUADC/ECG_II",
-          "type": "wav",             // wav | num | str
-          "srate": 100,              // 샘플레이트 (wav 전용)
-          "unit": "mV",
-          "mindisp": -1.5,
-          "maxdisp": 1.5,
-          "recs": [
-            { "dt": 1711100000.0, "val": [0.1, 0.2, 0.3] }
-          ]
+          "id": 1, "name": "SNUADC/ECG_II", "type": "wav",
+          "srate": 100, "unit": "mV",
+          "recs": [{ "dt": 1711100000.0, "val": [0.1, 0.2, 0.3] }]
         },
         {
-          "id": 2,
-          "name": "Solar8000/HR",
-          "type": "num",
-          "unit": "bpm",
-          "montype": "ECG_HR",
-          "recs": [
-            { "dt": 1711100000.5, "val": 72.0 }
-          ]
+          "id": 2, "name": "Solar8000/HR", "type": "num",
+          "unit": "bpm", "montype": "ECG_HR",
+          "recs": [{ "dt": 1711100000.5, "val": 72.0 }]
         }
       ],
       "evts": [],
       "filts": []
     }
+    // ... 최대 10개 room
   ]
 }
 ```
@@ -224,19 +140,10 @@ sio.wait()
 
 ### WAV 리샘플링
 
-서버는 전송 시 WAV 트랙을 자동으로 다운샘플링합니다:
+전송 시 WAV 트랙은 자동으로 다운샘플링됩니다:
 
 - CO2, AWP 파형: 최대 25 Hz
 - 기타 파형: 최대 100 Hz
-
-## 동작 방식
-
-1. 서버 시작 시 `.vital` 파일을 다운로드(또는 로컬에서 로드)하여 메모리에 파싱
-2. Socket.IO v2 (Engine.IO v3) 서버 구동
-3. 클라이언트가 `join_vr`로 room에 입장
-4. 1초 주기로 해당 room의 1초 구간 데이터를 JSON 직렬화 -> zlib 압축 -> `send_data` 이벤트로 전송
-5. 파일 끝에 도달하면 처음부터 자동 반복 (무한 루프)
-6. 타임스탬프는 현재 서버 시각 기준으로 재매핑되어 실시간 데이터처럼 동작
 
 ## 요구사항
 
