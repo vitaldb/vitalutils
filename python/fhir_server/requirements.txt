@@ -1,0 +1,4 @@
+flask>=3.0
+requests
+pandas
+numpy
