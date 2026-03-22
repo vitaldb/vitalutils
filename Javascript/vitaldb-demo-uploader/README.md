@@ -1,4 +1,4 @@
-# vitaldb-streaming-sender
+# vitaldb-demo-uploader
 
 VitalDB open dataset의 `.vital` 파일을 읽어 [VitalServer](https://vitaldb.net)에 실시간으로 스트리밍하는 Node.js 프로그램입니다.
 
@@ -9,19 +9,19 @@ VitalDB open dataset의 `.vital` 파일을 읽어 [VitalServer](https://vitaldb.
 ### npx로 바로 실행 (설치 없이)
 
 ```bash
-npx vitaldb-streaming-sender
+npx vitaldb-demo-uploader
 ```
 
 ### 글로벌 설치
 
 ```bash
-npm install -g vitaldb-streaming-sender
+npm install -g vitaldb-demo-uploader
 ```
 
 ### 프로젝트 의존성으로 설치
 
 ```bash
-npm install vitaldb-streaming-sender
+npm install vitaldb-demo-uploader
 ```
 
 ## 사용법
@@ -30,29 +30,29 @@ npm install vitaldb-streaming-sender
 
 ```bash
 # VitalDB에서 10개 파일 다운로드 -> vitaldb.net 으로 전송
-vitaldb-streaming-sender
+vitaldb-demo-uploader
 
 # VitalServer 주소 지정
-vitaldb-streaming-sender -s http://localhost:8153
+vitaldb-demo-uploader -s http://localhost:8153
 
 # 다운로드 파일 수 지정 (1~10)
-vitaldb-streaming-sender -c 3
+vitaldb-demo-uploader -c 3
 ```
 
 ### 로컬 .vital 파일 스트리밍
 
 ```bash
 # 특정 파일 지정
-vitaldb-streaming-sender ./my-recording.vital
+vitaldb-demo-uploader ./my-recording.vital
 
 # 여러 파일 지정
-vitaldb-streaming-sender case1.vital case2.vital case3.vital
+vitaldb-demo-uploader case1.vital case2.vital case3.vital
 
 # 와일드카드 사용
-vitaldb-streaming-sender ./data/*.vital
+vitaldb-demo-uploader ./data/*.vital
 
 # 로컬 파일을 특정 서버로 전송
-vitaldb-streaming-sender -s http://my-server:8153 ./data/*.vital
+vitaldb-demo-uploader -s http://my-server:8153 ./data/*.vital
 ```
 
 ### 옵션
@@ -68,7 +68,7 @@ vitaldb-streaming-sender -s http://my-server:8153 ./data/*.vital
 
 ```
 ┌──────────────────────────┐         ┌──────────────┐
-│ vitaldb-streaming-sender │ Socket  │              │
+│ vitaldb-demo-uploader │ Socket  │              │
 │                          │  .IO    │  VitalServer  │
 │                          ├────────►│              │
 │ .vital 파일 10개 로드     │send_data│              │
