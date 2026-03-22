@@ -14,7 +14,7 @@ const { parseVitalFile, MONTYPE_NAMES } = require('./vital-parser');
 
 function printUsage() {
   console.log(`
-Usage: vitaldb-streaming-server [options] [file1.vital file2.vital ...]
+Usage: vitaldb-streaming-sender [options] [file1.vital file2.vital ...]
 
 Connects to a VitalServer and streams .vital file data as if it were
 a VitalRecorder with multiple tabs (rooms).
@@ -26,11 +26,11 @@ Options:
   -v, --version        Show version number
 
 Examples:
-  vitaldb-streaming-server                                # 10 files -> vitalserver.net
-  vitaldb-streaming-server -s http://localhost:8153        # Use local VitalServer
-  vitaldb-streaming-server -c 3                            # Download only 3 files
-  vitaldb-streaming-server ./my-case.vital                 # Stream a local .vital file
-  vitaldb-streaming-server -s http://my-server:8153 *.vital
+  vitaldb-streaming-sender                                # 10 files -> vitalserver.net
+  vitaldb-streaming-sender -s http://localhost:8153        # Use local VitalServer
+  vitaldb-streaming-sender -c 3                            # Download only 3 files
+  vitaldb-streaming-sender ./my-case.vital                 # Stream a local .vital file
+  vitaldb-streaming-sender -s http://my-server:8153 *.vital
 `);
 }
 

@@ -1,4 +1,4 @@
-# vitaldb-streaming-server
+# vitaldb-streaming-sender
 
 VitalDB open dataset의 `.vital` 파일을 읽어 [VitalServer](https://vitalserver.net)에 실시간으로 스트리밍하는 Node.js 프로그램입니다.
 
@@ -9,19 +9,19 @@ VitalDB open dataset의 `.vital` 파일을 읽어 [VitalServer](https://vitalser
 ### npx로 바로 실행 (설치 없이)
 
 ```bash
-npx vitaldb-streaming-server
+npx vitaldb-streaming-sender
 ```
 
 ### 글로벌 설치
 
 ```bash
-npm install -g vitaldb-streaming-server
+npm install -g vitaldb-streaming-sender
 ```
 
 ### 프로젝트 의존성으로 설치
 
 ```bash
-npm install vitaldb-streaming-server
+npm install vitaldb-streaming-sender
 ```
 
 ## 사용법
@@ -30,29 +30,29 @@ npm install vitaldb-streaming-server
 
 ```bash
 # VitalDB에서 10개 파일 다운로드 -> vitalserver.net 으로 전송
-vitaldb-streaming-server
+vitaldb-streaming-sender
 
 # VitalServer 주소 지정
-vitaldb-streaming-server -s http://localhost:8153
+vitaldb-streaming-sender -s http://localhost:8153
 
 # 다운로드 파일 수 지정 (1~10)
-vitaldb-streaming-server -c 3
+vitaldb-streaming-sender -c 3
 ```
 
 ### 로컬 .vital 파일 스트리밍
 
 ```bash
 # 특정 파일 지정
-vitaldb-streaming-server ./my-recording.vital
+vitaldb-streaming-sender ./my-recording.vital
 
 # 여러 파일 지정
-vitaldb-streaming-server case1.vital case2.vital case3.vital
+vitaldb-streaming-sender case1.vital case2.vital case3.vital
 
 # 와일드카드 사용
-vitaldb-streaming-server ./data/*.vital
+vitaldb-streaming-sender ./data/*.vital
 
 # 로컬 파일을 특정 서버로 전송
-vitaldb-streaming-server -s http://my-server:8153 ./data/*.vital
+vitaldb-streaming-sender -s http://my-server:8153 ./data/*.vital
 ```
 
 ### 옵션
@@ -67,13 +67,13 @@ vitaldb-streaming-server -s http://my-server:8153 ./data/*.vital
 ## 동작 방식
 
 ```
-┌─────────────────────────┐         ┌──────────────┐
-│  vitaldb-streaming-     │ Socket  │              │
-│  server                 │  .IO    │  VitalServer  │
-│                         ├────────►│              │
-│  .vital 파일 10개 로드    │send_data│              │
-│  → 1초마다 데이터 전송    │(deflate)│              │
-└─────────────────────────┘         └──────────────┘
+┌──────────────────────────┐         ┌──────────────┐
+│ vitaldb-streaming-sender │ Socket  │              │
+│                          │  .IO    │  VitalServer  │
+│                          ├────────►│              │
+│ .vital 파일 10개 로드     │send_data│              │
+│ → 1초마다 데이터 전송     │(deflate)│              │
+└──────────────────────────┘         └──────────────┘
 ```
 
 1. 시작 시 `.vital` 파일을 다운로드(또는 로컬에서 로드)하여 메모리에 파싱

@@ -1,10 +1,10 @@
 {
-  "name": "vitaldb-streaming-server",
+  "name": "vitaldb-streaming-sender",
   "version": "1.0.0",
   "description": "Node.js server that streams VitalDB .vital files over Socket.IO using VitalRecorder protocol",
   "main": "server.js",
   "bin": {
-    "vitaldb-streaming-server": "server.js"
+    "vitaldb-streaming-sender": "server.js"
   },
   "scripts": {
     "start": "node server.js"
@@ -31,9 +31,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/vitaldb/vitalutils.git",
-    "directory": "Javascript/vitaldb-streaming-server"
+    "directory": "Javascript/vitaldb-streaming-sender"
   },
-  "homepage": "https://github.com/vitaldb/vitalutils/tree/master/Javascript/vitaldb-streaming-server",
+  "homepage": "https://github.com/vitaldb/vitalutils/tree/master/Javascript/vitaldb-streaming-sender",
   "engines": {
     "node": ">=10.0.0"
   },
