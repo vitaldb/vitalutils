@@ -1,6 +1,6 @@
 # vitaldb-streaming-sender
 
-VitalDB open dataset의 `.vital` 파일을 읽어 [VitalServer](https://vitalserver.net)에 실시간으로 스트리밍하는 Node.js 프로그램입니다.
+VitalDB open dataset의 `.vital` 파일을 읽어 [VitalServer](https://vitaldb.net)에 실시간으로 스트리밍하는 Node.js 프로그램입니다.
 
 [VitalRecorder](https://vitaldb.net/vitalrecorder)가 10개 탭을 열고 환자 데이터를 전송하는 것과 동일하게 동작합니다. VitalServer에 Socket.IO 클라이언트로 접속하여 1초마다 `send_data` 이벤트로 압축된 JSON 데이터를 전송합니다.
 
@@ -29,7 +29,7 @@ npm install vitaldb-streaming-sender
 ### 기본 실행
 
 ```bash
-# VitalDB에서 10개 파일 다운로드 -> vitalserver.net 으로 전송
+# VitalDB에서 10개 파일 다운로드 -> vitaldb.net 으로 전송
 vitaldb-streaming-sender
 
 # VitalServer 주소 지정
@@ -59,7 +59,7 @@ vitaldb-streaming-sender -s http://my-server:8153 ./data/*.vital
 
 | 옵션 | 설명 | 기본값 |
 |------|------|--------|
-| `-s, --server <url>` | VitalServer URL | `http://vitalserver.net` |
+| `-s, --server <url>` | VitalServer URL | `https://vitaldb.net` |
 | `-c, --count <n>` | VitalDB에서 다운로드할 파일 수 (1~10) | `10` |
 | `-h, --help` | 도움말 출력 | |
 | `-v, --version` | 버전 출력 | |

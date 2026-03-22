@@ -20,7 +20,7 @@ Connects to a VitalServer and streams .vital file data as if it were
 a VitalRecorder with multiple tabs (rooms).
 
 Options:
-  -s, --server <url>   VitalServer URL (default: http://vitalserver.net)
+  -s, --server <url>   VitalServer URL (default: https://vitaldb.net)
   -c, --count <n>      Number of VitalDB files to download (1-10, default: 10)
   -h, --help           Show this help message
   -v, --version        Show version number
@@ -35,7 +35,7 @@ Examples:
 }
 
 const args = process.argv.slice(2);
-let SERVER_URL = 'http://vitalserver.net';
+let SERVER_URL = 'https://vitaldb.net';
 let FILE_COUNT = 10;
 const LOCAL_FILES = [];
 
