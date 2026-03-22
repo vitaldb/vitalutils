@@ -1,13 +1,75 @@
+#!/usr/bin/env node
 'use strict';
 
 const http = require('http');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 const zlib = require('zlib');
 const socketIO = require('socket.io');
 const { parseVitalFile, MONTYPE_NAMES } = require('./vital-parser');
 
-const PORT = 8153;
-const FILE_COUNT = 10;
+// ---------------------------------------------------------------------------
+// CLI argument parsing
+// ---------------------------------------------------------------------------
+
+function printUsage() {
+  console.log(`
+Usage: vitaldb-streaming-server [options] [file1.vital file2.vital ...]
+
+Options:
+  -p, --port <port>    Port to listen on (default: 8153)
+  -c, --count <n>      Number of VitalDB files to download (1-10, default: 10)
+  -h, --help           Show this help message
+  -v, --version        Show version number
+
+Examples:
+  vitaldb-streaming-server                       # Download 10 files, port 8153
+  vitaldb-streaming-server -p 3000               # Use port 3000
+  vitaldb-streaming-server -c 3                  # Download only 3 files
+  vitaldb-streaming-server ./my-case.vital       # Stream a local .vital file
+  vitaldb-streaming-server *.vital               # Stream all local .vital files
+`);
+}
+
+const args = process.argv.slice(2);
+let PORT = 8153;
+let FILE_COUNT = 10;
+const LOCAL_FILES = [];
+
+for (let i = 0; i < args.length; i++) {
+  switch (args[i]) {
+    case '-h': case '--help':
+      printUsage();
+      process.exit(0);
+    case '-v': case '--version':
+      console.log(require('./package.json').version);
+      process.exit(0);
+    case '-p': case '--port':
+      PORT = parseInt(args[++i], 10);
+      if (isNaN(PORT) || PORT < 1 || PORT > 65535) {
+        console.error('Error: invalid port number');
+        process.exit(1);
+      }
+      break;
+    case '-c': case '--count':
+      FILE_COUNT = parseInt(args[++i], 10);
+      if (isNaN(FILE_COUNT) || FILE_COUNT < 1 || FILE_COUNT > 10) {
+        console.error('Error: count must be between 1 and 10');
+        process.exit(1);
+      }
+      break;
+    default:
+      if (args[i].startsWith('-')) {
+        console.error(`Unknown option: ${args[i]}`);
+        printUsage();
+        process.exit(1);
+      }
+      LOCAL_FILES.push(args[i]);
+      break;
+  }
+}
+
 const BASE_URL = 'https://api.vitaldb.net';
 const SEND_INTERVAL_MS = 1000;
 const LOOKBACK_MAX_SEC = 15;
@@ -33,8 +95,32 @@ function downloadFile(url) {
   });
 }
 
+async function loadLocalFiles(filePaths) {
+  console.log(`Loading ${filePaths.length} local vital file(s)...`);
+  const rooms = [];
+
+  for (let i = 0; i < filePaths.length; i++) {
+    const filePath = filePaths[i];
+    try {
+      const buf = fs.readFileSync(filePath);
+      const name = path.basename(filePath, path.extname(filePath));
+      console.log(`  Loaded ${filePath} (${(buf.length / 1024).toFixed(0)} KB)`);
+      const room = parseVitalFile(buf, name);
+      room.fileIndex = i + 1;
+      room.vrcode = `case-${i + 1}`;
+      rooms.push(room);
+      console.log(`  Parsed ${name}: ${room.tracks.length} tracks, ` +
+        `${room.devices.length} devices, duration ${room.duration.toFixed(1)}s`);
+    } catch (e) {
+      console.error(`  Failed to load ${filePath}: ${e.message}`);
+    }
+  }
+
+  return rooms;
+}
+
 async function downloadAllFiles() {
-  console.log(`Downloading ${FILE_COUNT} vital files...`);
+  console.log(`Downloading ${FILE_COUNT} vital file(s) from VitalDB...`);
   const rooms = [];
 
   // Download in parallel
@@ -219,7 +305,9 @@ function buildPayload(room, state) {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const rooms = await downloadAllFiles();
+  const rooms = LOCAL_FILES.length > 0
+    ? await loadLocalFiles(LOCAL_FILES)
+    : await downloadAllFiles();
   if (rooms.length === 0) {
     console.error('No vital files loaded. Exiting.');
     process.exit(1);

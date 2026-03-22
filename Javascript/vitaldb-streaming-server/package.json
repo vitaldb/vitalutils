@@ -1,10 +1,41 @@
 {
   "name": "vitaldb-streaming-server",
   "version": "1.0.0",
-  "description": "Node.js server that streams VitalDB .vital files over Socket.IO (Engine.IO v3 compatible)",
+  "description": "Node.js server that streams VitalDB .vital files over Socket.IO using VitalRecorder protocol",
   "main": "server.js",
+  "bin": {
+    "vitaldb-streaming-server": "server.js"
+  },
   "scripts": {
     "start": "node server.js"
+  },
+  "files": [
+    "server.js",
+    "vital-parser.js",
+    "package.json",
+    "README.md"
+  ],
+  "keywords": [
+    "vitaldb",
+    "vital",
+    "vital-recorder",
+    "medical",
+    "streaming",
+    "websocket",
+    "socket.io",
+    "patient-monitor",
+    "waveform"
+  ],
+  "author": "vitaldb",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vitaldb/vitalutils.git",
+    "directory": "Javascript/vitaldb-streaming-server"
+  },
+  "homepage": "https://github.com/vitaldb/vitalutils/tree/master/Javascript/vitaldb-streaming-server",
+  "engines": {
+    "node": ">=10.0.0"
   },
   "dependencies": {
     "socket.io": "^2.5.0"
