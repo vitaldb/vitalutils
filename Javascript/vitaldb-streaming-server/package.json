@@ -1,0 +1,12 @@
+{
+  "name": "vitaldb-streaming-server",
+  "version": "1.0.0",
+  "description": "Node.js server that streams VitalDB .vital files over Socket.IO (Engine.IO v3 compatible)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "socket.io": "^2.5.0"
+  }
+}
