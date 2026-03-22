@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 'use strict';
 
-const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
-const socketIO = require('socket.io');
+const ioClient = require('socket.io-client');
 const { parseVitalFile, MONTYPE_NAMES } = require('./vital-parser');
 
 // ---------------------------------------------------------------------------
@@ -15,25 +14,28 @@ const { parseVitalFile, MONTYPE_NAMES } = require('./vital-parser');
 
 function printUsage() {
   console.log(`
-Usage: vitaldb-streaming-server [options] [file1.vital file2.vital ...]
+Usage: vitaldb-streaming-sender [options] [file1.vital file2.vital ...]
+
+Connects to a VitalServer and streams .vital file data as if it were
+a VitalRecorder with multiple tabs (rooms).
 
 Options:
-  -p, --port <port>    Port to listen on (default: 8153)
+  -s, --server <url>   VitalServer URL (default: https://vitaldb.net)
   -c, --count <n>      Number of VitalDB files to download (1-10, default: 10)
   -h, --help           Show this help message
   -v, --version        Show version number
 
 Examples:
-  vitaldb-streaming-server                       # Download 10 files, port 8153
-  vitaldb-streaming-server -p 3000               # Use port 3000
-  vitaldb-streaming-server -c 3                  # Download only 3 files
-  vitaldb-streaming-server ./my-case.vital       # Stream a local .vital file
-  vitaldb-streaming-server *.vital               # Stream all local .vital files
+  vitaldb-streaming-sender                                # 10 files -> vitalserver.net
+  vitaldb-streaming-sender -s http://localhost:8153        # Use local VitalServer
+  vitaldb-streaming-sender -c 3                            # Download only 3 files
+  vitaldb-streaming-sender ./my-case.vital                 # Stream a local .vital file
+  vitaldb-streaming-sender -s http://my-server:8153 *.vital
 `);
 }
 
 const args = process.argv.slice(2);
-let PORT = 8153;
+let SERVER_URL = 'https://vitaldb.net';
 let FILE_COUNT = 10;
 const LOCAL_FILES = [];
 
@@ -45,10 +47,10 @@ for (let i = 0; i < args.length; i++) {
     case '-v': case '--version':
       console.log(require('./package.json').version);
       process.exit(0);
-    case '-p': case '--port':
-      PORT = parseInt(args[++i], 10);
-      if (isNaN(PORT) || PORT < 1 || PORT > 65535) {
-        console.error('Error: invalid port number');
+    case '-s': case '--server':
+      SERVER_URL = args[++i];
+      if (!SERVER_URL) {
+        console.error('Error: missing server URL');
         process.exit(1);
       }
       break;
@@ -107,7 +109,6 @@ async function loadLocalFiles(filePaths) {
       console.log(`  Loaded ${filePath} (${(buf.length / 1024).toFixed(0)} KB)`);
       const room = parseVitalFile(buf, name);
       room.fileIndex = i + 1;
-      room.vrcode = `case-${i + 1}`;
       rooms.push(room);
       console.log(`  Parsed ${name}: ${room.tracks.length} tracks, ` +
         `${room.devices.length} devices, duration ${room.duration.toFixed(1)}s`);
@@ -123,7 +124,6 @@ async function downloadAllFiles() {
   console.log(`Downloading ${FILE_COUNT} vital file(s) from VitalDB...`);
   const rooms = [];
 
-  // Download in parallel
   const promises = [];
   for (let i = 1; i <= FILE_COUNT; i++) {
     promises.push(
@@ -142,7 +142,6 @@ async function downloadAllFiles() {
     try {
       const room = parseVitalFile(buf, `Case ${index}`);
       room.fileIndex = index;
-      room.vrcode = `case-${index}`;
       rooms.push(room);
       console.log(`  Parsed Case ${index}: ${room.tracks.length} tracks, ` +
         `${room.devices.length} devices, duration ${room.duration.toFixed(1)}s`);
@@ -162,11 +161,9 @@ function getTargetSrate(track) {
   if (track.type !== 'wav' || track.srate <= 0) return track.srate;
 
   const name = track.name.toLowerCase();
-  // CO2, AWP waveforms -> 25 Hz
   if (name.includes('co2') || name.includes('awp')) {
     return Math.min(track.srate, 25);
   }
-  // >100 Hz -> downsample to 100 Hz
   if (track.srate > 100) {
     return 100;
   }
@@ -179,8 +176,7 @@ function resampleWav(values, srcRate, dstRate) {
   const outLen = Math.floor(values.length / ratio);
   const out = new Array(outLen);
   for (let i = 0; i < outLen; i++) {
-    const srcIdx = Math.floor(i * ratio);
-    out[i] = values[srcIdx];
+    out[i] = values[Math.floor(i * ratio)];
   }
   return out;
 }
@@ -190,27 +186,26 @@ function resampleWav(values, srcRate, dstRate) {
 // ---------------------------------------------------------------------------
 
 function createStreamState(rooms) {
-  return rooms.map((room) => ({
-    startWallTime: Date.now() / 1000,  // wall clock when streaming started
-    fileOffset: 0,                      // current offset into file timeline
+  return rooms.map(() => ({
+    startWallTime: Date.now() / 1000,
     seqid: 0,
-    trackLastSent: {},                  // tid -> last dt sent
+    trackLastSent: {},
   }));
 }
 
-function buildPayload(room, state) {
+function buildRoomPayload(room, state) {
   const now = Date.now() / 1000;
   const elapsed = now - state.startWallTime;
 
   // Loop: wrap around if past file duration
-  let fileOffset = elapsed % room.duration;
+  const fileOffset = elapsed % room.duration;
   const currentDt = room.dtMin + fileOffset;
   const windowStart = currentDt;
   const windowEnd = currentDt + 1.0;
 
   state.seqid++;
 
-  // Time remapping: adjust dt so client sees current wall-clock time
+  // Time remapping: adjust dt so VitalServer sees current wall-clock time
   const dtAdjust = now - currentDt;
 
   const trks = [];
@@ -315,88 +310,58 @@ async function main() {
 
   const streamStates = createStreamState(rooms);
 
-  const server = http.createServer((req, res) => {
-    if (req.url === '/') {
-      res.writeHead(200, { 'Content-Type': 'text/plain' });
-      res.end(`VitalDB Streaming Server\n${rooms.length} rooms available\n` +
-        rooms.map((r) => `  ${r.vrcode}: ${r.roomname} (${r.tracks.length} tracks)`).join('\n') + '\n');
-    } else {
-      res.writeHead(404);
-      res.end('Not found\n');
+  console.log(`\nConnecting to VitalServer: ${SERVER_URL}`);
+
+  const socket = ioClient(SERVER_URL, {
+    transports: ['websocket'],
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionAttempts: Infinity,
+  });
+
+  let sendInterval = null;
+
+  socket.on('connect', () => {
+    console.log(`Connected to VitalServer (id: ${socket.id})`);
+    console.log(`Streaming ${rooms.length} room(s):`);
+    for (const room of rooms) {
+      console.log(`  ${room.roomname} (${room.tracks.length} tracks, ${room.duration.toFixed(1)}s)`);
     }
-  });
 
-  const io = socketIO(server, {
-    pingInterval: 25000,
-    pingTimeout: 60000,
-  });
-
-  // Track which rooms each socket has joined
-  const socketRooms = new Map();
-
-  io.on('connection', (socket) => {
-    console.log(`Client connected: ${socket.id}`);
-
-    socket.on('join_vr', (vrcode) => {
-      // Find matching room
-      const room = rooms.find((r) => r.vrcode === vrcode);
-      if (room) {
-        socket.join(vrcode);
-        if (!socketRooms.has(socket.id)) {
-          socketRooms.set(socket.id, new Set());
-        }
-        socketRooms.get(socket.id).add(vrcode);
-        console.log(`  ${socket.id} joined room ${vrcode} (${room.roomname})`);
-      } else {
-        // If no specific room, join all rooms
-        for (const r of rooms) {
-          socket.join(r.vrcode);
-        }
-        if (!socketRooms.has(socket.id)) {
-          socketRooms.set(socket.id, new Set());
-        }
-        rooms.forEach((r) => socketRooms.get(socket.id).add(r.vrcode));
-        console.log(`  ${socket.id} joined all rooms (vrcode "${vrcode}" not found)`);
+    // Start 1-second streaming interval
+    if (sendInterval) clearInterval(sendInterval);
+    sendInterval = setInterval(() => {
+      const roomPayloads = [];
+      for (let i = 0; i < rooms.length; i++) {
+        roomPayloads.push(buildRoomPayload(rooms[i], streamStates[i]));
       }
-    });
-
-    socket.on('disconnect', () => {
-      socketRooms.delete(socket.id);
-      console.log(`Client disconnected: ${socket.id}`);
-    });
-  });
-
-  // 1-second streaming interval
-  setInterval(() => {
-    for (let i = 0; i < rooms.length; i++) {
-      const room = rooms[i];
-      const state = streamStates[i];
-
-      // Only send if someone is in this room
-      const roomSockets = io.sockets.adapter.rooms[room.vrcode];
-      if (!roomSockets || roomSockets.length === 0) continue;
-
-      const roomPayload = buildPayload(room, state);
 
       const fullPayload = JSON.stringify({
         ver: '1.0.0',
         vrcode: 'vitaldb-replay',
         os: 'nodejs',
-        rooms: [roomPayload],
+        rooms: roomPayloads,
       });
 
       const compressed = zlib.deflateSync(Buffer.from(fullPayload), { level: 1 });
-      io.to(room.vrcode).emit('send_data', compressed);
-    }
-  }, SEND_INTERVAL_MS);
+      socket.emit('send_data', compressed);
+    }, SEND_INTERVAL_MS);
+  });
 
-  server.listen(PORT, () => {
-    console.log(`\nVitalDB Streaming Server listening on port ${PORT}`);
-    console.log(`Available rooms:`);
-    for (const room of rooms) {
-      console.log(`  ${room.vrcode} -> ${room.roomname}`);
+  socket.on('disconnect', (reason) => {
+    console.log(`Disconnected from VitalServer: ${reason}`);
+    if (sendInterval) {
+      clearInterval(sendInterval);
+      sendInterval = null;
     }
-    console.log(`\nConnect with Socket.IO client and emit 'join_vr' with a room code.`);
+  });
+
+  socket.on('reconnect', (attempt) => {
+    console.log(`Reconnected to VitalServer (attempt ${attempt})`);
+  });
+
+  socket.on('connect_error', (err) => {
+    console.error(`Connection error: ${err.message}`);
   });
 }
 
