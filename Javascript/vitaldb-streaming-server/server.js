@@ -329,6 +329,7 @@ async function main() {
   const io = socketIO(server, {
     pingInterval: 25000,
     pingTimeout: 60000,
+    cors: { origin: '*' },
   });
 
   // Track which rooms each socket has joined
@@ -373,8 +374,8 @@ async function main() {
       const state = streamStates[i];
 
       // Only send if someone is in this room
-      const roomSockets = io.sockets.adapter.rooms[room.vrcode];
-      if (!roomSockets || roomSockets.length === 0) continue;
+      const roomSockets = io.sockets.adapter.rooms.get(room.vrcode);
+      if (!roomSockets || roomSockets.size === 0) continue;
 
       const roomPayload = buildPayload(room, state);
 
