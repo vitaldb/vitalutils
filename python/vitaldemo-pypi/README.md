@@ -1,4 +1,4 @@
-# vitalrecorder
+# vitaldemo
 
 VitalRecorder simulator that downloads sample vital signs data from [VitalDB](https://vitaldb.net) open dataset and streams it as HL7 v2.6 messages to a VitalServer via Socket.IO.
 
@@ -7,20 +7,20 @@ Acts as a VitalRecorder client, sending real-time HL7 data for 5 simulated beds.
 ## Installation
 
 ```bash
-pip install vitalrecorder
+pip install vitaldemo
 ```
 
 ## Usage
 
 ```bash
 # Stream to default server (vitaldb.net)
-vitalrecorder
+vitaldemo
 
 # Stream to a custom server
-vitalrecorder https://my-server.com
+vitaldemo https://my-server.com
 
 # With custom VitalRecorder code
-vitalrecorder https://my-server.com --vrcode MY_DEMO
+vitaldemo https://my-server.com --vrcode MY_DEMO
 ```
 
 ### Options
@@ -68,7 +68,7 @@ PV1||I|BED-2
 A JavaScript version is also available:
 
 ```bash
-npx vitalrecorder [server_url] [--vrcode CODE]
+npx vitaldemo [server_url] [--vrcode CODE]
 ```
 
 ## License

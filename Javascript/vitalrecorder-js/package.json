@@ -1,6 +1,6 @@
 {
-  "name": "vitalrecorder",
-  "version": "1.0.0",
+  "name": "vitaldemo",
+  "version": "1.0.3",
   "description": "VitalRecorder simulator that streams HL7 vital signs data to a VitalServer via Socket.IO",
   "main": "index.js",
   "bin": {
