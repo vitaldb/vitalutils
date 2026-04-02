@@ -1,0 +1,592 @@
+    INFO: 2026-03-21 16:19:19,155:               log.py:   20: Logging to C:\Users\lucid\OneDrive\Projects\VitalUtils\mdpdf.log
+   DEBUG: 2026-03-21 16:19:19,155:               cli.py:  103: Vital File Format.md
+    INFO: 2026-03-21 16:19:19,160:         converter.py:   14: Vital File Format.md
+   DEBUG: 2026-03-21 16:19:19,168:      pdf_renderer.py:  470: printSegment: Vital File Format
+   DEBUG: 2026-03-21 16:19:19,175:      pdf_renderer.py:  470: printSegment: Introduction
+   DEBUG: 2026-03-21 16:19:19,177:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,179:      pdf_renderer.py:  470: printSegment: The vital file is a file format used in vital recorder for saving vital signs and waveforms
+   DEBUG: 2026-03-21 16:19:19,181:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,183:      pdf_renderer.py:  470: printSegment: It is a single gzip compressed binary file starts with (
+   DEBUG: 2026-03-21 16:19:19,183:      pdf_renderer.py:  470: printSegment: 1F 8B 08 00
+   DEBUG: 2026-03-21 16:19:19,185:      pdf_renderer.py:  470: printSegment: )
+   DEBUG: 2026-03-21 16:19:19,186:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,186:      pdf_renderer.py:  470: printSegment: It contains a header and a body part
+   DEBUG: 2026-03-21 16:19:19,188:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,188:      pdf_renderer.py:  470: printSegment: Multi-byte variables are encoded using little-endian
+   DEBUG: 2026-03-21 16:19:19,188:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,188:      pdf_renderer.py:  470: printSegment: All data structures are arranged in 1-byte units.
+   DEBUG: 2026-03-21 16:19:19,190:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,190:      pdf_renderer.py:  470: printSegment: Caution
+   DEBUG: 2026-03-21 16:19:19,190:      pdf_renderer.py:  470: printSegment: !
+   DEBUG: 2026-03-21 16:19:19,193:      pdf_renderer.py:  470: printSegment:  Some compilers use 4 byte alignment implicitly.
+   DEBUG: 2026-03-21 16:19:19,195:      pdf_renderer.py:  470: printSegment: [
+   DEBUG: 2026-03-21 16:19:19,195:      pdf_renderer.py:  470: printSegment: ^1
+   DEBUG: 2026-03-21 16:19:19,195:      pdf_renderer.py:  470: printSegment: ]
+   DEBUG: 2026-03-21 16:19:19,195:      pdf_renderer.py:  470: printSegment: Data format
+   DEBUG: 2026-03-21 16:19:19,197:      pdf_renderer.py:  470: printSegment: String data format
+   DEBUG: 2026-03-21 16:19:19,197:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,197:      pdf_renderer.py:  470: printSegment: Strings are encoded in UTF8
+   DEBUG: 2026-03-21 16:19:19,199:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,199:      pdf_renderer.py:  470: printSegment: It contains 4 byte length (without length itself) followed by character array of specified length
+   DEBUG: 2026-03-21 16:19:19,201:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,201:      pdf_renderer.py:  470: printSegment: Caution
+   DEBUG: 2026-03-21 16:19:19,203:      pdf_renderer.py:  470: printSegment: !
+   DEBUG: 2026-03-21 16:19:19,203:      pdf_renderer.py:  470: printSegment:  It does not include the following NULL(
+   DEBUG: 2026-03-21 16:19:19,203:      pdf_renderer.py:  470: printSegment: \0
+   DEBUG: 2026-03-21 16:19:19,203:      pdf_renderer.py:  470: printSegment: ) character
+   DEBUG: 2026-03-21 16:19:19,206:      pdf_renderer.py:  470: printSegment: Time data format
+   DEBUG: 2026-03-21 16:19:19,206:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,206:      pdf_renderer.py:  470: printSegment: Times are stored in UTC
+   DEBUG: 2026-03-21 16:19:19,206:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,206:      pdf_renderer.py:  470: printSegment: UTC can be converted to the local time using time zone bias (offset) in the header part.
+   DEBUG: 2026-03-21 16:19:19,206:      pdf_renderer.py:  470: printSegment: [
+   DEBUG: 2026-03-21 16:19:19,206:      pdf_renderer.py:  470: printSegment: ^2
+   DEBUG: 2026-03-21 16:19:19,206:      pdf_renderer.py:  470: printSegment: ]
+   DEBUG: 2026-03-21 16:19:19,206:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,206:      pdf_renderer.py:  470: printSegment: UTC = local time + tzbias
+   DEBUG: 2026-03-21 16:19:19,206:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,214:      pdf_renderer.py:  470: printSegment: All time data are represented as the number of seconds since 1970/01/01 00:00:00 UTC as a double
+   DEBUG: 2026-03-21 16:19:19,214:      pdf_renderer.py:  470: printSegment: data format
+   DEBUG: 2026-03-21 16:19:19,215:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,216:      pdf_renderer.py:  470: printSegment: This is compatible with Unix timestamps and convenient for addition and subtraction.
+   DEBUG: 2026-03-21 16:19:19,216:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,216:      pdf_renderer.py:  470: printSegment: Changing the time to 
+   DEBUG: 2026-03-21 16:19:19,218:      pdf_renderer.py:  470: printSegment: __int64
+   DEBUG: 2026-03-21 16:19:19,219:      pdf_renderer.py:  470: printSegment:  makes the speed slower because it require conversion in every
+   DEBUG: 2026-03-21 16:19:19,219:      pdf_renderer.py:  470: printSegment: operation.
+   DEBUG: 2026-03-21 16:19:19,220:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,221:      pdf_renderer.py:  470: printSegment: The decimal point is used to indicate the precision below seconds. (for example 0.1 means 100
+   DEBUG: 2026-03-21 16:19:19,221:      pdf_renderer.py:  470: printSegment: milliseconds)
+   DEBUG: 2026-03-21 16:19:19,222:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,240:      pdf_renderer.py:  470: printSegment: Because the unix timestamp of year 2020 is 1,606,780,800, 31 bits are enough to express integer
+   DEBUG: 2026-03-21 16:19:19,249:      pdf_renderer.py:  470: printSegment: part of it. IEEE 754 double data type has 52 bit for fraction part, so 21 digits can be used for the
+   DEBUG: 2026-03-21 16:19:19,250:      pdf_renderer.py:  470: printSegment: representation of sub second time. 2^20 is about 1 million, so it has about 1 usec resolution.
+   DEBUG: 2026-03-21 16:19:19,251:      pdf_renderer.py:  470: printSegment: Header
+   DEBUG: 2026-03-21 16:19:19,251:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,251:      pdf_renderer.py:  470: printSegment: The total length of the header is 10 + headerlen.
+   DEBUG: 2026-03-21 16:19:19,253:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,268:      pdf_renderer.py:  470: printSegment: The vital file does not include the number or length of tracks in the header, you must parse the file to
+   DEBUG: 2026-03-21 16:19:19,274:      pdf_renderer.py:  470: printSegment: get the number of tracks or records. This limitation is because vital recorder can not know when
+   DEBUG: 2026-03-21 16:19:19,274:      pdf_renderer.py:  470: printSegment: recording will stop and you can add tracks at any time while vital files are storing.
+   DEBUG: 2026-03-21 16:19:19,274:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,279:      pdf_renderer.py:  470: printSegment: The header can be extended by increasing headerlen. Parsers should use headerlen to determine
+   DEBUG: 2026-03-21 16:19:19,279:      pdf_renderer.py:  470: printSegment: which optional fields are present.
+   DEBUG: 2026-03-21 16:19:19,281:      pdf_renderer.py:  470: printSegment: | Name | Type | Length | Description |
+   DEBUG: 2026-03-21 16:19:19,281:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,281:      pdf_renderer.py:  470: printSegment: |------|------|--------|-------------|
+   DEBUG: 2026-03-21 16:19:19,282:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,282:      pdf_renderer.py:  470: printSegment: | sign | BYTE
+   DEBUG: 2026-03-21 16:19:19,283:      pdf_renderer.py:  470: printSegment: [
+   DEBUG: 2026-03-21 16:19:19,283:      pdf_renderer.py:  470: printSegment: 4
+   DEBUG: 2026-03-21 16:19:19,284:      pdf_renderer.py:  470: printSegment: ]
+   DEBUG: 2026-03-21 16:19:19,285:      pdf_renderer.py:  470: printSegment:  | 4 | 
+   DEBUG: 2026-03-21 16:19:19,286:      pdf_renderer.py:  470: printSegment: "VITA"
+   DEBUG: 2026-03-21 16:19:19,286:      pdf_renderer.py:  470: printSegment:  |
+   DEBUG: 2026-03-21 16:19:19,286:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,286:      pdf_renderer.py:  470: printSegment: | format
+   DEBUG: 2026-03-21 16:19:19,288:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,288:      pdf_renderer.py:  470: printSegment: ver |
+   DEBUG: 2026-03-21 16:19:19,290:      pdf_renderer.py:  470: printSegment: DWORD | 4 | File format version, currently 3 |
+   DEBUG: 2026-03-21 16:19:19,290:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,292:      pdf_renderer.py:  470: printSegment: | headerlen | WORD | 2 | header length after this, currently 27 |
+   DEBUG: 2026-03-21 16:19:19,292:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,295:      pdf_renderer.py:  470: printSegment: |
+   DEBUG: 2026-03-21 16:19:19,297:      pdf_renderer.py:  470: printSegment: tzbias | short | 2 | time zone bias (the difference, in minutes, between UTC time and local time) |
+   DEBUG: 2026-03-21 16:19:19,297:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,298:      pdf_renderer.py:  470: printSegment: | inst
+   DEBUG: 2026-03-21 16:19:19,299:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,313:      pdf_renderer.py:  470: printSegment: id | DWORD |
+   DEBUG: 2026-03-21 16:19:19,323:      pdf_renderer.py:  470: printSegment: 4 | The instance ID of the program to be issued when the program starts. It is necessary to verify that the location of
+   DEBUG: 2026-03-21 16:19:19,325:      pdf_renderer.py:  470: printSegment: several vital files are continuously recorded in the same vital recorder execute. If different vital files have the same
+   DEBUG: 2026-03-21 16:19:19,326:      pdf_renderer.py:  470: printSegment: inst
+   DEBUG: 2026-03-21 16:19:19,326:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,327:      pdf_renderer.py:  470: printSegment: id, you can use the same track id, even though there is a probability of 1/4.2 billion for collision. |
+   DEBUG: 2026-03-21 16:19:19,327:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,327:      pdf_renderer.py:  470: printSegment: | prog
+   DEBUG: 2026-03-21 16:19:19,329:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,330:      pdf_renderer.py:  470: printSegment: ver |
+   DEBUG: 2026-03-21 16:19:19,330:      pdf_renderer.py:  470: printSegment: DWORD | 4 | vital recorder version |
+   DEBUG: 2026-03-21 16:19:19,331:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,331:      pdf_renderer.py:  470: printSegment: | dtstart | double | 8 | (optional, headerlen >= 26) file start time as Unix
+   DEBUG: 2026-03-21 16:19:19,332:      pdf_renderer.py:  470: printSegment: timestamp |
+   DEBUG: 2026-03-21 16:19:19,332:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,333:      pdf_renderer.py:  470: printSegment: | dtend | double | 8 | (optional, headerlen >= 26) file end time as Unix timestamp |
+   DEBUG: 2026-03-21 16:19:19,333:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,336:      pdf_renderer.py:  470: printSegment: | packed | BYTE | 1 |
+   DEBUG: 2026-03-21 16:19:19,337:      pdf_renderer.py:  470: printSegment: (optional, headerlen >= 27) 0 = streaming format (default), 1 = packed storage format |
+   DEBUG: 2026-03-21 16:19:19,337:      pdf_renderer.py:  470: printSegment: Packed mode (packed = 1)
+   DEBUG: 2026-03-21 16:19:19,339:      pdf_renderer.py:  470: printSegment: When packed is set to 1, the file is in packed storage format with the following guarantees:
+   DEBUG: 2026-03-21 16:19:19,340:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,340:      pdf_renderer.py:  470: printSegment: WAV tracks
+   DEBUG: 2026-03-21 16:19:19,347:      pdf_renderer.py:  470: printSegment: : All waveform records for each track are merged into a single REC. Gaps between
+   DEBUG: 2026-03-21 16:19:19,351:      pdf_renderer.py:  470: printSegment: consecutive records are filled with NaN samples (format-specific, see below). This allows direct
+   DEBUG: 2026-03-21 16:19:19,351:      pdf_renderer.py:  470: printSegment: sample access by index: 
+   DEBUG: 2026-03-21 16:19:19,352:      pdf_renderer.py:  470: printSegment: sample_time = trk_dtstart + sample_index / srate
+   DEBUG: 2026-03-21 16:19:19,352:      pdf_renderer.py:  470: printSegment: .
+   DEBUG: 2026-03-21 16:19:19,353:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,354:      pdf_renderer.py:  470: printSegment: NUM/STR tracks
+   DEBUG: 2026-03-21 16:19:19,355:      pdf_renderer.py:  470: printSegment: : Records for each track appear consecutively and are sorted by time.
+   DEBUG: 2026-03-21 16:19:19,355:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,356:      pdf_renderer.py:  470: printSegment: Track grouping
+   DEBUG: 2026-03-21 16:19:19,357:      pdf_renderer.py:  470: printSegment: : All RECs belonging to the same track are stored consecutively in the file (track by
+   DEBUG: 2026-03-21 16:19:19,357:      pdf_renderer.py:  470: printSegment: track).
+   DEBUG: 2026-03-21 16:19:19,358:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,359:      pdf_renderer.py:  470: printSegment: TRKINFO fields
+   DEBUG: 2026-03-21 16:19:19,359:      pdf_renderer.py:  470: printSegment: : Each TRKINFO includes 
+   DEBUG: 2026-03-21 16:19:19,360:      pdf_renderer.py:  470: printSegment: reclen
+   DEBUG: 2026-03-21 16:19:19,360:      pdf_renderer.py:  470: printSegment: , 
+   DEBUG: 2026-03-21 16:19:19,361:      pdf_renderer.py:  470: printSegment: dtstart
+   DEBUG: 2026-03-21 16:19:19,361:      pdf_renderer.py:  470: printSegment: , and 
+   DEBUG: 2026-03-21 16:19:19,362:      pdf_renderer.py:  470: printSegment: dtend
+   DEBUG: 2026-03-21 16:19:19,362:      pdf_renderer.py:  470: printSegment:  for the track.
+   DEBUG: 2026-03-21 16:19:19,363:      pdf_renderer.py:  470: printSegment: NaN values by format type
+   DEBUG: 2026-03-21 16:19:19,363:      pdf_renderer.py:  470: printSegment: | Format | NaN value | Description |
+   DEBUG: 2026-03-21 16:19:19,364:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,364:      pdf_renderer.py:  470: printSegment: |--------|-----------|-------------|
+   DEBUG: 2026-03-21 16:19:19,365:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,365:      pdf_renderer.py:  470: printSegment: | FMT
+   DEBUG: 2026-03-21 16:19:19,365:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,365:      pdf_renderer.py:  470: printSegment: FLOAT (1) | NaN | IEEE 754 NaN |
+   DEBUG: 2026-03-21 16:19:19,368:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,368:      pdf_renderer.py:  470: printSegment: | FMT
+   DEBUG: 2026-03-21 16:19:19,369:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,369:      pdf_renderer.py:  470: printSegment: DOUBLE (2) | NaN | IEEE 754 NaN |
+   DEBUG: 2026-03-21 16:19:19,370:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,370:      pdf_renderer.py:  470: printSegment: | FMT
+   DEBUG: 2026-03-21 16:19:19,371:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,371:      pdf_renderer.py:  470: printSegment: CHAR (3) | -128 | signed byte min |
+   DEBUG: 2026-03-21 16:19:19,373:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,373:      pdf_renderer.py:  470: printSegment: | FMT
+   DEBUG: 2026-03-21 16:19:19,373:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,373:      pdf_renderer.py:  470: printSegment: BYTE (4) | 255 |
+   DEBUG: 2026-03-21 16:19:19,375:      pdf_renderer.py:  470: printSegment: unsigned byte max |
+   DEBUG: 2026-03-21 16:19:19,375:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,376:      pdf_renderer.py:  470: printSegment: | FMT
+   DEBUG: 2026-03-21 16:19:19,376:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,377:      pdf_renderer.py:  470: printSegment: SHORT (5) | -32768 | signed short min |
+   DEBUG: 2026-03-21 16:19:19,378:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,378:      pdf_renderer.py:  470: printSegment: | FMT
+   DEBUG: 2026-03-21 16:19:19,379:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,379:      pdf_renderer.py:  470: printSegment: WORD (6) | 65535 | unsigned short max
+   DEBUG: 2026-03-21 16:19:19,380:      pdf_renderer.py:  470: printSegment: |
+   DEBUG: 2026-03-21 16:19:19,380:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,381:      pdf_renderer.py:  470: printSegment: | FMT
+   DEBUG: 2026-03-21 16:19:19,381:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,383:      pdf_renderer.py:  470: printSegment: LONG (7) | -2147483648 | signed long min |
+   DEBUG: 2026-03-21 16:19:19,383:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,384:      pdf_renderer.py:  470: printSegment: | FMT
+   DEBUG: 2026-03-21 16:19:19,384:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,385:      pdf_renderer.py:  470: printSegment: DWORD (8) | 4294967295 | unsigned long max |
+   DEBUG: 2026-03-21 16:19:19,386:      pdf_renderer.py:  470: printSegment: Body
+   DEBUG: 2026-03-21 16:19:19,386:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,388:      pdf_renderer.py:  470: printSegment: Body is a sequence of packets as specified below.
+   DEBUG: 2026-03-21 16:19:19,388:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,409:      pdf_renderer.py:  470: printSegment: Since the length of a packet is not constant, there is no way to directly index a specific packet
+   DEBUG: 2026-03-21 16:19:19,419:      pdf_renderer.py:  470: printSegment: without reading all packets. However, if you ignore the unwanted packet type and pass it using
+   DEBUG: 2026-03-21 16:19:19,422:      pdf_renderer.py:  470: printSegment: datalen field, you can read the information you want fairly quickly. (For example, when you want to
+   DEBUG: 2026-03-21 16:19:19,423:      pdf_renderer.py:  470: printSegment: extract only some track)
+   DEBUG: 2026-03-21 16:19:19,424:      pdf_renderer.py:  470: printSegment: Packet structure
+   DEBUG: 2026-03-21 16:19:19,425:      pdf_renderer.py:  470: printSegment: | Name | Type | Length | Description |
+   DEBUG: 2026-03-21 16:19:19,426:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,427:      pdf_renderer.py:  470: printSegment: |------|------|--------|-------------|
+   DEBUG: 2026-03-21 16:19:19,428:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,429:      pdf_renderer.py:  470: printSegment: | type | BYTE | 1 | SAVE
+   DEBUG: 2026-03-21 16:19:19,430:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,431:      pdf_renderer.py:  470: printSegment: DEVINFO = 9,
+   DEBUG: 2026-03-21 16:19:19,431:      pdf_renderer.py:  470: printSegment: SAVE
+   DEBUG: 2026-03-21 16:19:19,433:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,433:      pdf_renderer.py:  470: printSegment: TRKINFO = 0, SAVE
+   DEBUG: 2026-03-21 16:19:19,434:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,434:      pdf_renderer.py:  470: printSegment: REC = 1, SAVE
+   DEBUG: 2026-03-21 16:19:19,435:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,435:      pdf_renderer.py:  470: printSegment: CMD = 6 |
+   DEBUG: 2026-03-21 16:19:19,437:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,438:      pdf_renderer.py:  470: printSegment: | datalen | DWORD | 4 | length of 
+   DEBUG: 2026-03-21 16:19:19,438:      pdf_renderer.py:  470: printSegment: data
+   DEBUG: 2026-03-21 16:19:19,443:      pdf_renderer.py:  470: printSegment:  (exclude type
+   DEBUG: 2026-03-21 16:19:19,445:      pdf_renderer.py:  470: printSegment: and datalen itself). If you meet the type you dont know, please ignore it and skip the datalen bytes. |
+   DEBUG: 2026-03-21 16:19:19,445:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,449:      pdf_renderer.py:  470: printSegment: | data | | datalen |
+   DEBUG: 2026-03-21 16:19:19,450:      pdf_renderer.py:  470: printSegment: The contents of data depends on the type and are described below. |
+   DEBUG: 2026-03-21 16:19:19,450:      pdf_renderer.py:  470: printSegment: DEVINFO
+   DEBUG: 2026-03-21 16:19:19,451:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,451:      pdf_renderer.py:  470: printSegment: Structure for device information
+   DEBUG: 2026-03-21 16:19:19,452:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,453:      pdf_renderer.py:  470: printSegment: It must be saved before the devid is used.
+   DEBUG: 2026-03-21 16:19:19,454:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,455:      pdf_renderer.py:  470: printSegment: If devid is 0, it indicates the vital recorder itself (for example, filter-generated tracks,
+   DEBUG: 2026-03-21 16:19:19,456:      pdf_renderer.py:  470: printSegment: event markers)
+   DEBUG: 2026-03-21 16:19:19,456:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,459:      pdf_renderer.py:  470: printSegment: A new DEVINFO can appear for the same device id (devid) in a file. In this case, the new value
+   DEBUG: 2026-03-21 16:19:19,459:      pdf_renderer.py:  470: printSegment: should overwrites the previous value.
+   DEBUG: 2026-03-21 16:19:19,459:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,461:      pdf_renderer.py:  470: printSegment: devid and trkid are meaningful only within the same file.
+   DEBUG: 2026-03-21 16:19:19,462:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,467:      pdf_renderer.py:  470: printSegment: Even if the program instance is different, the Vital Recorder is implemented with the same devid
+   DEBUG: 2026-03-21 16:19:19,468:      pdf_renderer.py:  470: printSegment: value if the same kind of equipment is connected to the same physical port.
+   DEBUG: 2026-03-21 16:19:19,469:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,476:      pdf_renderer.py:  470: printSegment: For example, if two BIS devices are connected to COM5 and COM6, the previous
+   DEBUG: 2026-03-21 16:19:19,479:      pdf_renderer.py:  470: printSegment: devid remains the same even if the program is terminated and then re-executed.
+   DEBUG: 2026-03-21 16:19:19,479:      pdf_renderer.py:  470: printSegment: (save the devid to the registry)
+   DEBUG: 2026-03-21 16:19:19,480:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,483:      pdf_renderer.py:  470: printSegment: If you intentionally terminate the program and then switch between the two BIS
+   DEBUG: 2026-03-21 16:19:19,484:      pdf_renderer.py:  470: printSegment: devices and run the program again, the devids may cross each other.
+   DEBUG: 2026-03-21 16:19:19,484:      pdf_renderer.py:  470: printSegment: | Name | Type | Length | Description |
+   DEBUG: 2026-03-21 16:19:19,485:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,485:      pdf_renderer.py:  470: printSegment: |------|------|--------|-------------|
+   DEBUG: 2026-03-21 16:19:19,486:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,486:      pdf_renderer.py:  470: printSegment: | devid | DWORD | 4 | device identifier |
+   DEBUG: 2026-03-21 16:19:19,487:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,487:      pdf_renderer.py:  470: printSegment: |
+   DEBUG: 2026-03-21 16:19:19,489:      pdf_renderer.py:  470: printSegment: typename | string | 4+len | device type |
+   DEBUG: 2026-03-21 16:19:19,489:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,490:      pdf_renderer.py:  470: printSegment: | devname | string | 4+len | device name |
+   DEBUG: 2026-03-21 16:19:19,490:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,507:      pdf_renderer.py:  470: printSegment: | port | string | 4+len | Information
+   DEBUG: 2026-03-21 16:19:19,519:      pdf_renderer.py:  470: printSegment: that allows device types such as COM1, COM10, ETH1, and Line Input Mixer to recognize the port to which the
+   DEBUG: 2026-03-21 16:19:19,521:      pdf_renderer.py:  470: printSegment: device is connected with this information only. If the device type and port are the same, it is generally considered
+   DEBUG: 2026-03-21 16:19:19,522:      pdf_renderer.py:  470: printSegment: the same device. |
+   DEBUG: 2026-03-21 16:19:19,522:      pdf_renderer.py:  470: printSegment: TRKINFO
+   DEBUG: 2026-03-21 16:19:19,523:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,524:      pdf_renderer.py:  470: printSegment: Structure for track information
+   DEBUG: 2026-03-21 16:19:19,524:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,525:      pdf_renderer.py:  470: printSegment: TRKINFO must be appeared before the first record with the track id.
+   DEBUG: 2026-03-21 16:19:19,526:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,526:      pdf_renderer.py:  470: printSegment: Otherwise, the record should be ignored.
+   DEBUG: 2026-03-21 16:19:19,527:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,528:      pdf_renderer.py:  470: printSegment: Tracks are separated by trkids, which are 2-byte integers.
+   DEBUG: 2026-03-21 16:19:19,528:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,529:      pdf_renderer.py:  470: printSegment: The numeric value of trkid itself has no meaning and there is no continuity
+   DEBUG: 2026-03-21 16:19:19,529:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,530:      pdf_renderer.py:  470: printSegment: trkids can be changed every time the program is executed.
+   DEBUG: 2026-03-21 16:19:19,530:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,531:      pdf_renderer.py:  470: printSegment: The order of the tracks is not in the order of trkid size, but in the order of appearance
+   DEBUG: 2026-03-21 16:19:19,533:      pdf_renderer.py:  470: printSegment: and the CMD
+   DEBUG: 2026-03-21 16:19:19,533:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,534:      pdf_renderer.py:  470: printSegment: ORDER command described later.
+   DEBUG: 2026-03-21 16:19:19,534:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,540:      pdf_renderer.py:  470: printSegment: Tracks with a devid of 0 (vital recorder itself) and name of EVENT are treated specially in the vital
+   DEBUG: 2026-03-21 16:19:19,541:      pdf_renderer.py:  470: printSegment: recorder. It is not displayed on a separate track but displayed in the event bar.
+   DEBUG: 2026-03-21 16:19:19,541:      pdf_renderer.py:  470: printSegment: | Name | Type | Length | Description |
+   DEBUG: 2026-03-21 16:19:19,541:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,543:      pdf_renderer.py:  470: printSegment: |------|------|--------|-------------|
+   DEBUG: 2026-03-21 16:19:19,543:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,544:      pdf_renderer.py:  470: printSegment: | trkid | WORD | 2 | track id |
+   DEBUG: 2026-03-21 16:19:19,545:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,545:      pdf_renderer.py:  470: printSegment: | rec
+   DEBUG: 2026-03-21 16:19:19,546:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,547:      pdf_renderer.py:  470: printSegment: type | BYTE
+   DEBUG: 2026-03-21 16:19:19,547:      pdf_renderer.py:  470: printSegment: | 1 | TYPE
+   DEBUG: 2026-03-21 16:19:19,548:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,548:      pdf_renderer.py:  470: printSegment: WAV = 1, TYPE
+   DEBUG: 2026-03-21 16:19:19,548:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,549:      pdf_renderer.py:  470: printSegment: NUM = 2, TYPE
+   DEBUG: 2026-03-21 16:19:19,549:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,550:      pdf_renderer.py:  470: printSegment: STR = 5 |
+   DEBUG: 2026-03-21 16:19:19,550:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,551:      pdf_renderer.py:  470: printSegment: | recfmt | BYTE | 1 | FMT
+   DEBUG: 2026-03-21 16:19:19,551:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,551:      pdf_renderer.py:  470: printSegment: NULL = 0 (for TYPE
+   DEBUG: 2026-03-21 16:19:19,553:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,553:      pdf_renderer.py:  470: printSegment: STR),
+   DEBUG: 2026-03-21 16:19:19,554:      pdf_renderer.py:  470: printSegment: FMT
+   DEBUG: 2026-03-21 16:19:19,554:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,556:      pdf_renderer.py:  470: printSegment: FLOAT = 1, FMT
+   DEBUG: 2026-03-21 16:19:19,557:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,557:      pdf_renderer.py:  470: printSegment: DOUBLE = 2, FMT
+   DEBUG: 2026-03-21 16:19:19,557:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,557:      pdf_renderer.py:  470: printSegment: CHAR = 3, FMT
+   DEBUG: 2026-03-21 16:19:19,557:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,557:      pdf_renderer.py:  470: printSegment: BYTE = 4, FMT
+   DEBUG: 2026-03-21 16:19:19,557:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,557:      pdf_renderer.py:  470: printSegment: SHORT = 5, FMT
+   DEBUG: 2026-03-21 16:19:19,557:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,557:      pdf_renderer.py:  470: printSegment: WORD = 6,
+   DEBUG: 2026-03-21 16:19:19,562:      pdf_renderer.py:  470: printSegment: FMT
+   DEBUG: 2026-03-21 16:19:19,562:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,563:      pdf_renderer.py:  470: printSegment: LONG = 7, FMT
+   DEBUG: 2026-03-21 16:19:19,563:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,563:      pdf_renderer.py:  470: printSegment: DWORD = 8 |
+   DEBUG: 2026-03-21 16:19:19,565:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,566:      pdf_renderer.py:  470: printSegment: | name | string | 4+len | |
+   DEBUG: 2026-03-21 16:19:19,566:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,567:      pdf_renderer.py:  470: printSegment: | unit | string | 4+len | |
+   DEBUG: 2026-03-21 16:19:19,567:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,568:      pdf_renderer.py:  470: printSegment: | minval | float | 4 | |
+   DEBUG: 2026-03-21 16:19:19,569:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,569:      pdf_renderer.py:  470: printSegment: | maxval |
+   DEBUG: 2026-03-21 16:19:19,569:      pdf_renderer.py:  470: printSegment: float | 4 | |
+   DEBUG: 2026-03-21 16:19:19,571:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,572:      pdf_renderer.py:  470: printSegment: | color | color | 4 | 4byte ARGB format |
+   DEBUG: 2026-03-21 16:19:19,572:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,573:      pdf_renderer.py:  470: printSegment: | srate | float | 4 | sample rate |
+   DEBUG: 2026-03-21 16:19:19,573:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,573:      pdf_renderer.py:  470: printSegment: | adc
+   DEBUG: 2026-03-21 16:19:19,574:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,575:      pdf_renderer.py:  470: printSegment: gain | double | 8 | 
+   DEBUG: 2026-03-21 16:19:19,575:      pdf_renderer.py:  470: printSegment: measured_value = adc_offset + saved_value * adc_gain
+   DEBUG: 2026-03-21 16:19:19,577:      pdf_renderer.py:  470: printSegment:  |
+   DEBUG: 2026-03-21 16:19:19,578:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,578:      pdf_renderer.py:  470: printSegment: | adc
+   DEBUG: 2026-03-21 16:19:19,579:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,579:      pdf_renderer.py:  470: printSegment: offset | double | 8 | 
+   DEBUG: 2026-03-21 16:19:19,581:      pdf_renderer.py:  470: printSegment: measured_value = adc_offset + saved_value * adc_gain
+   DEBUG: 2026-03-21 16:19:19,581:      pdf_renderer.py:  470: printSegment:  |
+   DEBUG: 2026-03-21 16:19:19,581:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,583:      pdf_renderer.py:  470: printSegment: | montype | BYTE | 1 | Specifies the
+   DEBUG: 2026-03-21 16:19:19,584:      pdf_renderer.py:  470: printSegment: physiologic meaning of the track. MON
+   DEBUG: 2026-03-21 16:19:19,585:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,586:      pdf_renderer.py:  470: printSegment: ECG
+   DEBUG: 2026-03-21 16:19:19,586:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,587:      pdf_renderer.py:  470: printSegment: WAV = 1, MON
+   DEBUG: 2026-03-21 16:19:19,587:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,588:      pdf_renderer.py:  470: printSegment: ECG
+   DEBUG: 2026-03-21 16:19:19,588:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,590:      pdf_renderer.py:  470: printSegment: HR = 2, MON
+   DEBUG: 2026-03-21 16:19:19,590:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,591:      pdf_renderer.py:  470: printSegment: ECG
+   DEBUG: 2026-03-21 16:19:19,592:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,592:      pdf_renderer.py:  470: printSegment: PVC = 3, MON
+   DEBUG: 2026-03-21 16:19:19,593:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,593:      pdf_renderer.py:  470: printSegment: IABP
+   DEBUG: 2026-03-21 16:19:19,594:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,594:      pdf_renderer.py:  470: printSegment: WAV = 4, MON
+   DEBUG: 2026-03-21 16:19:19,595:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,595:      pdf_renderer.py:  470: printSegment: IABP
+   DEBUG: 2026-03-21 16:19:19,596:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,596:      pdf_renderer.py:  470: printSegment: SBP = 5, MON
+   DEBUG: 2026-03-21 16:19:19,597:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,598:      pdf_renderer.py:  470: printSegment: IABP
+   DEBUG: 2026-03-21 16:19:19,598:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,599:      pdf_renderer.py:  470: printSegment: DBP = 6, MON
+   DEBUG: 2026-03-21 16:19:19,600:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,600:      pdf_renderer.py:  470: printSegment: IABP
+   DEBUG: 2026-03-21 16:19:19,601:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,601:      pdf_renderer.py:  470: printSegment: MBP = 7, MON
+   DEBUG: 2026-03-21 16:19:19,603:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,603:      pdf_renderer.py:  470: printSegment: PLETH
+   DEBUG: 2026-03-21 16:19:19,604:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,605:      pdf_renderer.py:  470: printSegment: WAV = 8,
+   DEBUG: 2026-03-21 16:19:19,605:      pdf_renderer.py:  470: printSegment: MON
+   DEBUG: 2026-03-21 16:19:19,606:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,607:      pdf_renderer.py:  470: printSegment: PLETH
+   DEBUG: 2026-03-21 16:19:19,607:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,608:      pdf_renderer.py:  470: printSegment: HR = 9, MON
+   DEBUG: 2026-03-21 16:19:19,609:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,609:      pdf_renderer.py:  470: printSegment: PLETH
+   DEBUG: 2026-03-21 16:19:19,610:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,611:      pdf_renderer.py:  470: printSegment: SPO2 = 10, MON
+   DEBUG: 2026-03-21 16:19:19,611:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,612:      pdf_renderer.py:  470: printSegment: RESP
+   DEBUG: 2026-03-21 16:19:19,612:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,613:      pdf_renderer.py:  470: printSegment: WAV = 11, MON
+   DEBUG: 2026-03-21 16:19:19,614:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,614:      pdf_renderer.py:  470: printSegment: RESP
+   DEBUG: 2026-03-21 16:19:19,615:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,616:      pdf_renderer.py:  470: printSegment: RR = 12, MON
+   DEBUG: 2026-03-21 16:19:19,616:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,617:      pdf_renderer.py:  470: printSegment: CO2
+   DEBUG: 2026-03-21 16:19:19,618:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,618:      pdf_renderer.py:  470: printSegment: WAV = 13, MON
+   DEBUG: 2026-03-21 16:19:19,619:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,620:      pdf_renderer.py:  470: printSegment: CO2
+   DEBUG: 2026-03-21 16:19:19,620:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,621:      pdf_renderer.py:  470: printSegment: RR = 14, MON
+   DEBUG: 2026-03-21 16:19:19,621:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,623:      pdf_renderer.py:  470: printSegment: CO2
+   DEBUG: 2026-03-21 16:19:19,623:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,624:      pdf_renderer.py:  470: printSegment: CONC = 15, MON
+   DEBUG: 2026-03-21 16:19:19,625:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,626:      pdf_renderer.py:  470: printSegment: NIBP
+   DEBUG: 2026-03-21 16:19:19,627:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,627:      pdf_renderer.py:  470: printSegment: SBP = 16, MON
+   DEBUG: 2026-03-21 16:19:19,629:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,629:      pdf_renderer.py:  470: printSegment: NIBP
+   DEBUG: 2026-03-21 16:19:19,629:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,629:      pdf_renderer.py:  470: printSegment: DBP = 17,
+   DEBUG: 2026-03-21 16:19:19,629:      pdf_renderer.py:  470: printSegment: MON
+   DEBUG: 2026-03-21 16:19:19,632:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,633:      pdf_renderer.py:  470: printSegment: NIBP
+   DEBUG: 2026-03-21 16:19:19,634:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,634:      pdf_renderer.py:  470: printSegment: MBP = 18, MON
+   DEBUG: 2026-03-21 16:19:19,635:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,635:      pdf_renderer.py:  470: printSegment: BT = 19, MON
+   DEBUG: 2026-03-21 16:19:19,636:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,636:      pdf_renderer.py:  470: printSegment: CVP
+   DEBUG: 2026-03-21 16:19:19,636:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,636:      pdf_renderer.py:  470: printSegment: WAV = 20, MON
+   DEBUG: 2026-03-21 16:19:19,636:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,640:      pdf_renderer.py:  470: printSegment: CVP
+   DEBUG: 2026-03-21 16:19:19,640:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,640:      pdf_renderer.py:  470: printSegment: CVP = 21 |
+   DEBUG: 2026-03-21 16:19:19,640:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,644:      pdf_renderer.py:  470: printSegment: | devid | DWORD | 4 |
+   DEBUG: 2026-03-21 16:19:19,645:      pdf_renderer.py:  470: printSegment: Devid of the device that created the track |
+   DEBUG: 2026-03-21 16:19:19,645:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,649:      pdf_renderer.py:  470: printSegment: | reclen | DWORD | 4 | (optional) Total byte length of all REC packets for
+   DEBUG: 2026-03-21 16:19:19,650:      pdf_renderer.py:  470: printSegment: this track. Used for skipping unwanted tracks. |
+   DEBUG: 2026-03-21 16:19:19,650:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,651:      pdf_renderer.py:  470: printSegment: | trk
+   DEBUG: 2026-03-21 16:19:19,652:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,653:      pdf_renderer.py:  470: printSegment: dtstart | double | 8 | (optional) Start time of the first record in
+   DEBUG: 2026-03-21 16:19:19,654:      pdf_renderer.py:  470: printSegment: this track |
+   DEBUG: 2026-03-21 16:19:19,654:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,655:      pdf_renderer.py:  470: printSegment: | trk
+   DEBUG: 2026-03-21 16:19:19,656:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,657:      pdf_renderer.py:  470: printSegment: dtend | double | 8 | (optional) End time of the last record in this track (for WAV: last record dt + num
+   DEBUG: 2026-03-21 16:19:19,657:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,658:      pdf_renderer.py:  470: printSegment: samples / srate) |
+   DEBUG: 2026-03-21 16:19:19,659:      pdf_renderer.py:  470: printSegment: REC
+   DEBUG: 2026-03-21 16:19:19,660:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,661:      pdf_renderer.py:  470: printSegment: It is a data structure that stores time specific data (measured sample, sample list, string).
+   DEBUG: 2026-03-21 16:19:19,662:      pdf_renderer.py:  470: printSegment: | Name | Type | Length | Description |
+   DEBUG: 2026-03-21 16:19:19,662:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,664:      pdf_renderer.py:  470: printSegment: |------|------|--------|-------------|
+   DEBUG: 2026-03-21 16:19:19,664:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,666:      pdf_renderer.py:  470: printSegment: | infolen | WORD | 2 | length of header of the
+   DEBUG: 2026-03-21 16:19:19,667:      pdf_renderer.py:  470: printSegment: record, currently 10 |
+   DEBUG: 2026-03-21 16:19:19,667:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,668:      pdf_renderer.py:  470: printSegment: | dt | double | 8 | The time at which the record
+   DEBUG: 2026-03-21 16:19:19,669:      pdf_renderer.py:  470: printSegment: '
+   DEBUG: 2026-03-21 16:19:19,670:      pdf_renderer.py:  470: printSegment: s value was measured |
+   DEBUG: 2026-03-21 16:19:19,670:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,671:      pdf_renderer.py:  470: printSegment: | trkid | WORD | 2 | track
+   DEBUG: 2026-03-21 16:19:19,672:      pdf_renderer.py:  470: printSegment: id |
+   DEBUG: 2026-03-21 16:19:19,673:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,673:      pdf_renderer.py:  470: printSegment: | values | BYTE
+   DEBUG: 2026-03-21 16:19:19,673:      pdf_renderer.py:  470: printSegment: [
+   DEBUG: 2026-03-21 16:19:19,676:      pdf_renderer.py:  470: printSegment: ]
+   DEBUG: 2026-03-21 16:19:19,676:      pdf_renderer.py:  470: printSegment:  | datalen-infolen-2 | rec
+   DEBUG: 2026-03-21 16:19:19,677:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,678:      pdf_renderer.py:  470: printSegment: type specific values described below |
+   DEBUG: 2026-03-21 16:19:19,678:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,680:      pdf_renderer.py:  470: printSegment: values are different among the track type (NUM, WAV, STR)
+   DEBUG: 2026-03-21 16:19:19,681:      pdf_renderer.py:  470: printSegment: WAV records
+   DEBUG: 2026-03-21 16:19:19,682:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,682:      pdf_renderer.py:  470: printSegment: Samples that are continuously measured from the time specified by dt are stored as an array.
+   DEBUG: 2026-03-21 16:19:19,683:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,684:      pdf_renderer.py:  470: printSegment: The sample rate and data type are taken from the track information.
+   DEBUG: 2026-03-21 16:19:19,684:      pdf_renderer.py:  470: printSegment: | Name | Type | Length | Description |
+   DEBUG: 2026-03-21 16:19:19,685:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,685:      pdf_renderer.py:  470: printSegment: |------|------|--------|-------------|
+   DEBUG: 2026-03-21 16:19:19,686:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,686:      pdf_renderer.py:  470: printSegment: | num | DWORD | 4 | number of samples |
+   DEBUG: 2026-03-21 16:19:19,687:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,687:      pdf_renderer.py:  470: printSegment: | vals
+   DEBUG: 2026-03-21 16:19:19,687:      pdf_renderer.py:  470: printSegment: | dat
+   DEBUG: 2026-03-21 16:19:19,688:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,688:      pdf_renderer.py:  470: printSegment: fmt
+   DEBUG: 2026-03-21 16:19:19,688:      pdf_renderer.py:  470: printSegment: [
+   DEBUG: 2026-03-21 16:19:19,688:      pdf_renderer.py:  470: printSegment: num
+   DEBUG: 2026-03-21 16:19:19,688:      pdf_renderer.py:  470: printSegment: ]
+   DEBUG: 2026-03-21 16:19:19,690:      pdf_renderer.py:  470: printSegment:  | sizeof(recfmt)
+   DEBUG: 2026-03-21 16:19:19,690:      pdf_renderer.py:  470: printSegment: *
+   DEBUG: 2026-03-21 16:19:19,691:      pdf_renderer.py:  470: printSegment: num | data samples |
+   DEBUG: 2026-03-21 16:19:19,691:      pdf_renderer.py:  470: printSegment: NUM records
+   DEBUG: 2026-03-21 16:19:19,692:      pdf_renderer.py:  470: printSegment: | Name | Type | Length | Description |
+   DEBUG: 2026-03-21 16:19:19,692:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,693:      pdf_renderer.py:  470: printSegment: |------|------|--------|-------------|
+   DEBUG: 2026-03-21 16:19:19,693:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,694:      pdf_renderer.py:  470: printSegment: | val | dat
+   DEBUG: 2026-03-21 16:19:19,694:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,695:      pdf_renderer.py:  470: printSegment: fmt | sizeof(recfmt) | |
+   DEBUG: 2026-03-21 16:19:19,695:      pdf_renderer.py:  470: printSegment: STR records
+   DEBUG: 2026-03-21 16:19:19,695:      pdf_renderer.py:  470: printSegment: | Name | Type | Length | Description |
+   DEBUG: 2026-03-21 16:19:19,695:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,695:      pdf_renderer.py:  470: printSegment: |------|------|--------|-------------|
+   DEBUG: 2026-03-21 16:19:19,695:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,698:      pdf_renderer.py:  470: printSegment: | unused | DWORD | 4 | not used |
+   DEBUG: 2026-03-21 16:19:19,698:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,699:      pdf_renderer.py:  470: printSegment: | sval | string |
+   DEBUG: 2026-03-21 16:19:19,699:      pdf_renderer.py:  470: printSegment: 4+len | |
+   DEBUG: 2026-03-21 16:19:19,700:      pdf_renderer.py:  470: printSegment: CMD records
+   DEBUG: 2026-03-21 16:19:19,700:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,701:      pdf_renderer.py:  470: printSegment: Currently 2 commands are supported.
+   DEBUG: 2026-03-21 16:19:19,701:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,702:      pdf_renderer.py:  470: printSegment: Depending on the cmd, additional data may follow.
+   DEBUG: 2026-03-21 16:19:19,702:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,703:      pdf_renderer.py:  470: printSegment: Unknown commands should skip over the datalen of the packet.
+   DEBUG: 2026-03-21 16:19:19,704:      pdf_renderer.py:  470: printSegment: | Name | Type | Length | Description |
+   DEBUG: 2026-03-21 16:19:19,704:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,705:      pdf_renderer.py:  470: printSegment: |------|------|--------|-------------|
+   DEBUG: 2026-03-21 16:19:19,705:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,706:      pdf_renderer.py:  470: printSegment: | cmd | BYTE | 1 | CMD
+   DEBUG: 2026-03-21 16:19:19,706:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,707:      pdf_renderer.py:  470: printSegment: ORDER = 5, CMD
+   DEBUG: 2026-03-21 16:19:19,707:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,708:      pdf_renderer.py:  470: printSegment: RESET
+   DEBUG: 2026-03-21 16:19:19,708:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,708:      pdf_renderer.py:  470: printSegment: EVENTS = 6 |
+   DEBUG: 2026-03-21 16:19:19,710:      pdf_renderer.py:  470: printSegment: CMD
+   DEBUG: 2026-03-21 16:19:19,710:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,710:      pdf_renderer.py:  470: printSegment: TRK
+   DEBUG: 2026-03-21 16:19:19,710:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,710:      pdf_renderer.py:  470: printSegment: ORDER
+   DEBUG: 2026-03-21 16:19:19,712:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,712:      pdf_renderer.py:  470: printSegment: Define track order
+   DEBUG: 2026-03-21 16:19:19,713:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,713:      pdf_renderer.py:  470: printSegment: The following additional data are shown below.
+   DEBUG: 2026-03-21 16:19:19,714:      pdf_renderer.py:  470: printSegment: | Name | Type | Length | Description |
+   DEBUG: 2026-03-21 16:19:19,714:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,715:      pdf_renderer.py:  470: printSegment: |------|------|--------|-------------|
+   DEBUG: 2026-03-21 16:19:19,715:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,716:      pdf_renderer.py:  470: printSegment: | cnt | WORD | 2 | number of tracks |
+   DEBUG: 2026-03-21 16:19:19,716:      pdf_renderer.py:  470: printSegment:  
+   DEBUG: 2026-03-21 16:19:19,717:      pdf_renderer.py:  470: printSegment: | trkids |
+   DEBUG: 2026-03-21 16:19:19,717:      pdf_renderer.py:  470: printSegment: WORD
+   DEBUG: 2026-03-21 16:19:19,717:      pdf_renderer.py:  470: printSegment: [
+   DEBUG: 2026-03-21 16:19:19,717:      pdf_renderer.py:  470: printSegment: cnt
+   DEBUG: 2026-03-21 16:19:19,719:      pdf_renderer.py:  470: printSegment: ]
+   DEBUG: 2026-03-21 16:19:19,719:      pdf_renderer.py:  470: printSegment:  | cnt
+   DEBUG: 2026-03-21 16:19:19,720:      pdf_renderer.py:  470: printSegment: *
+   DEBUG: 2026-03-21 16:19:19,720:      pdf_renderer.py:  470: printSegment: 2 | array of trkids |
+   DEBUG: 2026-03-21 16:19:19,721:      pdf_renderer.py:  470: printSegment: CMD
+   DEBUG: 2026-03-21 16:19:19,721:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,721:      pdf_renderer.py:  470: printSegment: RESET
+   DEBUG: 2026-03-21 16:19:19,723:      pdf_renderer.py:  470: printSegment: _
+   DEBUG: 2026-03-21 16:19:19,723:      pdf_renderer.py:  470: printSegment: EVENTS
+   DEBUG: 2026-03-21 16:19:19,723:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,725:      pdf_renderer.py:  470: printSegment: Removed all event markers prior to this command
+   DEBUG: 2026-03-21 16:19:19,725:      pdf_renderer.py:  470: printSegment: l
+   DEBUG: 2026-03-21 16:19:19,726:      pdf_renderer.py:  470: printSegment: No additional data
+   DEBUG: 2026-03-21 16:19:19,739:      pdf_renderer.py:  470: printSegment: [
+   DEBUG: 2026-03-21 16:19:19,739:      pdf_renderer.py:  470: printSegment: ^1
+   DEBUG: 2026-03-21 16:19:19,740:      pdf_renderer.py:  470: printSegment: ]
+   DEBUG: 2026-03-21 16:19:19,741:      pdf_renderer.py:  470: printSegment: : For visual studio, use the following code: 
+   DEBUG: 2026-03-21 16:19:19,742:      pdf_renderer.py:  470: printSegment: #pragma pack (push, 1)
+   DEBUG: 2026-03-21 16:19:19,743:      pdf_renderer.py:  470: printSegment:  / 
+   DEBUG: 2026-03-21 16:19:19,743:      pdf_renderer.py:  470: printSegment: struct TRKINFO {...
+   DEBUG: 2026-03-21 16:19:19,744:      pdf_renderer.py:  470: printSegment: code ...};
+   DEBUG: 2026-03-21 16:19:19,744:      pdf_renderer.py:  470: printSegment:  / 
+   DEBUG: 2026-03-21 16:19:19,745:      pdf_renderer.py:  470: printSegment: #pragma pack (pop)
+   DEBUG: 2026-03-21 16:19:19,746:      pdf_renderer.py:  470: printSegment: [
+   DEBUG: 2026-03-21 16:19:19,746:      pdf_renderer.py:  470: printSegment: ^2
+   DEBUG: 2026-03-21 16:19:19,747:      pdf_renderer.py:  470: printSegment: ]
+   DEBUG: 2026-03-21 16:19:19,747:      pdf_renderer.py:  470: printSegment: : 
+   DEBUG: 2026-03-21 16:19:19,748:      pdf_renderer.py:  470: printSegment: time_t t = (time_t)(dt - tzbias * 60); // unixtime -> localtime
+   DEBUG: 2026-03-21 16:19:19,749:      pdf_renderer.py:  470: printSegment:  / 
+   DEBUG: 2026-03-21 16:19:19,751:      pdf_renderer.py:  470: printSegment: tm* ptm =
+   DEBUG: 2026-03-21 16:19:19,753:      pdf_renderer.py:  470: printSegment: gmtime(&t); // local time (in seconds) -> year, month, day, hour, minute,
+   DEBUG: 2026-03-21 16:19:19,753:      pdf_renderer.py:  470: printSegment: second
+   DEBUG: 2026-03-21 16:19:19,753:      pdf_renderer.py:  470: printSegment:  / In Windows: 
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:  470: printSegment: TIME_ZONE_INFORMATION tzi; GetTimeZoneInformation(&tzi);
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:  470: printSegment: return (short) tzi.Bias; // UTC = local time + bias // -540 for Korea
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 0, [1, 'Vital File Format', 1, 68.0]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 1, [2, 'Introduction', 1, 106.0]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 2, [2, 'Data format', 1, 247.60000000000002]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 3, [3, 'String data format', 1, 280.8]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 4, [3, 'Time data format', 1, 357.59999999999997]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 5, [2, 'Header', 1, 566.8]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 6, [3, 'Packed mode (packed = 1)', 2, 158.4]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 7, [4, 'NaN values by format type', 2, 300.8]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 8, [2, 'Body', 2, 379.6]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 9, [3, 'Packet structure', 2, 484.8]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 10, [3, 'DEVINFO', 2, 567.6]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 11, [3, 'TRKINFO', 3, 224.4]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 12, [3, 'REC', 3, 607.1999999999999]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 13, [4, 'WAV records', 4, 74.0]
+   DEBUG: 2026-03-21 16:19:19,756:      pdf_renderer.py:   53: 14, [4, 'NUM records', 4, 164.0]
+   DEBUG: 2026-03-21 16:19:19,761:      pdf_renderer.py:   53: 15, [4, 'STR records', 4, 206.0]
+   DEBUG: 2026-03-21 16:19:19,761:      pdf_renderer.py:   53: 16, [3, 'CMD records', 4, 260.4]
+   DEBUG: 2026-03-21 16:19:19,761:      pdf_renderer.py:   53: 17, [4, 'CMD', 4, 366.79999999999995]
+   DEBUG: 2026-03-21 16:19:19,761:      pdf_renderer.py:   53: 18, [4, 'CMD', 4, 456.79999999999995]
