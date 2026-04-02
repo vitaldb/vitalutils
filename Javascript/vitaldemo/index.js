@@ -1,51 +1,61 @@
 #!/usr/bin/env node
 /**
- * VitalDB-compatible API Server using Fastify
+ * vitaldemo - VitalRecorder simulator
  *
- * Loads .vital files at startup, then serves data via REST API.
- * File data loops infinitely based on wall-clock time.
+ * Downloads sample .vital files from VitalDB and streams HL7 v2.6 data
+ * to a VitalServer via Socket.IO, acting as a VitalRecorder client.
  *
- * Time mapping formula:
- *   elapsed = (now - serverStartTime) % fileDuration
- *   mappedTime = file.dtstart + elapsed
- *
- * Compatible endpoints:
- *   GET  /api/status     - server status and time mapping info
- *   GET  /api/filelist   - list loaded vrcodes
- *   GET  /api/receive    - get vital data (VitalDB receive API compatible)
+ * Usage:
+ *   npx vitaldemo [server_url]
+ *   npx vitaldemo https://vitaldb.net
+ *   npx vitaldemo https://my-server.com --vrcode MY_DEMO
  */
 
-const Fastify = require("fastify");
-const cors = require("@fastify/cors");
+const { io } = require("socket.io-client");
 const VitalFile = require("vitaldb-js");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const https = require("https");
+const zlib = require("zlib");
 
-// ─── Configuration ───────────────────────────────────────────
-const PORT = parseInt(process.env.PORT || "3000");
-const HOST = process.env.HOST || "0.0.0.0";
+// ─── CLI Arguments ──────────────────────────────────────────
 
-// Open VitalDB dataset files (case 1~5)
+const args = process.argv.slice(2);
+let serverUrl = "https://vitaldb.net";
+let vrcode = "VITALDEMO";
+
+for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--vrcode" && args[i + 1]) {
+        vrcode = args[++i];
+    } else if (args[i] === "--help" || args[i] === "-h") {
+        console.log("Usage: vitaldemo [server_url] [--vrcode CODE]");
+        console.log("");
+        console.log("  server_url   VitalServer URL (default: https://vitaldb.net)");
+        console.log("  --vrcode     VitalRecorder code (default: VITALDEMO)");
+        process.exit(0);
+    } else if (!args[i].startsWith("-")) {
+        serverUrl = args[i];
+    }
+}
+
+// ─── Configuration ──────────────────────────────────────────
+
+const SEND_INTERVAL_MS = 1000;
 const VITAL_URLS = [
     "https://api.vitaldb.net/1.vital",
     "https://api.vitaldb.net/2.vital",
     "https://api.vitaldb.net/3.vital",
     "https://api.vitaldb.net/4.vital",
     "https://api.vitaldb.net/5.vital",
-    "https://api.vitaldb.net/6.vital",
-    "https://api.vitaldb.net/7.vital",
-    "https://api.vitaldb.net/8.vital",
-    "https://api.vitaldb.net/9.vital",
-    "https://api.vitaldb.net/10.vital",
 ];
 
-// ─── VitalStore ─────────────────────────────────────────────
+// ─── File Loading ───────────────────────────────────────────
 
-/** @type {Map<number, object>} vrcode -> { vf, duration, tracks, dtstart, dtend, dgmt } */
+/** @type {Map<number, object>} vrcode -> { vf, duration, tracks, dtstart, dtend } */
 const files = new Map();
 const serverStartTime = Date.now() / 1000;
+let seqId = 1;
 
 function download(url, destPath) {
     return new Promise((resolve, reject) => {
@@ -59,14 +69,14 @@ function download(url, destPath) {
             }
             if (res.statusCode !== 200) {
                 file.close();
-                reject(new Error(`Download failed: ${res.statusCode} for ${url}`));
+                reject(new Error(`HTTP ${res.statusCode}`));
                 return;
             }
             res.pipe(file);
             file.on("finish", () => { file.close(); resolve(); });
             file.on("error", (err) => { fs.unlinkSync(destPath); reject(err); });
         }).on("error", (err) => {
-            fs.unlinkSync(destPath);
+            try { fs.unlinkSync(destPath); } catch (_) {}
             reject(err);
         });
     });
@@ -75,24 +85,23 @@ function download(url, destPath) {
 async function loadFromUrls(urls) {
     for (const url of urls) {
         const basename = path.basename(url);
-        const vrcode = parseInt(basename);
+        const bedId = parseInt(basename);
         const tmpPath = path.join(os.tmpdir(), `vital_${basename}`);
 
-        console.log(`Downloading ${url} ...`);
+        process.stdout.write(`Downloading ${url} ... `);
         try {
             await download(url, tmpPath);
         } catch (err) {
-            console.error(`  -> Failed to download ${url}: ${err.message}`);
+            console.log(`FAILED: ${err.message}`);
             continue;
         }
 
         try {
-            console.log(`Parsing vrcode=${vrcode} ...`);
             const vf = await new VitalFile(null, tmpPath);
             const duration = vf.dtend - vf.dtstart;
 
             if (duration <= 0) {
-                console.warn(`  -> Skipping vrcode=${vrcode}: invalid duration (${duration}s)`);
+                console.log(`skipped (invalid duration)`);
                 continue;
             }
 
@@ -104,24 +113,41 @@ async function loadFromUrls(urls) {
                 tracks[trk.dtname] = trk;
             }
 
-            files.set(vrcode, {
-                vf, duration, tracks,
-                dtstart: vf.dtstart,
-                dtend: vf.dtend,
-                dgmt: vf.dgmt,
-            });
-
-            const trackCount = Object.keys(tracks).length;
-            const recCount = Object.values(tracks).reduce((s, t) => s + t.recs.length, 0);
-            console.log(`  -> Loaded: ${trackCount} tracks, ${recCount} records, duration=${duration.toFixed(1)}s`);
+            files.set(bedId, { vf, duration, tracks, dtstart: vf.dtstart, dtend: vf.dtend });
+            console.log(`OK (${Object.keys(tracks).length} tracks, ${duration.toFixed(0)}s)`);
         } catch (err) {
-            console.error(`  -> Failed to parse vrcode=${vrcode}: ${err.message}`);
+            console.log(`FAILED: ${err.message}`);
         } finally {
             try { fs.unlinkSync(tmpPath); } catch (_) {}
         }
     }
+}
 
-    console.log(`\nTotal ${files.size} files loaded. Server start time: ${new Date(serverStartTime * 1000).toISOString()}`);
+// ─── HL7 Generation ─────────────────────────────────────────
+
+function utToHl7(ut) {
+    const d = new Date(ut * 1000);
+    return d.getFullYear().toString()
+        + String(d.getMonth() + 1).padStart(2, "0")
+        + String(d.getDate()).padStart(2, "0")
+        + String(d.getHours()).padStart(2, "0")
+        + String(d.getMinutes()).padStart(2, "0")
+        + String(d.getSeconds()).padStart(2, "0");
+}
+
+function fvalStr(f) {
+    if (!Number.isFinite(f)) return "";
+    return String(Number(f.toPrecision(6)));
+}
+
+function getMontype(trk, vf) {
+    if (trk.montype && vf.get_montype) {
+        try {
+            const name = vf.get_montype(trk.tid);
+            if (name) return name;
+        } catch (_) {}
+    }
+    return "";
 }
 
 function getRecordsInRange(file, trk, wallStart, wallEnd) {
@@ -137,164 +163,168 @@ function getRecordsInRange(file, trk, wallStart, wallEnd) {
 
         for (const rec of trk.recs) {
             if (rec.dt >= mappedStart && rec.dt < mappedEnd) {
-                const offsetInFile = rec.dt - mappedStart;
-                const wallDt = currentWall + offsetInFile;
-                if (trk.type === 1) {
-                    results.push({ dt: wallDt, val: Array.from(rec.val) });
-                } else {
-                    results.push({ dt: wallDt, val: rec.val });
-                }
+                results.push(rec);
             }
         }
-
         currentWall = chunkEnd;
     }
-
     return results;
 }
 
-function formatColor(col) {
-    const r = (col >> 16) & 0xFF;
-    const g = (col >> 8) & 0xFF;
-    const b = col & 0xFF;
-    return "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1).toUpperCase();
+function getTrackHL7(file, trk, vf, wallFrom, wallTo) {
+    const montype = getMontype(trk, vf);
+    const identifier = trk.dtname;
+
+    if (trk.type === 1) {
+        let srate = trk.srate || 100;
+        if (montype === "AWP_WAV" || montype === "CO2_WAV") srate = 25;
+        else if (srate > 100) srate = 100;
+
+        const recs = getRecordsInRange(file, trk, wallFrom, wallTo);
+        if (recs.length === 0) return "";
+
+        const allSamples = [];
+        const origSrate = trk.srate || 100;
+        for (const rec of recs) {
+            if (!rec.val || !rec.val.length) continue;
+            if (origSrate > srate) {
+                const ratio = origSrate / srate;
+                for (let i = 0; i < rec.val.length; i += ratio) {
+                    allSamples.push(rec.val[Math.floor(i)]);
+                }
+            } else {
+                for (const v of rec.val) allSamples.push(v);
+            }
+        }
+        if (allSamples.length === 0) return "";
+
+        const vals = allSamples.map(v => Number.isFinite(v) ? fvalStr(v) : "").join("^");
+        let refrange = "";
+        if (trk.mindisp !== undefined && trk.maxdisp !== undefined && trk.mindisp !== trk.maxdisp)
+            refrange = fvalStr(trk.mindisp) + "^" + fvalStr(trk.maxdisp);
+        return `NA|${montype}^${identifier}@${srate}||${vals}|${trk.unit || ""}|${refrange}`;
+    }
+
+    if (trk.type === 2) {
+        const recs = getRecordsInRange(file, trk, wallFrom, wallTo);
+        let lastVal = NaN;
+        for (const rec of recs) {
+            if (Number.isFinite(rec.val)) lastVal = rec.val;
+        }
+        if (!Number.isFinite(lastVal)) return "";
+
+        let refrange = "";
+        if (trk.mindisp !== undefined && trk.maxdisp !== undefined && trk.mindisp !== trk.maxdisp)
+            refrange = fvalStr(trk.mindisp) + "^" + fvalStr(trk.maxdisp);
+        return `NM|${montype}^${identifier}||${fvalStr(lastVal)}|${trk.unit || ""}|${refrange}`;
+    }
+
+    if (trk.type === 5) {
+        const recs = getRecordsInRange(file, trk, wallFrom, wallTo);
+        if (recs.length === 0) return "";
+        return `ST|EVENT^^||${recs[recs.length - 1].val || ""}||`;
+    }
+
+    return "";
 }
 
-function formatDuration(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    if (h > 0) return `${h}h ${m}m ${s}s`;
-    if (m > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-}
+/**
+ * Build HL7 payload for all beds (concatenated, like VitalRecorder)
+ */
+function buildHL7Payload(wallFrom, wallTo) {
+    let payload = "";
 
-// ─── Initialize ──────────────────────────────────────────────
-const app = Fastify({ logger: true });
-app.register(cors, { origin: true });
+    for (const [bedId, file] of files) {
+        let obxLines = "";
+        let obxIdx = 1;
 
-// ─── Routes ──────────────────────────────────────────────────
-
-app.get("/api/status", async () => {
-    const now = Date.now() / 1000;
-    const result = {};
-
-    for (const [vrcode, file] of files) {
-        const elapsed = now - serverStartTime;
-        const loopedElapsed = ((elapsed % file.duration) + file.duration) % file.duration;
-        const mappedTime = file.dtstart + loopedElapsed;
-
-        result[vrcode] = {
-            duration: file.duration,
-            duration_formatted: formatDuration(file.duration),
-            original_start: new Date(file.dtstart * 1000).toISOString(),
-            original_end: new Date(file.dtend * 1000).toISOString(),
-            current_mapped_time: new Date(mappedTime * 1000).toISOString(),
-            current_position_pct: ((loopedElapsed / file.duration) * 100).toFixed(1) + "%",
-            loop_count: Math.floor(elapsed / file.duration),
-            track_count: Object.keys(file.tracks).length,
-        };
-    }
-
-    return {
-        server_start: new Date(serverStartTime * 1000).toISOString(),
-        uptime: formatDuration(now - serverStartTime),
-        now: new Date(now * 1000).toISOString(),
-        files_loaded: files.size,
-        files: result,
-    };
-});
-
-app.get("/api/filelist", async () => {
-    return [...files.keys()];
-});
-
-app.get("/api/receive", async (request, reply) => {
-    const vrcode = parseInt(request.query.vrcode);
-    let { dtstart, dtend } = request.query;
-
-    if (isNaN(vrcode)) {
-        reply.code(400);
-        return { error: "vrcode parameter is required" };
-    }
-
-    const file = files.get(vrcode);
-    if (!file) {
-        reply.code(404);
-        return { error: `vrcode ${vrcode} not found` };
-    }
-
-    const now = Date.now() / 1000;
-
-    if (!dtend) {
-        dtend = now;
-    } else {
-        dtend = parseFloat(dtend);
-    }
-
-    if (!dtstart) {
-        dtstart = dtend - 20;
-    } else {
-        dtstart = parseFloat(dtstart);
-    }
-
-    if (isNaN(dtstart) || isNaN(dtend)) {
-        reply.code(400);
-        return { error: "dtstart and dtend must be valid numbers" };
-    }
-
-    if (dtend <= dtstart) {
-        reply.code(400);
-        return { error: "dtend must be greater than dtstart" };
-    }
-
-    if ((dtend - dtstart) > file.duration * 10) {
-        reply.code(400);
-        return { error: "Requested time range too large" };
-    }
-
-    const trks = [];
-    for (const [dtname, trk] of Object.entries(file.tracks)) {
-        const recs = getRecordsInRange(file, trk, dtstart, dtend);
-        if (recs.length === 0) continue;
-        trks.push({
-            name: dtname,
-            type: trk.type === 1 ? "wav" : trk.type === 2 ? "num" : "str",
-            srate: trk.srate || 0,
-            unit: trk.unit || "",
-            color: formatColor(trk.col),
-            recs,
-        });
-    }
-
-    return { vrcode, dtstart, dtend, trks };
-});
-
-// ─── Startup ─────────────────────────────────────────────────
-
-async function start() {
-    try {
-        console.log("=== VitalDB API Server ===");
-        console.log(`Loading ${VITAL_URLS.length} vital files...\n`);
-
-        await loadFromUrls(VITAL_URLS);
-
-        if (files.size === 0) {
-            console.error("No files loaded. Exiting.");
-            process.exit(1);
+        for (const [, trk] of Object.entries(file.tracks)) {
+            const obxContent = getTrackHL7(file, trk, file.vf, wallFrom, wallTo);
+            if (!obxContent) continue;
+            obxLines += `OBX|${obxIdx++}|${obxContent}||||R\r`;
         }
 
-        await app.listen({ port: PORT, host: HOST });
-        console.log(`\nServer listening on http://${HOST}:${PORT}`);
-        console.log("\nAvailable endpoints:");
-        console.log(`  GET /api/status                          - Server status`);
-        console.log(`  GET /api/filelist                        - List loaded vrcodes`);
-        console.log(`  GET /api/receive?vrcode=1                - Receive data (last 20s)`);
-        console.log(`  GET /api/receive?vrcode=1&dtstart=...&dtend=...`);
-    } catch (err) {
-        console.error("Startup error:", err);
-        process.exit(1);
+        if (obxIdx === 1) continue;
+
+        payload += `MSH|^~\\&|VitalRecorder|${vrcode}|||${utToHl7(wallTo)}||ORU^R01|${seqId++}|P|2.6\r`;
+        payload += `PID|||\r`;
+        payload += `PV1||I|BED-${bedId}\r`;
+        payload += `OBR|1|||VITAL_SIGNS|||${utToHl7(wallFrom)}|${utToHl7(wallTo)}\r`;
+        payload += obxLines;
     }
+
+    return payload;
 }
 
-start();
+// ─── Main ───────────────────────────────────────────────────
+
+async function main() {
+    console.log("=== vitaldemo - VitalRecorder Simulator ===\n");
+    console.log(`Loading ${VITAL_URLS.length} vital files...\n`);
+
+    await loadFromUrls(VITAL_URLS);
+
+    if (files.size === 0) {
+        console.error("\nNo files loaded. Exiting.");
+        process.exit(1);
+    }
+
+    console.log(`\nConnecting to ${serverUrl} as vrcode=${vrcode} ...`);
+
+    const socket = io(serverUrl, {
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionDelay: 3000,
+    });
+
+    let sendTimer = null;
+    let lastSendTime = Date.now() / 1000;
+
+    socket.on("connect", () => {
+        console.log(`Connected (id=${socket.id})`);
+        socket.emit("join_vr", vrcode);
+        console.log(`Joined room as ${vrcode}`);
+        console.log(`Streaming HL7 data for ${files.size} beds every ${SEND_INTERVAL_MS}ms ...\n`);
+
+        lastSendTime = Date.now() / 1000;
+
+        if (sendTimer) clearInterval(sendTimer);
+        sendTimer = setInterval(() => {
+            const now = Date.now() / 1000;
+            const wallFrom = lastSendTime;
+            const wallTo = now;
+            lastSendTime = now;
+
+            const hl7 = buildHL7Payload(wallFrom, wallTo);
+            if (!hl7) return;
+
+            const compressed = zlib.gzipSync(Buffer.from(hl7, "utf-8"), { level: 1 });
+            socket.emit("send_data", compressed);
+        }, SEND_INTERVAL_MS);
+    });
+
+    socket.on("disconnect", (reason) => {
+        console.log(`Disconnected: ${reason}`);
+        if (sendTimer) { clearInterval(sendTimer); sendTimer = null; }
+    });
+
+    socket.on("connect_error", (err) => {
+        console.error(`Connection error: ${err.message}`);
+    });
+
+    // Handle server commands
+    socket.onAny((event, ...args) => {
+        if (event === "send_data" || event === "connect" || event === "disconnect") return;
+        console.log(`Server event: ${event}`, args.length > 0 ? args[0] : "");
+    });
+
+    // Graceful shutdown
+    process.on("SIGINT", () => {
+        console.log("\nShutting down...");
+        if (sendTimer) clearInterval(sendTimer);
+        socket.close();
+        process.exit(0);
+    });
+}
+
+main();

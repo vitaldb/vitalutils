@@ -1,0 +1,21 @@
+[project]
+name = "vitaldemo"
+version = "1.0.0"
+description = "VitalRecorder simulator that streams HL7 vital signs data to a VitalServer via Socket.IO"
+requires-python = ">=3.10"
+license = "MIT"
+readme = "README.md"
+authors = [{name = "VitalLab", email = "vital@snu.ac.kr"}]
+keywords = ["vitaldb", "vital-signs", "medical", "hl7", "websocket", "demo"]
+dependencies = [
+    "python-socketio[client]>=5.0",
+    "websocket-client",
+    "vitaldb",
+]
+
+[project.scripts]
+vitaldemo = "vitaldemo.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
