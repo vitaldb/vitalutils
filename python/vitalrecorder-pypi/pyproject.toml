@@ -1,12 +1,12 @@
 [project]
-name = "vitaldemo"
+name = "vitalrecorder"
 version = "1.0.0"
 description = "VitalRecorder simulator that streams HL7 vital signs data to a VitalServer via Socket.IO"
 requires-python = ">=3.10"
 license = "MIT"
 readme = "README.md"
 authors = [{name = "VitalLab", email = "vital@snu.ac.kr"}]
-keywords = ["vitaldb", "vital-signs", "medical", "hl7", "websocket", "demo"]
+keywords = ["vitaldb", "vital-signs", "medical", "hl7", "websocket", "vitalrecorder"]
 dependencies = [
     "python-socketio[client]>=5.0",
     "websocket-client",
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.scripts]
-vitaldemo = "vitaldemo.__main__:main"
+vitalrecorder = "vitalrecorder.__main__:main"
 
 [build-system]
 requires = ["hatchling"]
