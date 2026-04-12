@@ -1,0 +1,110 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    overflow-x: hidden;
+}
+
+/* Toolbar */
+.navbar {
+    background: #000;
+    padding: 6px 4px 2px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.navbar-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.navbar select, .navbar button {
+    background: #111;
+    color: #aaa;
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 3px 8px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.navbar select:hover, .navbar button:hover {
+    background: #222;
+    color: #fff;
+}
+
+/* Room grid */
+.room-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 3), 1fr);
+    gap: 4px;
+    padding: 4px;
+    background: #000;
+}
+
+/* Room card */
+.room-card {
+    background: #000;
+    overflow: hidden;
+    border: 1px solid #1a1a1a;
+}
+
+.room-canvas {
+    width: 100%;
+    display: block;
+    background: #000;
+}
+
+/* Navbar left wrapper for dropdown positioning */
+.navbar-left {
+    position: relative;
+}
+
+/* Filter dropdown */
+.filter-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    width: 200px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 8px 10px;
+    z-index: 1050;
+}
+.filter-dropdown.show { display: block; }
+
+.select-all-row {
+    padding: 6px 0;
+    border-bottom: 1px solid #333;
+    margin-bottom: 6px;
+}
+
+.filter-item {
+    padding: 4px 0;
+}
+
+.filter-item label {
+    color: #ccc;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-item input[type=checkbox] {
+    accent-color: #4a9eff;
+}
+

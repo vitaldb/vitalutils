@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VitalDB Monitor Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/monitor.css">
+</head>
+<body>
+
+<!-- Toolbar -->
+<nav class="navbar">
+    <div class="navbar-left">
+        <button id="btn-filter" title="Filter rooms">
+            <i class="fas fa-filter"></i> Rooms
+        </button>
+        <!-- Dropdown panel positioned below the button -->
+        <div id="filter-panel" class="filter-dropdown">
+            <div class="select-all-row">
+                <label>
+                    <input type="checkbox" id="select-all" checked>
+                    <strong>Select All</strong>
+                </label>
+            </div>
+            <div id="room-checkboxes"></div>
+        </div>
+    </div>
+    <div class="navbar-controls">
+        <select id="col-select" title="Columns per row">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+        </select>
+    </div>
+</nav>
+
+<!-- Room grid -->
+<div id="room-grid" class="room-grid"></div>
+
+<!-- Dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+
+<!-- App modules (order matters) -->
+<script src="js/constants.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/vital-file-parser.js"></script>
+<script src="js/data-loader.js"></script>
+<script src="js/playback-engine.js"></script>
+<script src="js/monitor-renderer.js"></script>
+<script src="js/room-manager.js"></script>
+<script src="js/app.js"></script>
+
+<!-- Filter dropdown toggle -->
+<script>
+(function() {
+    var btn = document.getElementById('btn-filter');
+    var panel = document.getElementById('filter-panel');
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        panel.classList.toggle('show');
+    });
+    document.addEventListener('click', function(e) {
+        if (!panel.contains(e.target) && e.target !== btn) {
+            panel.classList.remove('show');
+        }
+    });
+})();
+</script>
+
+</body>
+</html>
