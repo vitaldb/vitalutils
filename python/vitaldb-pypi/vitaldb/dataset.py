@@ -3,6 +3,12 @@ import pandas as pd
 
 # open dataset trks
 api_url = "https://api.vitaldb.net"
+# Open-dataset vital-file version served under a versioned prefix
+# (https://api.vitaldb.net/<DATASET_VERSION>/<caseid>.vital). The legacy
+# unversioned path (https://api.vitaldb.net/<caseid>.vital) is kept intact
+# for backward compatibility; new library versions request the versioned,
+# packed files which are smaller and stream a single track efficiently.
+DATASET_VERSION = "1.0.1"
 dftrks = None
 dfci = None
 dflabs = None
@@ -144,7 +150,8 @@ def find_cases(track_names):
 def load_case(caseid, track_names, interval=1):
     """Load case data with the given track names in a 2D numpy array. Row by time and Column by track.
 
-    Reads the case's ``.vital`` file directly (https://api.vitaldb.net/<caseid>.vital).
+    Reads the case's packed ``.vital`` file directly from the versioned
+    open-dataset path (https://api.vitaldb.net/<DATASET_VERSION>/<caseid>.vital).
     The ``.vital`` file is the authoritative source: all tracks share one
     timeline, so samples are correctly aligned in absolute time. (The older
     per-track CSV API could be shifted by a per-case constant relative to
@@ -169,7 +176,7 @@ def load_case(caseid, track_names, interval=1):
         else:
             track_names = [track_names]
 
-    vf = VitalFile(f"{api_url}/{caseid}.vital", track_names)
+    vf = VitalFile(f"{api_url}/{DATASET_VERSION}/{caseid}.vital", track_names)
     return vf.to_numpy(track_names, interval)
 
 

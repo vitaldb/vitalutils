@@ -1635,11 +1635,14 @@ class VitalFile:
     def load_vital(self, ipath, track_names=None, header_only=False, exclude=None, maxlen=None):
         # check if ipath is url
         iurl = parse.urlparse(ipath)
+        response = None
         if iurl.scheme and iurl.netloc:
+            # Stream the response directly instead of downloading the whole
+            # file first. For packed files with a track filter this lets us
+            # stop reading the socket once the last wanted track's REC block
+            # has been consumed (see early-termination below).
             response = request.urlopen(ipath)
-            f = tempfile.NamedTemporaryFile(delete=True)
-            shutil.copyfileobj(response, f)
-            f.seek(0)
+            f = response
         else:
             f = open(ipath, 'rb')
 
@@ -1666,6 +1669,9 @@ class VitalFile:
 
         # how many bytes to skip the records in this track
         tid_reclens = {}  # tid -> reclen
+        trk_order_tids = []   # tids in file order (packed: REC blocks follow this order)
+        rec_consumed = 0      # bytes consumed in the REC region (for early-stop)
+        stop_offset = None    # byte offset after the last wanted track's block
 
         # parse body
         try:
@@ -1825,6 +1831,7 @@ class VitalFile:
                                     break
                     
                     tid_reclens[tid] = reclen
+                    trk_order_tids.append(tid)
 
                     if not matched:
                         continue
@@ -1832,6 +1839,22 @@ class VitalFile:
                     tid_dtnames[tid] = dtname
                     self.trks[dtname] = Track(tname, trktype, fmt=fmt, unit=unit, srate=srate, mindisp=mindisp, maxdisp=maxdisp, col=col, montype=montype, gain=gain, offset=offset, dname=dname)
                 elif packet_type == 1:  # rec
+                    # On the first REC of a packed file all TRKINFOs have been
+                    # read; compute the byte offset at which the last wanted
+                    # track's REC block ends, so we can stop streaming there.
+                    if stop_offset is None:
+                        stop_offset = -1  # default: disabled (read to EOF)
+                        if self.packed and track_names:
+                            wanted_idx = [i for i, t in enumerate(trk_order_tids)
+                                          if t in tid_dtnames]
+                            if wanted_idx and all(tid_reclens.get(t, 0) > 0
+                                                  for t in trk_order_tids):
+                                last = wanted_idx[-1]
+                                stop_offset = sum(tid_reclens[t]
+                                                  for t in trk_order_tids[:last + 1])
+
+                    rec_consumed += 5 + packet_len
+
                     if len(buf) < pos + 12:
                         continue
 
@@ -1846,6 +1869,9 @@ class VitalFile:
                         if tid in tid_reclens:
                             if tid_reclens[tid] > 5 + packet_len:
                                 f.seek(tid_reclens[tid] - (5 + packet_len), 1)
+                                rec_consumed += tid_reclens[tid] - (5 + packet_len)
+                        if stop_offset > 0 and rec_consumed >= stop_offset:
+                            break
                         continue
                     dtname = tid_dtnames[tid]
 
@@ -1911,6 +1937,11 @@ class VitalFile:
                                 self.order.append(tid_dtnames[tid])
                         pos += cnt * 2
 
+                # early termination: stop once the last wanted track's REC
+                # block has been fully read (packed files + track filter).
+                if stop_offset is not None and stop_offset > 0 and rec_consumed >= stop_offset:
+                    break
+
         except EOFError:
             pass
         except Exception as e:
@@ -1922,6 +1953,8 @@ class VitalFile:
         #     trk.recs.sort(key=lambda r:r['dt'])
 
         f.close()
+        if response is not None:
+            response.close()
         return True
     
     def dump_debug(self, filter=None, max_packets=None, merge_packets=0.2):
