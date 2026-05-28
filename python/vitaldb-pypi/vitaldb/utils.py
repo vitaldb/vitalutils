@@ -1022,23 +1022,24 @@ class VitalFile:
         fmtcode, fmtlen = FMT_TYPE_LEN[trk.fmt]
         nan_val = FMT_NAN[trk.fmt]
 
-        # start from the first rec
-        merged = list(recs[0]['val'])
+        # Vectorized merge: pre-allocate one dense NaN-filled array spanning
+        # the track and drop each rec's samples in by index. Avoids building
+        # a multi-million-element Python list (much faster + less memory).
         dt_start = recs[0]['dt']
-        dt_cursor = dt_start + len(recs[0]['val']) / trk.srate
+        dt_end = max(r['dt'] + len(r['val']) / trk.srate for r in recs)
+        n = int(round((dt_end - dt_start) * trk.srate))
+        merged = np.full(n, nan_val, dtype=np.dtype(fmtcode))
+        for rec in recs:
+            val = rec['val']
+            if not isinstance(val, np.ndarray):
+                val = np.asarray(val, dtype=np.dtype(fmtcode))
+            idx = int(round((rec['dt'] - dt_start) * trk.srate))
+            s = max(0, idx)
+            e = min(n, idx + len(val))
+            if e > s:
+                merged[s:e] = val[(s - idx):(e - idx)]
 
-        for rec in recs[1:]:
-            gap_samps = int(round((rec['dt'] - dt_cursor) * trk.srate))
-            if gap_samps > 0:
-                # fill gap with NaN samples
-                merged.extend([nan_val] * gap_samps)
-            elif gap_samps < 0:
-                # overlapping: trim the overlap
-                merged = merged[:gap_samps]
-            merged.extend(rec['val'])
-            dt_cursor = dt_start + len(merged) / trk.srate
-
-        return [{'dt': dt_start, 'val': np.array(merged, dtype=np.dtype(fmtcode))}]
+        return [{'dt': dt_start, 'val': merged}]
 
     def to_vital(self, opath, compresslevel=9, packed=True):
         """ save as vital file
@@ -1076,6 +1077,18 @@ class VitalFile:
             else:
                 trk_recs[dtname] = sorted(trk.recs, key=lambda r: r['dt']) if packed else trk.recs
 
+        # Physical storage order. In packed mode, store NUM/STR tracks first
+        # and the heavy WAV tracks last so a streaming reader fetching a
+        # numeric (or stopping early) doesn't have to pull the wave blocks.
+        # The displayed track order is preserved independently via the
+        # CMD_TRK_ORDER packet below, so this reordering is invisible to UIs.
+        original_order = list(self.trks.keys())
+        if packed:
+            write_dtnames = ([dt for dt in original_order if self.trks[dt].type != 1]
+                             + [dt for dt in original_order if self.trks[dt].type == 1])
+        else:
+            write_dtnames = original_order
+
         # save devinfos
         did = 0
         dname_dids = {}
@@ -1094,7 +1107,8 @@ class VitalFile:
         # save trkinfo
         tid = 0
         dtname_tids = {}
-        for dtname, trk in self.trks.items():
+        for dtname in write_dtnames:
+            trk = self.trks[dtname]
             # issue tid
             tid += 1
             dtname_tids[dtname] = tid
@@ -1138,8 +1152,9 @@ class VitalFile:
             if not f.write(_pack_b(0) + _pack_dw(len(ti)) + ti):
                 return False
 
-        # save recs: track by track, sorted by time
-        for dtname, trk in self.trks.items():
+        # save recs: track by track (NUM/STR first, WAV last in packed mode)
+        for dtname in write_dtnames:
+            trk = self.trks[dtname]
             tid = dtname_tids[dtname]
             for rec in trk_recs[dtname]:
                 rdata = _pack_w(10) + _pack_d(rec['dt']) + _pack_w(tid)  # infolen + dt + tid (= 12 bytes)
@@ -1153,9 +1168,15 @@ class VitalFile:
                 if not f.write(_pack_b(1) + _pack_dw(len(rdata)) + rdata):
                     return False
 
-        # save trk order
-        if len(self.order) > 0:
-            tids = np.array([dtname_tids[dtname] for dtname in self.order], dtype=np.dtype('H'))
+        # save trk order (display order, independent of physical layout).
+        # Use the explicit self.order if present; otherwise, when packed
+        # reordering moved tracks, fall back to the original appearance order
+        # so UIs still show tracks in their natural order.
+        display_order = self.order if len(self.order) > 0 else (
+            original_order if packed else [])
+        if len(display_order) > 0:
+            tids = np.array([dtname_tids[dtname] for dtname in display_order
+                             if dtname in dtname_tids], dtype=np.dtype('H'))
             cdata = _pack_b(5) + _pack_w(len(tids)) + tids.tobytes()
             if not f.write(_pack_b(6) + _pack_dw(len(cdata)) + cdata):
                 return False
