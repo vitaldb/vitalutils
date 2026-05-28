@@ -1249,87 +1249,19 @@ class VitalFile:
 
 
     def load_opendata(self, caseid, track_names, exclude):
-        global dftrks
-        
         if not caseid:
             raise ValueError('caseid should be greater than zero')
 
-        if (track_names is None) and (exclude is None):
-            self.load_vital(f'https://api.vitaldb.net/{caseid}.vital')
-            return
-
-        if dftrks is None:  # for cache
-            dftrks = pd.read_csv("https://api.vitaldb.net/trks")
-
-        if track_names is None:
-            track_names = dftrks.loc[dftrks['caseid'] == caseid, 'tname']
-
-        tids = []
-        dtnames = []
-        for dtname in track_names:
-            rows = dftrks.loc[(dftrks['caseid'] == caseid) & (dftrks['tname'].str.endswith(dtname))]
-            if len(rows) == 0:
-                continue
-            row = rows.iloc[0]
-            
-            # make device
-            dtname = row['tname']
-            dname = ''
-            tname = dtname
-            if dtname.find('/') >= 0:
-                dname, tname = dtname.split('/')
-            if dname not in self.devs:
-                self.devs[dname] = Device(dname)
-
-            try:  # read tracks
-                url = 'https://api.vitaldb.net/' + row['tid']
-                dtvals = pd.read_csv(url, na_values='-nan(ind)').values
-            except:
-                continue
-
-            if len(dtvals) == 0:
-                continue
-
-            if dtname in self.trks:  # already read
-                continue
-            
-            # sampling rate
-            if np.isnan(dtvals[:,0]).any():  # wav
-                ntype = TYPE_WAV
-                interval = dtvals[1,0] - dtvals[0,0]
-                assert interval > 0
-                srate = 1 / interval
-            else:  # num
-                ntype = TYPE_NUM
-                srate = 0
-            # no string type in open dataset
-
-            # default track information
-            if dtname in TRACK_INFO:
-                trk = Track(tname, **TRACK_INFO[dtname], type=ntype, dname=dname)
-                trk.srate = srate
-            else:
-                trk = Track(tname, ntype, srate=srate, dname=dname)
-
-            self.trks[dtname] = trk
-
-            # parsing the records
-            if ntype == 1:  # wav
-                assert srate > 0
-                # seperate with 1sec interval
-                interval = dtvals[1,0] - dtvals[0,0]
-                dtvals = dtvals.astype(np.float32)
-                for i in range(0, len(dtvals), int(srate)):
-                    trk.recs.append({'dt': dtvals[0,0] + i * interval, 'val': dtvals[i:i+int(srate), 1]})
-            else:  # num
-                for dt, val in dtvals:  # copy values
-                    trk.recs.append({'dt': dt, 'val': val})
-
-            # open dataset always starts with 0
-            dt = dtvals[-1,0]
-            if dt > self.dtend:
-                self.dtend = dt
-
+        # Always read the case's packed .vital file from the versioned
+        # open-dataset path. The .vital file is the authoritative,
+        # timeline-correct source where all tracks share one clock; for
+        # packed files load_vital streams only up to the last requested
+        # track's REC block (early-stop), so a track filter stays cheap.
+        # (Previously a per-track CSV API was used when track_names was
+        # given, which could be misaligned by a per-case constant.)
+        from . import dataset
+        url = f'{dataset.api_url}/{dataset.DATASET_VERSION}/{caseid}.vital'
+        self.load_vital(url, track_names, exclude=exclude)
         return
 
     def load_parquet(self, ipath, track_names, exclude):

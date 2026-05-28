@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -60,9 +62,18 @@ def load_lab_data(caseids=[], params=[]):
     return res
 
 def load_trk(tid, interval=1):
+    warnings.warn(
+        "load_trk()/the per-track CSV API is deprecated; use "
+        "vitaldb.load_case(caseid, track_names) or VitalFile, which read the "
+        "packed .vital file. The CSV track endpoints may be removed in a "
+        "future release.",
+        DeprecationWarning, stacklevel=2)
     if isinstance(tid, list) or isinstance(tid, set) or isinstance(tid, tuple):
         return load_trks(tid, interval)
+    return _load_trk_nowarn(tid, interval)
 
+
+def _load_trk_nowarn(tid, interval=1):
     try:
         url = f"{api_url}/{tid}"
         dtvals = pd.read_csv(url, na_values='-nan(ind)', dtype=np.float32).values
@@ -89,11 +100,17 @@ def load_trk(tid, interval=1):
 
 
 def load_trks(tids, interval=1):
+    warnings.warn(
+        "load_trks()/the per-track CSV API is deprecated; use "
+        "vitaldb.load_case(caseid, track_names) or VitalFile, which read the "
+        "packed .vital file. The CSV track endpoints may be removed in a "
+        "future release.",
+        DeprecationWarning, stacklevel=2)
     trks = []
     maxlen = 0
     for tid in tids:
         if tid:
-            trk = load_trk(tid, interval)
+            trk = _load_trk_nowarn(tid, interval)
             trks.append(trk)
             if len(trk) > maxlen:
                 maxlen = len(trk)
@@ -120,10 +137,16 @@ def get_track_names(caseids=[]):
     Returns:
         Dataframe: track names by caseID
     """
+    warnings.warn(
+        "get_track_names() relies on the per-track 'trks' index, which is "
+        "deprecated. Track names are available from the .vital file via "
+        "VitalFile(caseid).get_track_names(). The trks index may be removed "
+        "in a future release.",
+        DeprecationWarning, stacklevel=2)
     global dftrks
     if dftrks is None:
         dftrks = pd.read_csv(f"{api_url}/trks")
-    
+
     return dftrks[dftrks['caseid'].isin(caseids)].groupby('caseid')["tname"].apply(list).reset_index(name="tnames")
 
 def find_cases(track_names):
@@ -135,6 +158,10 @@ def find_cases(track_names):
     Returns:
         List: caseIDs
     """
+    warnings.warn(
+        "find_cases() relies on the per-track 'trks' index, which is "
+        "deprecated and may be removed in a future release.",
+        DeprecationWarning, stacklevel=2)
     global dftrks
     if dftrks is None:
         dftrks = pd.read_csv(f"{api_url}/trks")
