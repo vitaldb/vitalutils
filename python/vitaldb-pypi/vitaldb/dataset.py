@@ -142,7 +142,13 @@ def find_cases(track_names):
     return list(set.intersection(*[set(dftrks.loc[dftrks['tname'].str.endswith(dtname), 'caseid']) for dtname in track_names]))
 
 def load_case(caseid, track_names, interval=1):
-    """Load case data with the given track names in a 2D numpy array. Row by time and Column by track. 
+    """Load case data with the given track names in a 2D numpy array. Row by time and Column by track.
+
+    Reads the case's ``.vital`` file directly (https://api.vitaldb.net/<caseid>.vital).
+    The ``.vital`` file is the authoritative source: all tracks share one
+    timeline, so samples are correctly aligned in absolute time. (The older
+    per-track CSV API could be shifted by a per-case constant relative to
+    the recording, which is why this now reads the vital file.)
 
     Parameters:
         caseid (int): caseID from 1 to 6388
@@ -150,31 +156,21 @@ def load_case(caseid, track_names, interval=1):
         interval (int, optional): time interval (= 1 / sample rate). Defaults to 1.
 
     Returns:
-        ndarray: 2D numpy array. Row by time and Column by track. 
+        ndarray: 2D numpy array. Row by time and Column by track.
     """
-    global dftrks
+    from .utils import VitalFile
 
     if not caseid:
         return None
 
-    if dftrks is None:
-        dftrks = pd.read_csv(f"{api_url}/trks")
-
     if isinstance(track_names, str):
-        if track_names.find(','):
+        if ',' in track_names:
             track_names = track_names.split(',')
         else:
             track_names = [track_names]
 
-    tids = []
-    for dtname in track_names:
-        tid_values = dftrks.loc[(dftrks['caseid'] == caseid) & (dftrks['tname'].str.endswith(dtname)), 'tid'].values
-        if len(tid_values):
-            tids.append(tid_values[0])
-        else:
-            tids.append(None)
-    
-    return load_trks(tids, interval)
+    vf = VitalFile(f"{api_url}/{caseid}.vital", track_names)
+    return vf.to_numpy(track_names, interval)
 
 
 if __name__ == '__main__':
