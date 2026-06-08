@@ -1240,9 +1240,15 @@ class VitalFile:
         dtstart = self.dtstart if self.dtstart else 0.0
         duration_sec = int(np.ceil((self.dtend or dtstart) - dtstart)) or 1
 
+        # Walk tracks in the .vital file's recorded order so the parquet
+        # row order matches what to_vital would emit. Fall back to the
+        # ``self.trks`` insertion order (which reflects load order) when
+        # ``self.order`` wasn't populated.
+        track_order = self.order if self.order else list(self.trks.keys())
         rows = []
-        for dtname, trk in self.trks.items():
-            if not trk.recs:
+        for dtname in track_order:
+            trk = self.trks.get(dtname)
+            if trk is None or not trk.recs:
                 continue
             dname = trk.dname or ''
             tname = trk.name or dtname.rsplit('/', 1)[-1]
@@ -1261,10 +1267,19 @@ class VitalFile:
 
             if is_wav:
                 srate = trk.srate
-                samples_per_sec = int(round(srate))
-                if samples_per_sec <= 0:
+                # The row boundary for second N runs from
+                # ``ceil(N*srate)`` to ``ceil((N+1)*srate)`` — the same
+                # ``ceil`` rule vitaldb's ``to_numpy`` uses to place
+                # rec samples. That keeps row lengths variable for
+                # non-integer rates (62.5 Hz alternates 62/63 samples
+                # per row) so reload-via-to_numpy lands every sample
+                # at its original absolute index.
+                if srate <= 0:
                     continue
-                total_samples = duration_sec * samples_per_sec
+                duration_float = (self.dtend or dtstart) - dtstart
+                total_samples = int(np.ceil(duration_float * srate))
+                if total_samples <= 0:
+                    continue
                 src_dtype = np.asarray(sample).dtype
                 is_unsigned = np.issubdtype(src_dtype, np.unsignedinteger)
                 is_signed = np.issubdtype(src_dtype, np.signedinteger)
@@ -1279,7 +1294,7 @@ class VitalFile:
                 missing = np.ones(total_samples, dtype=bool)
                 for rec in trk.recs:
                     rel = rec['dt'] - dtstart
-                    sidx = int(round(rel * srate))
+                    sidx = int(np.ceil(rel * srate))
                     if sidx < 0 or sidx >= total_samples:
                         continue
                     if is_unsigned:
@@ -1298,24 +1313,30 @@ class VitalFile:
                     else (bias + 32768 * gain if is_unsigned else bias)
                 )
 
-                chunks = big.reshape(duration_sec, samples_per_sec)
-                mchunks = missing.reshape(duration_sec, samples_per_sec)
-                full_missing = mchunks.all(axis=1)
-                any_missing = mchunks.any(axis=1) & ~full_missing
-
+                # Per-second variable-length slicing — preserves the
+                # exact ``ceil(sec * srate)`` boundary so a roundtrip
+                # via ``_load_parquet_new`` + ``to_numpy`` matches the
+                # source bit-for-bit.
                 for sec_idx in range(duration_sec):
-                    if full_missing[sec_idx]:
+                    sec_start = int(np.ceil(sec_idx * srate))
+                    sec_end = int(np.ceil((sec_idx + 1) * srate))
+                    if sec_end > total_samples:
+                        sec_end = total_samples
+                    if sec_end <= sec_start:
                         continue
-                    if any_missing[sec_idx]:
-                        mask = mchunks[sec_idx]
+                    chunk = big[sec_start:sec_end]
+                    mask = missing[sec_start:sec_end]
+                    if mask.all():
+                        continue
+                    if mask.any():
                         if is_float:
                             chunk_list = [None if m else float(v)
-                                          for v, m in zip(chunks[sec_idx], mask)]
+                                          for v, m in zip(chunk, mask)]
                         else:
                             chunk_list = [None if m else int(v)
-                                          for v, m in zip(chunks[sec_idx], mask)]
+                                          for v, m in zip(chunk, mask)]
                     else:
-                        chunk_list = chunks[sec_idx].tolist()
+                        chunk_list = chunk.tolist()
                     rows.append({
                         'dt': dtstart + sec_idx,
                         'dname': dname,
@@ -1330,7 +1351,7 @@ class VitalFile:
                         'bias':  row_bias,
                     })
             elif is_str:
-                for rec in trk.recs:
+                for rec in sorted(trk.recs, key=lambda r: r['dt']):
                     rows.append({
                         'dt': float(rec['dt']),
                         'dname': dname, 'tname': tname, 'unit': unit,
@@ -1339,7 +1360,7 @@ class VitalFile:
                         'srate': None, 'gain': None, 'bias': None,
                     })
             else:  # num
-                for rec in trk.recs:
+                for rec in sorted(trk.recs, key=lambda r: r['dt']):
                     try:
                         nval = float(rec['val'])
                     except (TypeError, ValueError):
@@ -1367,12 +1388,11 @@ class VitalFile:
             ('bias',  pa.float64()),
         ])
         table = pa.Table.from_pylist(rows, schema=schema)
-        # Sort (dname, tname, dt) for dictionary + delta encoding wins.
-        table = table.sort_by([
-            ('dname', 'ascending'),
-            ('tname', 'ascending'),
-            ('dt', 'ascending'),
-        ]).combine_chunks()
+        # No sort_by — the ``rows`` list already follows .vital's track
+        # order with wave/num/str rows emitted in time order within
+        # each track, which is what we want consumers (and our own
+        # load_parquet) to see.
+        table = table.combine_chunks()
         pq.write_table(
             table, opath,
             compression=compression,
@@ -1381,6 +1401,102 @@ class VitalFile:
             write_statistics=True,
             data_page_size=1 * 1024 * 1024,
         )
+
+    def _load_parquet_new(self, df, track_names, exclude):
+        """Parse a v1.7+ long-format parquet (see ``to_parquet``) back
+        into Track / Device structures so the resulting VitalFile
+        produces the same ``to_numpy`` output as the original .vital.
+
+        Tracks are registered in row-appearance order, matching the
+        ``to_parquet`` writer which respects ``self.order``; that order
+        is also rehydrated into ``self.order``.
+
+        Wave rows are decoded as float32 physical arrays (NULL slots
+        become ``np.nan``). Because we store *physical* values directly,
+        the reconstructed Track gets ``fmt=1`` and ``gain=1, offset=0``;
+        ``to_numpy`` then leaves the samples untouched and the output
+        equals the original ``physical = raw * gain + bias`` exactly.
+        """
+        from collections import defaultdict
+        if len(df) == 0:
+            return
+        self.dtstart = float(df['dt'].min())
+        self.dtend = float(df['dt'].max())
+
+        # Group rows by (dname, tname) while preserving first-appearance
+        # order via the regular dict (Py3.7+ insertion order).
+        grouped = {}
+        for row in df.itertuples(index=False):
+            dname = (row.dname or '')
+            tname = (row.tname or '')
+            if not tname:
+                continue
+            dtname = f'{dname}/{tname}' if dname else tname
+            if track_names and dtname not in track_names:
+                continue
+            if exclude and dtname in exclude:
+                continue
+            grouped.setdefault((dname, tname), []).append(row)
+
+        new_order = []
+        for (dname, tname), rows in grouped.items():
+            dtname = f'{dname}/{tname}' if dname else tname
+            new_order.append(dtname)
+            # Determine the kind from the first row that carries data.
+            kind = None
+            first = None
+            for r in rows:
+                if r.ivals is not None or r.fvals is not None:
+                    kind = 'wav'; first = r; break
+                if pd.notnull(getattr(r, 'nval', None)):
+                    kind = 'num'; first = r; break
+                if pd.notnull(getattr(r, 'sval', None)):
+                    kind = 'str'; first = r; break
+            if kind is None:
+                continue
+
+            if dname and dname not in self.devs:
+                self.devs[dname] = Device(dname)
+
+            unit = first.unit or ''
+            if kind == 'wav':
+                srate = float(first.srate) if pd.notnull(getattr(first, 'srate', None)) else 0.0
+                # fmt=1 (float) tells to_numpy not to re-apply gain/offset
+                # since we already stored physical values.
+                trk = Track(
+                    tname, type=TYPE_WAV, srate=srate, dname=dname,
+                    unit=unit, fmt=1, gain=1.0, offset=0.0,
+                )
+                for r in rows:
+                    if r.ivals is not None:
+                        g = float(r.gain) if pd.notnull(getattr(r, 'gain', None)) else 1.0
+                        b = float(r.bias) if pd.notnull(getattr(r, 'bias', None)) else 0.0
+                        arr = np.array(
+                            [np.nan if x is None else float(x) * g + b for x in r.ivals],
+                            dtype=np.float32,
+                        )
+                    elif r.fvals is not None:
+                        arr = np.array(
+                            [np.nan if x is None else x for x in r.fvals],
+                            dtype=np.float32,
+                        )
+                    else:
+                        continue
+                    trk.recs.append({'dt': float(r.dt), 'val': arr})
+            elif kind == 'num':
+                trk = Track(tname, type=TYPE_NUM, dname=dname, unit=unit)
+                for r in rows:
+                    if pd.notnull(getattr(r, 'nval', None)):
+                        trk.recs.append({'dt': float(r.dt), 'val': float(r.nval)})
+            else:  # 'str'
+                trk = Track(tname, type=TYPE_STR, dname=dname, unit=unit)
+                for r in rows:
+                    if pd.notnull(getattr(r, 'sval', None)):
+                        trk.recs.append({'dt': float(r.dt), 'val': str(r.sval)})
+
+            self.trks[dtname] = trk
+
+        self.order = new_order
 
     def _to_parquet_legacy(self, opath):
         """Pre-v1.7 parquet writer — wav stored as a bytes blob of
@@ -1456,6 +1572,12 @@ class VitalFile:
 
     def load_parquet(self, ipath, track_names, exclude):
         df = pd.read_parquet(ipath)
+        # v1.7+ long-format polymorphic schema is detected by the presence
+        # of the per-row sample columns. Anything else falls through to
+        # the legacy per-rec wval-bytes path.
+        if 'ivals' in df.columns or 'fvals' in df.columns:
+            self._load_parquet_new(df, track_names, exclude)
+            return
         df = df['tname'].isin(track_names)
 
         # df = pd.read_parquet(ipath)
