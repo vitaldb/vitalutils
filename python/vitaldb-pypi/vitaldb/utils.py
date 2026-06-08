@@ -1209,6 +1209,7 @@ class VitalFile:
             fvals LIST<FLOAT32>   float wave chunk
             nval  DOUBLE          single numeric event
             sval  VARCHAR         single string event
+            srate DOUBLE          native sampling rate for wav rows (nullable)
             gain  DOUBLE          physical = ivals * gain + bias  (nullable)
             bias  DOUBLE
 
@@ -1324,6 +1325,7 @@ class VitalFile:
                         'fvals': chunk_list if is_float else None,
                         'nval':  None,
                         'sval':  None,
+                        'srate': float(srate),
                         'gain':  row_gain,
                         'bias':  row_bias,
                     })
@@ -1334,7 +1336,7 @@ class VitalFile:
                         'dname': dname, 'tname': tname, 'unit': unit,
                         'ivals': None, 'fvals': None, 'nval': None,
                         'sval': str(rec['val']),
-                        'gain': None, 'bias': None,
+                        'srate': None, 'gain': None, 'bias': None,
                     })
             else:  # num
                 for rec in trk.recs:
@@ -1348,7 +1350,7 @@ class VitalFile:
                         'ivals': None, 'fvals': None,
                         'nval':  nval,
                         'sval':  None,
-                        'gain':  None, 'bias': None,
+                        'srate': None, 'gain': None, 'bias': None,
                     })
 
         schema = pa.schema([
@@ -1360,6 +1362,7 @@ class VitalFile:
             ('fvals', pa.list_(pa.float32())),
             ('nval',  pa.float64()),
             ('sval',  pa.string()),
+            ('srate', pa.float64()),
             ('gain',  pa.float64()),
             ('bias',  pa.float64()),
         ])
