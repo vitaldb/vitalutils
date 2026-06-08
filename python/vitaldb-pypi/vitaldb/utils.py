@@ -1194,9 +1194,188 @@ class VitalFile:
 
     save_vital = to_vital
 
-    def to_parquet(self, opath):
+    def to_parquet(self, opath, legacy=False, compression='zstd', compression_level=10):
         """ save as parquet file
+
+        Default (v1.7+) writes the long, polymorphic schema below — same
+        row union for every track kind, samples kept lossless at their
+        native dtype, sorted (dname, tname, dt) for compression::
+
+            dt    DOUBLE          absolute timestamp; wav rows = integer second
+            dname VARCHAR         device name (e.g. "SNUADC")
+            tname VARCHAR         track name (e.g. "ECG_II")
+            unit  VARCHAR         clinical unit (mV, mmHg, %, …)
+            ivals LIST<INT16>     integer wave chunk (uint16 source auto-shifted)
+            fvals LIST<FLOAT32>   float wave chunk
+            nval  DOUBLE          single numeric event
+            sval  VARCHAR         single string event
+            gain  DOUBLE          physical = ivals * gain + bias  (nullable)
+            bias  DOUBLE
+
+        uint16 source tracks (the SNUADC ADC case) are uniformly shifted
+        by ``-32768`` and the bias is compensated by ``+32768*gain``, so
+        ``physical = ivals*gain + bias`` reproduces the original samples
+        exactly.
+
+        Pass ``legacy=True`` to write the original pre-v1.7 schema
+        (per-rec rows with ``wval`` as a bytes blob of float32 samples).
         """
+        if legacy:
+            return self._to_parquet_legacy(opath)
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        # Use the recording start as the chunking origin so wave rows
+        # land on integer-second boundaries; tracks that lack dtstart
+        # (theoretical edge case) fall back to 0.
+        dtstart = self.dtstart if self.dtstart else 0.0
+        duration_sec = int(np.ceil((self.dtend or dtstart) - dtstart)) or 1
+
+        rows = []
+        for dtname, trk in self.trks.items():
+            if not trk.recs:
+                continue
+            dname = trk.dname or ''
+            tname = trk.name or dtname.rsplit('/', 1)[-1]
+            unit = trk.unit or ''
+            gain = float(trk.gain) if trk.gain is not None else 0.0
+            bias = float(trk.offset) if trk.offset is not None else 0.0
+
+            sample = trk.recs[0]['val']
+            is_wav = (
+                trk.type == TYPE_WAV
+                and trk.srate > 0
+                and hasattr(sample, '__len__')
+                and not isinstance(sample, str)
+            )
+            is_str = (trk.type == TYPE_STR) or isinstance(sample, str)
+
+            if is_wav:
+                srate = trk.srate
+                samples_per_sec = int(round(srate))
+                if samples_per_sec <= 0:
+                    continue
+                total_samples = duration_sec * samples_per_sec
+                src_dtype = np.asarray(sample).dtype
+                is_unsigned = np.issubdtype(src_dtype, np.unsignedinteger)
+                is_signed = np.issubdtype(src_dtype, np.signedinteger)
+                is_float = not (is_unsigned or is_signed)
+                if is_float:
+                    buf_dtype = np.float32
+                elif is_unsigned:
+                    buf_dtype = np.int32   # holds uint16-32768 without overflow
+                else:
+                    buf_dtype = np.int16
+                big = np.zeros(total_samples, dtype=buf_dtype)
+                missing = np.ones(total_samples, dtype=bool)
+                for rec in trk.recs:
+                    rel = rec['dt'] - dtstart
+                    sidx = int(round(rel * srate))
+                    if sidx < 0 or sidx >= total_samples:
+                        continue
+                    if is_unsigned:
+                        arr = np.asarray(rec['val'], dtype=np.uint16).astype(np.int32) - 32768
+                    else:
+                        arr = np.asarray(rec['val'], dtype=buf_dtype)
+                    eidx = min(sidx + len(arr), total_samples)
+                    take = eidx - sidx
+                    big[sidx:eidx] = arr[:take]
+                    missing[sidx:eidx] = False
+                if is_unsigned:
+                    big = big.astype(np.int16)
+                row_gain = None if is_float else gain
+                row_bias = (
+                    None if is_float
+                    else (bias + 32768 * gain if is_unsigned else bias)
+                )
+
+                chunks = big.reshape(duration_sec, samples_per_sec)
+                mchunks = missing.reshape(duration_sec, samples_per_sec)
+                full_missing = mchunks.all(axis=1)
+                any_missing = mchunks.any(axis=1) & ~full_missing
+
+                for sec_idx in range(duration_sec):
+                    if full_missing[sec_idx]:
+                        continue
+                    if any_missing[sec_idx]:
+                        mask = mchunks[sec_idx]
+                        if is_float:
+                            chunk_list = [None if m else float(v)
+                                          for v, m in zip(chunks[sec_idx], mask)]
+                        else:
+                            chunk_list = [None if m else int(v)
+                                          for v, m in zip(chunks[sec_idx], mask)]
+                    else:
+                        chunk_list = chunks[sec_idx].tolist()
+                    rows.append({
+                        'dt': dtstart + sec_idx,
+                        'dname': dname,
+                        'tname': tname,
+                        'unit': unit,
+                        'ivals': chunk_list if not is_float else None,
+                        'fvals': chunk_list if is_float else None,
+                        'nval':  None,
+                        'sval':  None,
+                        'gain':  row_gain,
+                        'bias':  row_bias,
+                    })
+            elif is_str:
+                for rec in trk.recs:
+                    rows.append({
+                        'dt': float(rec['dt']),
+                        'dname': dname, 'tname': tname, 'unit': unit,
+                        'ivals': None, 'fvals': None, 'nval': None,
+                        'sval': str(rec['val']),
+                        'gain': None, 'bias': None,
+                    })
+            else:  # num
+                for rec in trk.recs:
+                    try:
+                        nval = float(rec['val'])
+                    except (TypeError, ValueError):
+                        continue
+                    rows.append({
+                        'dt': float(rec['dt']),
+                        'dname': dname, 'tname': tname, 'unit': unit,
+                        'ivals': None, 'fvals': None,
+                        'nval':  nval,
+                        'sval':  None,
+                        'gain':  None, 'bias': None,
+                    })
+
+        schema = pa.schema([
+            ('dt',    pa.float64()),
+            ('dname', pa.string()),
+            ('tname', pa.string()),
+            ('unit',  pa.string()),
+            ('ivals', pa.list_(pa.int16())),
+            ('fvals', pa.list_(pa.float32())),
+            ('nval',  pa.float64()),
+            ('sval',  pa.string()),
+            ('gain',  pa.float64()),
+            ('bias',  pa.float64()),
+        ])
+        table = pa.Table.from_pylist(rows, schema=schema)
+        # Sort (dname, tname, dt) for dictionary + delta encoding wins.
+        table = table.sort_by([
+            ('dname', 'ascending'),
+            ('tname', 'ascending'),
+            ('dt', 'ascending'),
+        ]).combine_chunks()
+        pq.write_table(
+            table, opath,
+            compression=compression,
+            compression_level=compression_level,
+            use_dictionary=True,
+            write_statistics=True,
+            data_page_size=1 * 1024 * 1024,
+        )
+
+    def _to_parquet_legacy(self, opath):
+        """Pre-v1.7 parquet writer — wav stored as a bytes blob of
+        float32 samples, one row per rec. Retained behind
+        ``to_parquet(opath, legacy=True)`` for downstream readers that
+        still expect this layout."""
         rows = []
         for _, trk in self.trks.items():
             dtname = trk.name
@@ -1244,7 +1423,7 @@ class VitalFile:
         df = pd.DataFrame(rows)
         if 'nval' in df:
             df['nval'] = df['nval'].astype(np.float32)
-        
+
         df.to_parquet(opath, compression='gzip')
 
 
