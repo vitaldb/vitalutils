@@ -1222,8 +1222,16 @@ class VitalFile:
         """
         if legacy:
             return self._to_parquet_legacy(opath)
-        import pyarrow as pa
-        import pyarrow.parquet as pq
+        try:
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+        except ImportError as e:
+            raise ImportError(
+                "to_parquet() needs pyarrow for the default long-format "
+                "schema. Install with `pip install vitaldb[parquet]` or "
+                "fall back to the pandas+gzip layout via "
+                "`to_parquet(path, legacy=True)`."
+            ) from e
 
         # Use the recording start as the chunking origin so wave rows
         # land on integer-second boundaries; tracks that lack dtstart

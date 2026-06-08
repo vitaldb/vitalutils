@@ -6,10 +6,11 @@ requires-python = ">=3.10"
 license = "MIT"
 authors = [{name = "VitalLab", email = "vital@snu.ac.kr"}]
 keywords = ["vitaldb", "vital-signs", "medical", "healthcare", "mcp"]
-dependencies = ['numpy', 'pandas', 'requests', 'wfdb', 'pyarrow']
+dependencies = ['numpy', 'pandas', 'requests', 'wfdb']
 
 [project.optional-dependencies]
 mcp = ["mcp"]
+parquet = ["pyarrow"]
 
 [project.scripts]
 vitaldb = "vitaldb.__main__:main"
