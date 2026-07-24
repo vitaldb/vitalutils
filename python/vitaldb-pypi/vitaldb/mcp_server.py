@@ -1,11 +1,24 @@
 """VitalDB MCP Server - Model Context Protocol server for VitalDB Python library."""
 
 import json
+
+import numpy as np
 from mcp.server.fastmcp import FastMCP
 
 import vitaldb
 
 mcp = FastMCP("vitaldb")
+
+
+def _safe_list(arr):
+    """Convert an array to a JSON-safe nested list.
+
+    Physiological tracks are full of gaps, which arrive as NaN. json.dumps
+    emits those as bare ``NaN`` tokens, which are invalid JSON (RFC 8259) and
+    reject in strict MCP clients. Replace every non-finite value with null.
+    """
+    arr = np.asarray(arr, dtype=float)
+    return np.where(np.isfinite(arr), arr, None).tolist()
 
 
 @mcp.tool()
@@ -40,7 +53,7 @@ def load_case(caseid: int, track_names: str, interval: float = 1.0) -> str:
     return json.dumps({
         "shape": list(data.shape),
         "columns": track_names.split(","),
-        "data": data.tolist()
+        "data": _safe_list(data)
     })
 
 
@@ -88,6 +101,8 @@ def get_track_names() -> str:
         JSON array of track names
     """
     result = vitaldb.get_track_names()
+    if hasattr(result, "to_json"):        # DataFrame, not a plain list
+        return result.to_json(orient="records")
     return json.dumps(result)
 
 
@@ -103,11 +118,14 @@ def filelist(bedname: str = "", dtstart: str = "", dtend: str = "") -> str:
     Returns:
         JSON array of file information
     """
-    result = vitaldb.filelist(
-        bedname=bedname if bedname else None,
-        dtstart=dtstart if dtstart else None,
-        dtend=dtend if dtend else None
-    )
+    try:
+        result = vitaldb.filelist(
+            bedname=bedname if bedname else None,
+            dtstart=dtstart if dtstart else None,
+            dtend=dtend if dtend else None
+        )
+    except Exception as e:
+        return json.dumps({"error": str(e)})
     if result is None:
         return json.dumps({"error": "Failed to get file list. Login may be required."})
     return json.dumps(result)
@@ -125,11 +143,14 @@ def tracklist(bedname: str = "", dtstart: str = "", dtend: str = "") -> str:
     Returns:
         JSON array of track information
     """
-    result = vitaldb.tracklist(
-        bedname=bedname if bedname else None,
-        dtstart=dtstart if dtstart else None,
-        dtend=dtend if dtend else None
-    )
+    try:
+        result = vitaldb.tracklist(
+            bedname=bedname if bedname else None,
+            dtstart=dtstart if dtstart else None,
+            dtend=dtend if dtend else None
+        )
+    except Exception as e:
+        return json.dumps({"error": str(e)})
     if result is None:
         return json.dumps({"error": "Failed to get track list. Login may be required."})
     return json.dumps(result)
@@ -150,18 +171,21 @@ def receive(bedname: str = "", track_names: str = "", dtstart: str = "", dtend: 
     """
     track_list = [x.strip() for x in track_names.split(",") if x.strip()] if track_names else None
 
-    result = vitaldb.receive(
-        bedname=bedname if bedname else None,
-        track_names=track_list,
-        dtstart=dtstart if dtstart else None,
-        dtend=dtend if dtend else None
-    )
+    try:
+        result = vitaldb.receive(
+            bedname=bedname if bedname else None,
+            track_names=track_list,
+            dtstart=dtstart if dtstart else None,
+            dtend=dtend if dtend else None
+        )
+    except Exception as e:
+        return json.dumps({"error": str(e)})
     if result is None:
         return json.dumps({"error": "Failed to receive data. Login may be required."})
 
     # Convert numpy array to JSON-serializable format
     if hasattr(result, 'tolist'):
-        return json.dumps({"data": result.tolist()})
+        return json.dumps({"data": _safe_list(result)})
     return json.dumps(result)
 
 
@@ -209,9 +233,12 @@ def read_vital(filepath: str, track_names: str = "", interval: float = 1.0) -> s
         }
 
         for track_name in track_list:
-            samples = vf.get_samples(track_name, interval)
-            if samples is not None:
-                result["tracks"][track_name] = samples.tolist()
+            # VitalFile.get_samples returns (rows, columns); rows[i] holds the
+            # samples for the i-th requested track. Calling .tolist() on the
+            # tuple raised for every input.
+            rows, _cols = vf.get_samples(track_name, interval)
+            if rows:
+                result["tracks"][track_name] = _safe_list(rows[0])
 
         return json.dumps(result)
     except Exception as e:

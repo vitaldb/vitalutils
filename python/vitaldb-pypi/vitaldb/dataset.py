@@ -28,13 +28,13 @@ def load_clinical_data(caseids=[], params=[]):
     global dfci
     if dfci is None:
         dfci = pd.read_csv(f"{api_url}/cases")
-    
-    res = None
+
     if not caseids:
         res = dfci
-    res = dfci[dfci["caseid"].isin(caseids)]
+    else:
+        res = dfci[dfci["caseid"].isin(caseids)]
     if params:
-        existing_params = [param for param in params if param in dfci.columns]
+        existing_params = [param for param in params if param in res.columns]
         res = res[existing_params]
     return res
 
@@ -51,13 +51,13 @@ def load_lab_data(caseids=[], params=[]):
     global dflabs
     if dflabs is None:
         dflabs = pd.read_csv(f"{api_url}/labs")
-    
-    res = None
+
     if not caseids:
         res = dflabs
-    res = dflabs[dflabs["caseid"].isin(caseids)]
+    else:
+        res = dflabs[dflabs["caseid"].isin(caseids)]
     if params:
-        existing_params = [param for param in params if param in dfci.columns]
+        existing_params = [param for param in params if param in res.columns]
         res = res[existing_params]
     return res
 
@@ -147,7 +147,8 @@ def get_track_names(caseids=[]):
     if dftrks is None:
         dftrks = pd.read_csv(f"{api_url}/trks")
 
-    return dftrks[dftrks['caseid'].isin(caseids)].groupby('caseid')["tname"].apply(list).reset_index(name="tnames")
+    res = dftrks if not caseids else dftrks[dftrks['caseid'].isin(caseids)]
+    return res.groupby('caseid')["tname"].apply(list).reset_index(name="tnames")
 
 def find_cases(track_names):
     """Return a list of caseID for cases with the given tracklist.
